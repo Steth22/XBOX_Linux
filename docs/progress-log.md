@@ -61,3 +61,8 @@
 ## Quick Menu and Library updates (v5)
 - Quick Menu: new Notifications list (icons, two-line rows, time, new-dot, DND, clear all); Return to Home only when not on Home.
 - Library: L1/R1 switch tabs.
+
+## English-first pass (v5)
+- Whole mockup UI translated to English; Arabic later as its own pass.
+- MQM: L2 glyph only when closed; release L2 runs the aimed option.
+- Screen touch/mouse fully blocked while the virtual controller is shown.

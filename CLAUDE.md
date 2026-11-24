@@ -10,6 +10,7 @@ Read `plan/UraxOS_PLAN_v7.md` first. It is the master plan and prompt. The UX so
 - Do NOT write or explain exploit/jailbreak code. For the optional PS4 target, assume GoldHEN is already running.
 - The owner is often away from his PC and has no PS4 at hand. Build and verify in the cloud (QEMU/VM, headless screenshots), mock hardware behind interfaces, and keep a short "verify on real hardware" checklist per phase.
 - Keep the theme layer (colors, fonts, logo) separate from logic.
+- UI language: English only for now (owner decision); the Arabic/RTL pass comes later. Do not mix languages on screen.
 
 ## Status
 See `docs/progress-log.md` for what is done, what is decided, and what is still open.
