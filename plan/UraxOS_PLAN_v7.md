@@ -103,8 +103,9 @@ All sizes below are for a 1920x1080 stage and should scale to the real screen.
 
 **Quick Menu (Home button on the controller; `H` on keyboard)**
 - A glass panel slides in from the left (about 700 px wide) over a blurred, darkened background. Title "Quick Menu".
-- Top row (first, default focus): **Return to Home**. It closes the Quick Menu and whatever is open (app, Settings, Gallery, Library) and goes to Home. On Home it only shows a toast.
-- Then the rows: the current app (its icon and name), Sound, Network and devices, Power.
+- Top row (first, default focus): **Return to Home**, shown **only when something other than Home is open** (an app, Settings, Gallery or Library); on Home the row is hidden and focus starts on the current app row. It closes the Quick Menu and whatever is open (app, Settings, Gallery, Library) and goes to Home. On Home it only shows a toast.
+- Then the rows: the current app (its icon and name), **Notifications**, Sound, Network and devices, Power.
+- **Notifications** (v5): shows the unseen count in its title. Its list has one tidy row per notification (app-colored icon, title, one-line text, time, a dot for new ones), then Do not disturb (toggle) and Clear all. Choosing an item shows that notification again as a card.
 - **Sub-options are hidden until a row is chosen.** Choosing a row (A, Right, or click) makes the row list fade out and slide to the left, and that row's sub-options fade in from the right in the same place, under a small heading with the row's name. Back (B, Left, Esc, or the heading) reverses it.
 - Every sub-option list ends with an explicit **Back** row (arrow plus "Back"), so I am never stuck in a sub-list. Up from the first sub-option wraps to Back.
 - Sub-options in the mockup:
@@ -160,6 +161,7 @@ Categories (all required, in this order):
 - Opened from the App Library tile. Tabs: All, Games, Apps, Steam, Favorites, "In your account" (owned but not installed). A sort chip: last played, name, size.
 - Grid of 6 portrait cards (2:3). Badges: star (favorite), cloud (not installed), "Update", download percentage with a progress bar.
 - **Game page:** large hero background, cover, details (source, status, play time, last played, size) and buttons: Play (or Download / Update), **Pin to Home** (adds a real tile to the Home row), Favorite, Uninstall (two presses to confirm), Back.
+- **Added in v5:** **L1 / R1 switch between the tabs (lists)** (`[` / `]` on keyboard; wraps around).
 - **Added in v5:** per-game settings on the game page (button "Game settings", key `O`): performance mode, resolution, frame limit, compatibility layer.
 - **Stage 2 (not built yet):** on-screen keyboard search, controller layout per game, download queue with pause, collections, **add a non-Steam app**, compatibility badge per game (source to be verified, for example ProtonDB, before relying on it).
 
@@ -185,7 +187,7 @@ Categories (all required, in this order):
 - Gameplay buttons are never consumed until the player presses **UB** to select the notification. The bottom hint bar then shows the available buttons.
 - After UB: **L2 dismisses** it; **cross** replies to a message (opens the typing box; Enter sends, Esc goes back); **triangle** plays a video in a **floating window** (bottom right, above Home and apps; triangle pauses/plays, square or `X` closes); cross opens the related screen for system notices. UB again releases the selection.
 - Settings: Personalization has "Notifications" and "Do not disturb" toggles and a test notification. Key `N` sends a demo notification in the mockup.
-- Not designed yet: notification center, stacking, per-app settings.
+- Notification history lives in the Quick Menu (see 2.1). Not designed yet: stacking several cards, per-app settings, a full-screen center.
 
 ### 2.9 On-screen keyboard for controllers (added in v5, proposal)
 

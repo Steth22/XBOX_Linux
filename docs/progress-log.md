@@ -57,3 +57,7 @@
 
 ## Virtual controller (v5 mockup)
 - On-screen remote that drives the real gamepad code path, for testing by touch. Plan 2.10.
+
+## Quick Menu and Library updates (v5)
+- Quick Menu: new Notifications list (icons, two-line rows, time, new-dot, DND, clear all); Return to Home only when not on Home.
+- Library: L1/R1 switch tabs.
