@@ -49,3 +49,7 @@
 ## Font
 - `assets/fonts/UraxDisplay-Bold.ttf/.woff2`, built by `python3 tools/build_font.py` (needs fonttools, shapely, brotli). Latin caps, digits, punctuation; sparkle period. No Arabic glyphs (Cairo fallback).
 - Open: a custom Arabic companion face; owner review of letter shapes.
+
+## Notifications (v5 mockup)
+- Card from the left under the clock; UB focuses it; triangle = reply (typing box) or floating video player. See plan 2.8.
+- Open: notification center, stacking, on-screen keyboard.

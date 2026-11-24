@@ -178,6 +178,17 @@ Categories (all required, in this order):
 - Design the services as a plugin list: each service is a small descriptor (name, login method, what it provides). Adding a service must not require changing the UI.
 - Honest limits: Xbox can offer account linking, friends and achievements through Microsoft's APIs, but **running Xbox games on Linux is not possible**. Discord and Twitch/YouTube are for notifications, sharing, and overlay chat; verify each service's current API terms before building.
 
+### 2.8 Notifications and the UB button (added in v5, proposal)
+
+- **UB** is the controller's system button (PS or Xbox button; `H` on keyboard). It is the Home button used for the Quick Menu.
+- A notification card slides in slowly from the left screen edge, just under the clock, and stays about 10 s. A small hint says what UB + triangle will do.
+- While a card is showing, **UB focuses it** instead of opening the Quick Menu (UB again releases it). Then **triangle** (`O` on keyboard, Y on the pad) runs the primary action, and B dismisses it.
+  - Message (for example Discord): triangle opens a **typing box** directly under the card; Enter sends, Esc goes back. On a controller the on-screen keyboard (not designed yet) is used.
+  - Video (for example YouTube): triangle plays it in a **floating window** (bottom right) that stays above Home and apps. Triangle pauses/plays; square (or `X`, or the close mark) closes it. The mockup simulates playback.
+  - System notice: triangle opens the related screen (for example the Library).
+- Settings: Personalization has "Notifications" and "Do not disturb" toggles and a test notification. Key `N` sends a demo notification in the mockup.
+- Not designed yet: notification history/center, stacking several cards, per-app notification settings.
+
 **Controller map (mockup)**
 - D-pad or left stick: move focus. A: confirm. B: back. Home: Quick Menu. L2 (hold): MQM. Right stick: pick an MQM option.
 - Keyboard equivalents: arrows, Enter/Space, Esc, `H` or Tab, `L` or `Q` (hold).
