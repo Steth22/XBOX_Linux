@@ -83,3 +83,17 @@
 - Owner decision: real-hardware test device is a **PS4 Slim** (CUH-2xxx, Belize southbridge), with GoldHEN already running.
 - Order: finish the VirtualBox alpha image first, then build a PS4 Slim variant from the same rootfs (PS4-patched kernel + initramfs, loaded by the GoldHEN Linux loader).
 - Storage: owner chose the **internal disk** (riskier than USB; back up saves first, and the install guide must warn about this).
+
+## 2026-11-24: Phases 0-2 alpha (real Linux, VirtualBox)
+- `os/build.sh` builds a UEFI GPT disk from the Arch bootstrap: plain Arch, linux kernel, systemd-boot, greetd autologin (user `urax`, password `urax`) into Plasma 6 Wayland.
+- Console Mode = `urax-shell` (Qt 6 WebEngine, fullscreen) showing the v5 design, autostarted in the Plasma session. `os/shell/bridge.*` + `bridge.js` expose real system calls; `host.js` wires the design to them.
+- Wired and verified in QEMU: auto power-on, real app list (desktop apps, flatpak, Steam library) on Home and in App Library, real launch (shell hides, comes back when the app exits), PC Mode = hide shell and show the real Plasma desktop (Urax wallpaper, "Console Mode" icon brings the shell back), volume (wpctl), Wi-Fi/Bluetooth radios and Wi-Fi join (nmcli), screenshots into ~/Pictures/Screenshots shown in Gallery, Shut down/Restart = real poweroff/reboot.
+- VMs: Chromium GPU compositing gives a black window, so the shell switches to software rendering when it detects a VM (DMI vendor); real hardware keeps the GPU.
+- Delivery: `os/vbox/make-ova.sh` makes a VMDK + "Create UraxOS VM.cmd" (VBoxManage: EFI, 6 GB, 4 CPUs, VMSVGA, USB filter for Sony controllers).
+
+### Verify on real hardware (VirtualBox on the owner's PC)
+- [ ] VM boots to Console Mode by itself.
+- [ ] PS4 controller over USB cable works in the console (Gamepad API).
+- [ ] Steam installs and opens from the Steam tile; a game launches and the console returns after quitting.
+- [ ] PC Mode and back (Console Mode icon).
+- [ ] Sound, network, Shut down/Restart.

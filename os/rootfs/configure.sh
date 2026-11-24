@@ -95,8 +95,10 @@ cat > /usr/bin/urax-firstlogin <<'EOF'
 #!/bin/sh
 M="$HOME/.config/uraxos-firstlogin-done"
 [ -e "$M" ] && exit 0
-sleep 4
-plasma-apply-wallpaperimage /usr/share/uraxos/wallpaper.png && touch "$M"
+for i in $(seq 1 30); do
+  sleep 3
+  plasma-apply-wallpaperimage /usr/share/uraxos/wallpaper.png >/dev/null 2>&1 && touch "$M" && exit 0
+done
 EOF
 chmod 755 /usr/bin/urax-firstlogin
 cat > /etc/xdg/autostart/uraxos-firstlogin.desktop <<'EOF'

@@ -44,7 +44,19 @@ static void addScript(QWebEnginePage *page, const QString &name, const QString &
   page->scripts().insert(s);
 }
 
+// Virtual machines usually have no working 3D for Chromium; use software rendering there.
+static bool runningInVm() {
+  QFile f("/sys/class/dmi/id/sys_vendor");
+  if (!f.open(QIODevice::ReadOnly)) return false;
+  const QByteArray v = f.readAll().toLower();
+  return v.contains("innotek") || v.contains("qemu") || v.contains("vmware") || v.contains("microsoft") || v.contains("oracle");
+}
+
 int main(int argc, char *argv[]) {
+  if (runningInVm() || qEnvironmentVariableIsSet("URAX_SOFTWARE")) {
+    qputenv("QT_QUICK_BACKEND", "software");
+    if (!qEnvironmentVariableIsSet("QTWEBENGINE_CHROMIUM_FLAGS")) qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu");
+  }
   QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
   qputenv("QTWEBENGINE_CHROMIUM_FLAGS", qgetenv("QTWEBENGINE_CHROMIUM_FLAGS") + " --autoplay-policy=no-user-gesture-required");
   QApplication app(argc, argv);
