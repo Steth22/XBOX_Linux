@@ -220,6 +220,8 @@ Categories (all required, in this order):
 - **Rest mode** (Quick Menu › Power, Settings › Power › Rest now): black screen, pulsing moon, downloads progress, controller charging, wake with UB or cross. Notifications are held while resting.
 - **Gallery stage 2:** square = select mode (cross picks, triangle = bulk actions: favorite, copy to USB, delete with confirm); triangle outside select mode = options (sort newest/oldest/by game); cross on a video in the viewer plays it with a progress bar; viewer options › Trim clip (pick start/end, save as a new clip); Quick Menu › current app › Save last 15 minutes (length follows Settings › Storage and games › Replay buffer: Off/5/10/15 min).
 - **Library stage 2:** triangle = search (live filter, keyboard opens), Downloads tab, one active download with a queue, Pause/Resume/Cancel on the game page, badges for Queued/Paused, "Add app" card (adds installed Flatpak apps), Controller layout in per-game settings.
+- **Tabs are L1/R1 only:** in Library and Gallery the D-pad never focuses the tab row; focus stays in the grid (up at the top row does nothing) and circle leaves the screen. Switching tabs slides the grid in from the side of the press.
+- **Motion:** dialogs fade and rise in (and fade out), Settings pages and category changes slide their rows in with a short stagger (direction follows forward/back), scan results animate in, rest mode content rises in, the search bar drops in, the video bar fades in. All of it is off under Reduce motion.
 - Still open for later: Library collections, Gallery multi-select share, per-app notification settings, notification stacking.
 
 ### 2.10 Virtual controller for testing (mockup only)
