@@ -70,3 +70,7 @@
 ## Console Mode design complete (v5)
 - Added Wi-Fi and Bluetooth screens, service pages, Rest mode, Gallery stage 2, Library stage 2, shared dialog component. Plan 2.12.
 - Next: PC Mode design.
+
+## PC Mode designed (v5 mockup)
+- Full desktop with Windows-style features: window manager, taskbar, Start, quick settings, notification center, task view + virtual desktops, Alt+Tab, lock screen, Files, Task Manager, Settings, Terminal, Text Editor, Photos, Calculator, Brave, Store, Steam, Discord. Controller cursor for testing. Plan 2.13.
+- Next: owner review of PC Mode, then Phase 0 build work.

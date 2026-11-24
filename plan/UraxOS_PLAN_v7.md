@@ -230,6 +230,18 @@ Categories (all required, in this order):
 - While it is on, touching or clicking the screen itself is disabled; only the virtual controller (and the keyboard) work. Turn it off to use touch/mouse directly.
 - Toggle with the "يد التحكم" button at the bottom center (or `G`). It starts on by default for touch devices and remembers the choice. It is a test tool, not a product feature.
 
+### 2.13 PC Mode (designed in the v5 mockup, proposal)
+
+Opened from the PC Mode tile (no reboot); Start › power › Switch to Console Mode returns. Mouse and keyboard first; a controller drives an on-screen cursor (left stick moves, cross clicks/double-clicks/drags, circle right-clicks, right stick scrolls, UB opens Start, text fields open the controller keyboard).
+
+- **Desktop:** wallpaper (4 choices), icons (This PC, Trash, apps, files on the Desktop folder), selection, double-click to open, right-click menu (icon size, refresh, new folder, new text document, open in Terminal, display settings, personalize).
+- **Taskbar:** Start, Search, Task view, pinned + running apps with indicators (click to open, focus or minimize; right-click to pin/unpin or close), tray with network/volume/battery (quick settings) and clock/date (notifications + calendar), show-desktop corner, alignment Center/Left (Settings › Personalization).
+- **Start:** search across apps, settings and files (Enter opens the best match), pinned grid, All apps (A–Z), recommended recent files, user, power menu (Lock, Sleep, Switch to Console Mode, Sign out, Restart, Shut down).
+- **Windows:** move, resize from all edges and corners, minimize, maximize (double-click title), close, focus order, title-bar menu, snap by dragging to edges/corners (halves and quarters), snap layouts on hovering maximize, Win+Arrows, Alt+Tab switcher, Task view with virtual desktops (add, remove, switch; Win+Ctrl+Left/Right), Win+D show desktop, Win+L lock screen, Print Screen saves to Pictures › Screenshots and the Gallery.
+- **Quick settings:** Wi-Fi (network list with password), Bluetooth, Airplane mode, Night light, Focus, Battery saver, brightness and volume sliders, battery, Settings shortcut. **Notification center:** shared history with Console Mode, clear all, month calendar, Focus toggle.
+- **Apps:** Files (sidebar, breadcrumb, back/forward/up, search, grid/list, sort, preview pane, new folder/file, cut/copy/paste, rename, delete to Trash, restore, empty Trash, extract zip, properties, This PC drives, USB drive, keyboard shortcuts), Task Manager (Processes with sort and End task, Performance graphs for CPU/Memory/GPU/Disk/Wi-Fi, Startup apps, Details, Services), Settings (the same settings and pages as Console Mode in a desktop window, with search), Terminal (simulated shell over the same files), Text Editor (open/save/save as), Photos (browse, zoom, set as background), Calculator (keyboard too), Brave (tabs, address bar, search, simulated pages), Urax Store (Flatpak catalog, install/uninstall, installed apps also appear in the Console Library), Steam and Discord (simulated clients).
+- Honest limits: everything is simulated in the mockup; the real build uses Linux apps (Flatpak), and Windows apps only through Proton/Wine where they work.
+
 **Controller map (mockup)**
 - D-pad or left stick: move focus. A: confirm. B: back. Home: Quick Menu. L2 (hold): MQM. Right stick: pick an MQM option.
 - Keyboard equivalents: arrows, Enter/Space, Esc, `H` or Tab, `L` or `Q` (hold).
