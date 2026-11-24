@@ -211,6 +211,17 @@ Categories (all required, in this order):
 - Settings: a divider between the category list and the content, the selected category has a blue edge, the content heading is left-aligned with a one-line description of the category, rows have sharp corners.
 - The virtual controller uses the same glyphs (bumper/trigger shapes, D-pad arrows, face symbols, UB logo, Options). While it is on, the Gallery viewer's on-screen buttons are hidden (the glyph hint bar remains).
 
+### 2.12 Console Mode completion (v5)
+
+- **Dialogs:** one shared dialog/action-menu component (title, text, optional text field, buttons or a vertical list). A text field opens the controller keyboard automatically; R2 confirms, up re-opens the keyboard.
+- **Wi-Fi** (Settings › Network › Wi-Fi networks, or Quick Menu › Network and devices): Wi-Fi toggle, the connected network (signal, details, Disconnect, Forget), available networks sorted by signal with lock icons, password dialog (wrong password shows an error), Scan again, Add hidden network.
+- **Bluetooth** (Settings › Devices › Bluetooth devices, or Quick Menu): paired devices with type icons and battery, per-device Connect/Disconnect/Forget, Search for devices, pairing dialog (with a numeric code check for audio devices).
+- **Connected services:** a linked service opens its own page: account, sign-in method, permission toggles per service, Xbox note, Unlink (press twice).
+- **Rest mode** (Quick Menu › Power, Settings › Power › Rest now): black screen, pulsing moon, downloads progress, controller charging, wake with UB or cross. Notifications are held while resting.
+- **Gallery stage 2:** square = select mode (cross picks, triangle = bulk actions: favorite, copy to USB, delete with confirm); triangle outside select mode = options (sort newest/oldest/by game); cross on a video in the viewer plays it with a progress bar; viewer options › Trim clip (pick start/end, save as a new clip); Quick Menu › current app › Save last 15 minutes (length follows Settings › Storage and games › Replay buffer: Off/5/10/15 min).
+- **Library stage 2:** triangle = search (live filter, keyboard opens), Downloads tab, one active download with a queue, Pause/Resume/Cancel on the game page, badges for Queued/Paused, "Add app" card (adds installed Flatpak apps), Controller layout in per-game settings.
+- Still open for later: Library collections, Gallery multi-select share, per-app notification settings, notification stacking.
+
 ### 2.10 Virtual controller for testing (mockup only)
 
 - An on-screen controller (D-pad, left and right sticks, cross/circle/square/triangle, L1/L2/R1/R2, UB, Options) feeds the same input path as a real gamepad (standard mapping), so every screen, the boot flow, notifications and the keyboard can be tested by touch or mouse. A real gamepad, when connected, takes priority.
@@ -356,7 +367,7 @@ Known limits: games with Windows-only anti-cheat will not run; some DRM or launc
 - **Separate research task:** Quick Resume (see 5.5, item 30).
 
 ### Design items still open (not for Claude Code to invent)
-1. Screens still not designed: Wi-Fi detail screen (scan, password with on-screen keyboard), Bluetooth pairing screen, Notifications center, Rest mode, on-screen keyboard, Gallery stage 2, App Library stage 2, per-service detail pages. (Settings, Gallery stage 1, Library stage 1 and the accounts picker are designed in the mockup.)
+1. Console Mode screens are all designed in the v5 mockup (see 2.8 to 2.12); remaining small items are listed at the end of 2.12. PC Mode is next. (Settings, Gallery stage 1, Library stage 1 and the accounts picker are designed in the mockup.)
 2. PC Mode screens exist in Figma (desktop, Start menu, File Explorer, Task Manager) and need my review.
 3. Vector (SVG) version of the approved logo, and its wiring into the boot screen and icons.
 4. Font decision (Cairo for everything or only for Arabic).

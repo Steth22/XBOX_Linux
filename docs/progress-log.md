@@ -66,3 +66,7 @@
 - Whole mockup UI translated to English; Arabic later as its own pass.
 - MQM: L2 glyph only when closed; release L2 runs the aimed option.
 - Screen touch/mouse fully blocked while the virtual controller is shown.
+
+## Console Mode design complete (v5)
+- Added Wi-Fi and Bluetooth screens, service pages, Rest mode, Gallery stage 2, Library stage 2, shared dialog component. Plan 2.12.
+- Next: PC Mode design.
