@@ -8,3 +8,5 @@ A personal Linux-based dual-mode OS shell (Console Mode and PC Mode). PC first; 
 - `assets/`: approved logo (PNG and traced SVG) and sample art
 - `references/`: hand-made structure sketches
 - `docs/progress-log.md`: status, decisions and open questions
+- `docs/base-distro-options.md`, `docs/architecture-proposal.md`: Phase 0 proposals awaiting approval
+- `docs/verify-on-hardware.md`: real-hardware checklist

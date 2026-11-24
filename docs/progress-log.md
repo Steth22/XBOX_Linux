@@ -26,3 +26,9 @@
 - Gallery stage 2, Library stage 2 (search with on-screen keyboard, per-game settings, add non-Steam app).
 - Wi-Fi and Bluetooth screens, Notifications center, Rest mode, on-screen keyboard.
 - Security and antivirus design.
+
+## Phase 0 status (cloud session review)
+- Mockup v4 reviewed: loads and runs without console errors; boot, profile picker and app launch tested headless.
+- Plan fixes: stale "Settings is not designed yet" removed (Settings is designed, see 2.3); PIN wording corrected (4-digit PIN is a convenience lock, not encryption).
+- Added proposals awaiting approval: `base-distro-options.md`, `architecture-proposal.md`; added `verify-on-hardware.md`.
+- No code written yet, by design (plan section 8: propose first, wait for approval).

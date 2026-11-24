@@ -95,7 +95,7 @@ All sizes below are for a 1920x1080 stage and should scale to the real screen.
 - A glass half-circle hangs from the top edge of the screen, partly off-screen. While L2 is held it grows to full size and the screen dims slightly. Releasing L2 closes it. On touch or mouse, tapping the half-circle keeps it open until tapped outside.
 - Five options sit on its lower edge at fixed angles. They are picked with the **right stick** (the direction picks the nearest option; a dead zone avoids accidental picks). Only the selected icon grows (about 1.45x) and its name shows below. **No pointer line.** Confirm with A.
 - Options: Settings, Wi-Fi, Bluetooth, Library, and a fifth unnamed slot with an X icon that does nothing (reserved).
-- Wi-Fi and Bluetooth toggle immediately; Library jumps to the App Library tile; Settings is not designed yet.
+- Wi-Fi and Bluetooth toggle immediately; Library jumps to the App Library tile; Settings opens the Settings app (see 2.3).
 - Mouse: moving the mouse aims the same way.
 - **MQM exists only on the Home screen.** Inside any app, game, Settings, Gallery or Library it is hidden and disabled (the L2 button is dimmed).
 - On touch screens a quick tap on the L2 button toggles the MQM (stays open); holding behaves like the physical trigger.
@@ -123,7 +123,7 @@ All sizes below are for a 1920x1080 stage and should scale to the real screen.
 - **PIN:** a user with a PIN shows a 4-dot entry with an on-screen keypad (also hardware keyboard digits). A wrong PIN shakes the dots and clears them.
 - **Guest:** no saved data.
 - After login: welcome screen, then Home. **Switch user** (Quick Menu, Power) returns to the picker without rebooting.
-- Real system: each profile is a separate Linux user with its own home, settings, Steam account link and saved connected services. PINs are stored hashed, never in plain text. Settings has the matching "Accounts and services" section.
+- Real system: each profile is a separate Linux user with its own home, settings, Steam account link and saved connected services. PINs are stored hashed (salted, slow hash such as argon2id), never in plain text. A 4-digit PIN is only a convenience lock on the profile picker and screen lock (rate-limited, with a lockout after repeated failures); it is NOT disk encryption and does not protect data against someone with physical access. Settings has the matching "Accounts and services" section.
 
 ### 2.3 Settings app
 
