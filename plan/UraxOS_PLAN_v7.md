@@ -200,6 +200,7 @@ Categories (all required, in this order):
 ### 2.10 Virtual controller for testing (mockup only)
 
 - An on-screen controller (D-pad, left and right sticks, cross/circle/square/triangle, L1/L2/R1/R2, UB, Options) feeds the same input path as a real gamepad (standard mapping), so every screen, the boot flow, notifications and the keyboard can be tested by touch or mouse. A real gamepad, when connected, takes priority.
+- While it is on, touching or clicking the screen itself is disabled; only the virtual controller (and the keyboard) work. Turn it off to use touch/mouse directly.
 - Toggle with the "يد التحكم" button at the bottom center (or `G`). It starts on by default for touch devices and remembers the choice. It is a test tool, not a product feature.
 
 **Controller map (mockup)**
