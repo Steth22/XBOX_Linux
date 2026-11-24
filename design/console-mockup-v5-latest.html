@@ -165,7 +165,7 @@ button{font-family:inherit}
 #kb .kk{flex:1;height:68px;display:grid;place-items:center;font-size:32px;background:rgba(232,241,251,.09);cursor:pointer;font-family:'Cairo',system-ui,sans-serif}
 #kb .kk.sd{flex:none;width:150px;font-size:26px;background:rgba(232,241,251,.16)}#kb .kk.sd.ev{background:transparent;cursor:default}
 #kb .kk.on2{background:rgba(79,179,246,.4)}#kb .kk.fc{background:var(--blue);color:#0B1220}#kb .kk.pr{background:#fff;color:#0B1220}
-#kb .kh{display:flex;justify-content:space-between;gap:14px;font-size:20px;color:var(--muted);margin-top:8px;white-space:nowrap}
+#kb .kh{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 26px;font-size:19px;color:var(--muted);margin-top:8px}
 #fw{position:absolute;right:56px;bottom:140px;width:600px;z-index:9;border-radius:22px;overflow:hidden;background:#05080f;border:1px solid #2A3A55;box-shadow:0 20px 60px rgba(0,0,0,.6);display:none;direction:ltr}
 #fw.on{display:block;animation:fwin .7s cubic-bezier(.2,.9,.25,1)}@keyframes fwin{from{opacity:0;transform:translateY(40px) scale(.95)}}
 #fw .fh{display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(18,27,46,.97);font-size:24px}#fw .fh b{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}#fw .fh i{font-style:normal;width:34px;height:34px;border-radius:9px;background:#e62117;display:grid;place-items:center;font-size:18px}
@@ -289,14 +289,22 @@ $('#wheel').onclick=()=>{if(!menu()){latched=true;sync()}};
 $('#dim').onclick=()=>{latched=false;if(qpo)qpClose();sync()};
 const l2=$('#l2');let l2t=0;l2.addEventListener('pointerdown',e=>{e.preventDefault();l2t=Date.now();held=true;sync()});['pointerup','pointercancel','pointerleave'].forEach(v=>l2.addEventListener(v,()=>{if(held){held=false;if(Date.now()-l2t<350)latched=!latched;sync()}}));
 stage.addEventListener('pointermove',e=>{if(!menu())return;const r=stage.getBoundingClientRect();let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);if(rot){const t=dx;dx=dy;dy=-t}aimAt(dx/sc,dy/sc+540,90)});
-addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key;lastIn='kb';if(kbOn){if(k.startsWith('Arrow'))e.preventDefault();if(k==='Tab'){e.preventDefault();kbClose();return}if(k==='Backspace'){e.preventDefault();kbBack();return}if(k==='['){e.preventDefault();kbCur(-1);return}if(k===']'){e.preventDefault();kbCur(1);return}if(k===' '){e.preventDefault();kbSpace();return}if(k==='Shift'){kbShiftT();return}if(k.length===1){e.preventDefault();return}}if(document.activeElement&&document.activeElement.id==='nin'&&!kbOn){if(k==='Tab'){e.preventDefault();kbOpen(document.activeElement,nSend)}else if(k==='Enter'){e.preventDefault();nSend()}else if(k==='Escape')nBack();return}if(nMode&&'lLqQ'.includes(k)){nHide();return}
+addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key;lastIn='kb';if(kbOn){if(k.startsWith('Arrow'))e.preventDefault();if(k==='Tab'){e.preventDefault();kbClose();return}if(k==='Backspace'){e.preventDefault();kbBack();return}if(k==='['){e.preventDefault();kbCur(-1);return}if(k===']'){e.preventDefault();kbCur(1);return}if(k===' '){e.preventDefault();kbSpace();return}if(k==='Shift'){kbShiftT();return}if(k==='Home'){e.preventDefault();kbEdge(0);return}if(k==='End'){e.preventDefault();kbEdge(1);return}if(k==='`'){e.preventDefault();kbLangT();return}if(k==='\\'){e.preventDefault();kbSymT();return}if(k.length===1){e.preventDefault();return}}if(document.activeElement&&document.activeElement.id==='nin'&&!kbOn){if(k==='Tab'){e.preventDefault();kbOpen(document.activeElement,nSend)}else if(k==='Enter'){e.preventDefault();nSend()}else if(k==='Escape')nBack();return}if(nMode&&'lLqQ'.includes(k)){nHide();return}
 if(!$('#boot').classList.contains('gone')){bootKey(e);return}
 if(k==='h'||k==='H'||k==='Tab'){e.preventDefault();ub()}else if(k==='ArrowUp')qNav(0,-1);else if(k==='ArrowDown')qNav(0,1);else if(k==='ArrowLeft')move(-1);else if(k==='ArrowRight')move(1);else if(k==='Enter'||k===' '){e.preventDefault();ok()}else if(k==='Escape')back();else if(k==='o'||k==='O')optKey();else if(k==='n'||k==='N')nDemo();else if(k==='x'||k==='X')fwClose();else if('lLqQ'.includes(k)){held=true;sync()}});
 addEventListener('keyup',e=>{if('lLqQ'.includes(e.key)){held=false;sync()}});
 let gp={};function poll(){const p=(navigator.getGamepads?navigator.getGamepads():[])[0];
 if(p&&!$('#boot').classList.contains('gone')){const b=i=>p.buttons[i]&&p.buttons[i].pressed,ax=p.axes[0]||0,n={l:b(14)||ax<-.6,r:b(15)||ax>.6,a:b(0)||b(11),b:b(1)},st=$('#boot').dataset.s;if(st==='users'){if(n.l&&!gp.l)uMove(-1);if(n.r&&!gp.r)uMove(1);if(n.a&&!gp.a)uOk()}else if(st==='pin'||st==='new'){if(n.b&&!gp.b)showUsers()}else if(st==='off'){if(n.a&&!gp.a)$('#pw').click()}gp.l=n.l;gp.r=n.r;gp.a=n.a;gp.b=n.b}
 if(p&&$('#boot').classList.contains('gone')){const b=i=>p.buttons[i]&&p.buttons[i].pressed,L2=p.buttons[6]&&p.buttons[6].value>.5,ax=p.axes[0]||0,ay=p.axes[1]||0,n={l:b(14)||ax<-.6,r:b(15)||ax>.6,u:b(12)||ay<-.6,d:b(13)||ay>.6,a:b(0)||b(11),b:b(1),h:b(16)};
-if(n.l||n.r||n.u||n.d||n.a||n.b)lastIn='pad';if(n.l&&!gp.l)move(-1);if(n.r&&!gp.r)move(1);if(n.a&&!gp.a)ok();if(n.b&&!gp.b)back();if(n.u&&!gp.u)qNav(0,-1);if(n.d&&!gp.d)qNav(0,1);if(n.h&&!gp.h)ub();const sq=!!(p.buttons[2]&&p.buttons[2].pressed);if(sq&&!gp.sq){if(kbOn)kbShiftT();else fwClose()}if(kbOn){const bp=i=>!!(p.buttons[i]&&p.buttons[i].pressed),l1=bp(4),r1=bp(5),r2=bp(7),op=bp(9);if(l1&&!gp.l1)kbCur(-1);if(r1&&!gp.r1)kbCur(1);if(r2&&!gp.r2)kbSpace();if(op&&!gp.op&&kbEnter)kbEnter();gp.l1=l1;gp.r1=r1;gp.r2=r2;gp.op=op}gp.sq=sq;const yb=!!(p.buttons[3]&&p.buttons[3].pressed);if(yb&&!gp.y&&!qpo)optKey();gp.y=yb;
+if(n.l||n.r||n.u||n.d||n.a||n.b)lastIn='pad';if(n.l&&!gp.l)move(-1);if(n.r&&!gp.r)move(1);if(n.a&&!gp.a)ok();if(n.b&&!gp.b)back();if(n.u&&!gp.u)qNav(0,-1);if(n.d&&!gp.d)qNav(0,1);if(n.h&&!gp.h)ub();const sq=!!(p.buttons[2]&&p.buttons[2].pressed);if(sq&&!gp.sq){if(kbOn)kbDelWord();else fwClose()}if(kbOn){const now=performance.now(),bp=i=>!!(p.buttons[i]&&p.buttons[i].pressed),l1=bp(4),r1=bp(5),r2=bp(7),op=bp(9),L2k=!!(p.buttons[6]&&p.buttons[6].value>.5),rx=p.axes[2]||0,ry=p.axes[3]||0;
+const rep=(id,on,f)=>{if(on){if(!gp['t'+id]){gp['t'+id]=now+420}else if(now>gp['t'+id]){gp['t'+id]=now+80;f()}}else gp['t'+id]=0};
+if(l1&&!gp.l1)kbShiftT();if(r1&&!gp.r1)kbLangT();if(op&&!gp.op&&kbEnter)kbEnter();
+if(r2&&!gp.r2)kbSpace();rep('r2',r2,kbSpace);
+rep('l2',L2k,kbBack);
+['l','r','u','d'].forEach(k=>rep('n'+k,n[k],()=>{if(k==='l')move(-1);else if(k==='r')move(1);else qNav(0,k==='u'?-1:1)}));
+const rl=rx<-.6,rr=rx>.6,ru=ry<-.6,rd=ry>.6;
+if(rl&&!gp.rl)kbCur(-1);if(rr&&!gp.rr)kbCur(1);if(ru&&!gp.ru)kbEdge(0);if(rd&&!gp.rd)kbEdge(1);rep('rl',rl,()=>kbCur(-1));rep('rr',rr,()=>kbCur(1));
+gp.l1=l1;gp.r1=r1;gp.r2=r2;gp.op=op;gp.rl=rl;gp.rr=rr;gp.ru=ru;gp.rd=rd}gp.sq=sq;const yb=!!(p.buttons[3]&&p.buttons[3].pressed);if(yb&&!gp.y&&!qpo)optKey();gp.y=yb;
 if(menu()&&p.axes.length>3)aimAt(p.axes[2],p.axes[3],.55);
 if(!!L2!==!!gp.L2){gp.L2=L2;if(kbOn){if(L2)kbBack()}else if(nMode){if(L2)nHide()}else{held=L2;sync()}}gp.l=n.l;gp.r=n.r;gp.a=n.a;gp.b=n.b;gp.u=n.u;gp.d=n.d;gp.h=n.h}
 requestAnimationFrame(poll)}
@@ -549,7 +557,7 @@ let h='<div class="kt"><span>'+(kbLang==='ar'?'العربية':'English')+(kbLay
 rows.forEach((r,ri)=>{h+='<div class="kr">';r.forEach((t,ci)=>{let c='kk';if(KSIDE.includes(t))c+=' sd';if(t===SPC)c+=' ev';if(ri===kbR&&ci===kbC)c+=' fc';if(t==='⇧'&&kbShift)c+=' on2';
 let lab=t;if(t==='␣'||t===SPC)lab='';else if(t==='LANG')lab=kbLang==='en'?'ع':'EN';else if(kbLang==='en'&&kbLayer==='abc'&&kbShift&&/^[a-z]$/.test(t))lab=t.toUpperCase();else if(/[\u064B-\u0652]/.test(t))lab='ـ'+t;
 h+='<div class="'+c+'" data-r="'+ri+'" data-c="'+ci+'">'+lab+'</div>'});h+='</div>'});
-h+='<div class="kh"><span>✕ إدخال</span><span>L2 حذف</span><span>R2 مسافة</span><span>L1 R1 المؤشر</span><span>□ Shift</span><span>△ رموز</span><span>Options إرسال</span><span>○ إغلاق</span></div>';
+h+='<div class="kh"><span>✕ إدخال</span><span>L2 حذف</span><span>R2 مسافة</span><span>L1 Shift</span><span>R1 اللغة</span><span>العصا اليمنى: المؤشر</span><span>□ حذف كلمة</span><span>△ رموز</span><span>Options إرسال</span><span>○ إغلاق</span></div>';
 kbEl.innerHTML=h;kbEl.querySelectorAll('.kk').forEach(d=>d.onclick=()=>{kbR=+d.dataset.r;kbC=+d.dataset.c;kbPress()})}
 function kbOpen(inp,onEnter){kbIn=inp;kbEnter=onEnter;kbOn=true;inp.inputMode='none';kbLang=S.lang==='English'?'en':'ar';kbLayer='abc';kbShift=false;kbR=1;kbC=0;kbDraw();kbEl.classList.add('on');$('#hints').style.visibility='hidden';$('#nrep').classList.add('kbo');inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length)}
 function kbHide(){kbOn=false;kbEl.classList.remove('on');$('#hints').style.visibility='';$('#nrep').classList.remove('kbo')}
@@ -560,6 +568,9 @@ function kbType(ch){const i=kbIn;if(!i)return;if(i.maxLength>0&&i.value.length>=
 function kbBack(){const i=kbIn;if(!i)return;const a=i.selectionStart,b=i.selectionEnd;if(a!==b)i.setRangeText('',a,b,'end');else if(a>0)i.setRangeText('',a-1,a,'end');kbFlash()}
 function kbCur(d){const i=kbIn;if(!i)return;const x=Math.max(0,Math.min(i.value.length,(i.selectionStart||0)+d));i.setSelectionRange(x,x)}
 function kbSpace(){kbType(' ');kbFlash()}
+function kbLangT(){kbLang=kbLang==='en'?'ar':'en';kbLayer='abc';kbShift=false;kbDraw()}
+function kbEdge(end){const i=kbIn;if(!i)return;const x=end?i.value.length:0;i.setSelectionRange(x,x)}
+function kbDelWord(){const i=kbIn;if(!i)return;const a=i.selectionStart,v=i.value.slice(0,a),m=v.replace(/\s+$/,'').replace(/\S+$/,'');i.setRangeText('',m.length,a,'end');kbFlash()}
 function kbShiftT(){kbShift=!kbShift;kbDraw()}
 function kbSymT(){kbLayer=kbLayer==='sym'?'abc':'sym';kbR=1;kbC=0;kbDraw()}
 function kbFlash(){const f=kbEl.querySelector('.kk.fc');if(f){f.classList.add('pr');setTimeout(kbDraw,110)}}
@@ -570,7 +581,7 @@ if(t==='⌫'){kbBack();return}
 if(t==='↵'){if(kbEnter)kbEnter();return}
 if(t==='␣'){kbSpace();return}
 if(t==='123'||t==='ABC'){kbSymT();return}
-if(t==='LANG'){kbLang=kbLang==='en'?'ar':'en';kbLayer='abc';kbShift=false;kbDraw();return}
+if(t==='LANG'){kbLangT();return}
 kbType(kbShift&&kbLang==='en'&&kbLayer==='abc'?t.toUpperCase():t);if(kbShift)kbShift=false;kbFlash()}
 addEventListener('pointerdown',e=>{if(e.pointerType==='touch')lastIn='touch'});
 const nBootWait=setInterval(()=>{if($('#boot').classList.contains('gone')){clearInterval(nBootWait);setTimeout(nDemo,9000)}},1000);
