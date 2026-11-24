@@ -224,11 +224,17 @@ Categories (all required, in this order):
 - **Motion:** dialogs fade and rise in (and fade out), Settings pages and category changes slide their rows in with a short stagger (direction follows forward/back), scan results animate in, rest mode content rises in, the search bar drops in, the video bar fades in. All of it is off under Reduce motion.
 - Still open for later: Library collections, Gallery multi-select share, per-app notification settings, notification stacking.
 
-### 2.10 Virtual controller for testing (mockup only)
+### 2.10 Virtual controller for testing (removed in the final v5 build; kept here for history)
 
 - An on-screen controller (D-pad, left and right sticks, cross/circle/square/triangle, L1/L2/R1/R2, UB, Options) feeds the same input path as a real gamepad (standard mapping), so every screen, the boot flow, notifications and the keyboard can be tested by touch or mouse. A real gamepad, when connected, takes priority.
 - While it is on, touching or clicking the screen itself is disabled; only the virtual controller (and the keyboard) work. Turn it off to use touch/mouse directly.
 - Toggle with the "يد التحكم" button at the bottom center (or `G`). It starts on by default for touch devices and remembers the choice. It is a test tool, not a product feature.
+
+### 2.14 Windows simulator (sim/)
+
+- `sim/` packages the mockup as a Windows 11 app (Electron 45): fullscreen or windowed shortcuts, offline (fonts embedded), real gamepad, data saved in `%APPDATA%\UraxOS` (factory reset in Settings), real clock, battery (hidden on desktop PCs), CPU, GPU and memory info; Shut down quits the app; Alt+F4 closes the active PC Mode window first. PC Mode shortcuts use Alt because Windows keeps the Win key and Ctrl+Esc (Alt+Q Start, Alt+W Task view, Alt+E Files, Alt+T Task Manager, Alt+L Lock, Alt+` window switcher, Alt+Shift+Arrows snap).
+- Test-only tools were removed from the product: the on-screen virtual controller and its toggle, the on-screen Quick Menu/L2 touch buttons, demo notifications (notifications now come from real events such as finished downloads and installed apps), the battery toggle.
+- Build with `sim/build.sh`; install with `Install UraxOS.cmd` (per user, Start menu shortcuts, uninstaller).
 
 ### 2.13 PC Mode (designed in the v5 mockup, proposal)
 

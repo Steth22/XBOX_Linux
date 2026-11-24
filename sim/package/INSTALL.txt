@@ -1,0 +1,61 @@
+UraxOS simulator 0.5 for Windows 10/11 (64-bit)
+================================================
+
+What this is
+  The UraxOS interface (Console Mode + PC Mode) running as a Windows app.
+  Clock, battery and hardware info (CPU, GPU, memory) are read from your PC; networks, apps and
+  games inside are simulated (no real Wi-Fi changes, no real installs). It works offline.
+
+Install (about 2 minutes)
+  1. Right-click the zip file > Properties > tick "Unblock" (bottom right) > OK.
+     (If you do not see "Unblock", skip this step.)
+  2. Right-click the zip > Extract All... > Extract.
+  3. Open the extracted folder and double-click "Install UraxOS.cmd".
+     If Windows shows "Windows protected your PC": click "More info" > "Run anyway".
+     (The app is not code-signed, which is why Windows asks.)
+  4. Answer Y to start it now, or open the Start menu and type: UraxOS
+     - "UraxOS"            opens fullscreen (like a real device)
+     - "UraxOS (Window)"   opens in a window
+  No installer? You can also run UraxOS\UraxOS.exe directly from the extracted folder.
+
+PS4 controller over Bluetooth
+  1. Windows Settings > Bluetooth & devices > Add device > Bluetooth.
+  2. On the controller hold SHARE + PS until the light bar flashes quickly.
+  3. Choose "Wireless Controller".
+  4. In UraxOS press any button once so the app sees the controller.
+  If Steam is open and the controller does nothing in UraxOS:
+     Steam > Settings > Controller > turn off "Enable Steam Input for PlayStation controllers",
+     or simply close Steam while you use UraxOS.
+
+Controls (Console Mode)
+  D-pad / left stick  move        Cross    select        Circle   back
+  PS button (UB)      tap = select a notification, hold = Quick Menu
+  L2 (hold)           MQM wheel: aim with the right stick, release L2 to pick
+  L1 / R1             switch tabs in Library and Gallery
+  Keyboard: arrows, Enter, Esc, H (Quick Menu), L hold (MQM), [ ] (tabs), O (options)
+
+Controls (PC Mode)  - open it from the "PC Mode" tile
+  Mouse and keyboard work as on Windows. With the controller: left stick moves the cursor,
+  Cross = click (hold to drag), Circle = right-click, right stick = scroll, PS button = Start.
+  Windows keeps the Win key and Ctrl+Esc for itself, so UraxOS uses Alt shortcuts:
+    Alt+Q Start           Alt+W Task view        Alt+D Show desktop     Alt+E Files
+    Alt+I Settings        Alt+T Task Manager     Alt+L Lock             Alt+A Quick settings
+    Alt+N Notifications   Alt+P Screenshot       Alt+` Switch windows   Alt+Shift+Arrows Snap
+    Alt+F4 closes the active UraxOS window (or quits when none is open)
+
+Leaving the app
+  Shut down inside UraxOS closes the app. Alt+F4 also works. F11 toggles fullscreen.
+
+Your data
+  Saved automatically (users, PINs, settings, files, Library, Gallery) in %APPDATA%\UraxOS.
+  Start over: Settings > Backup and reset > Factory reset.
+  Updating to a newer zip: just run its installer again; your data is kept.
+
+Uninstall
+  Start menu > UraxOS > Uninstall UraxOS (it asks before deleting your saved data).
+
+Troubleshooting
+  - Black bars on the sides: the interface is 16:9; on other screen shapes it is letterboxed.
+  - Antivirus warning: unsigned app built from the project; allow it or run from the folder.
+  - Controller not detected: press a button, check pairing, close Steam (see above).
+  - Developer tools for bug reports: Ctrl+Shift+I.

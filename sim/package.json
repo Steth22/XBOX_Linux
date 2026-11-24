@@ -1,0 +1,10 @@
+{
+  "name": "uraxos",
+  "productName": "UraxOS",
+  "version": "0.5.0",
+  "description": "UraxOS simulator: the Console Mode and PC Mode mockup as a Windows desktop app",
+  "main": "main.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "author": "UraxOS project"
+}

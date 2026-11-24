@@ -74,3 +74,7 @@
 ## PC Mode designed (v5 mockup)
 - Full desktop with Windows-style features: window manager, taskbar, Start, quick settings, notification center, task view + virtual desktops, Alt+Tab, lock screen, Files, Task Manager, Settings, Terminal, Text Editor, Photos, Calculator, Brave, Store, Steam, Discord. Controller cursor for testing. Plan 2.13.
 - Next: owner review of PC Mode, then Phase 0 build work.
+
+## Windows simulator 0.5 (sim/)
+- Electron app with installer, saved state, real hardware info, controller and keyboard/mouse verified end to end (40 controller/keyboard checks + 16 mouse checks on Electron). Test tools removed. Fixed: desktop icons were blocked by the window layer; Start search now takes typing immediately.
+- Owner to try on Windows 11 with a PS4 controller over Bluetooth.
