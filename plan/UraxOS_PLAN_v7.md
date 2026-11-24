@@ -1,0 +1,336 @@
+# Project: UraxOS, a Custom Dual-Mode OS Shell (Plan v7)
+
+You are helping me build **UraxOS**, a private/personal Linux-based OS shell and system image. It is a personal project
+for me and my circle, not a commercial product.
+
+What changed in v7 (on top of v6): the Console Mode mockup is now v4 and defines new approved screens: user accounts (PS4-style
+profile picker with guest, optional PIN and user switching), a full Settings app (14 sections, with connected services such as Steam,
+Twitch, YouTube, Discord and Xbox), the Gallery, the App Library, a Steam-based art system for game icons and backgrounds, and a reworked
+Quick Menu. See sections 2.2 to 2.7. Figma is no longer used; the HTML mockup is the single source of truth.
+
+**Targets**
+1. **Primary target: a normal x86-64 PC** (UEFI, installable from USB, optional dual boot).
+2. **Optional secondary target: jailbroken PS4 Slim** (firmware 13.52, GoldHEN). This is a "bonus" port, done only after the PC version works.
+
+**Scope rule:** Do NOT write or explain exploit/jailbreak code or how any jailbreak entry point works.
+For the PS4 target, assume GoldHEN and BinLoader are already running and use existing community Linux loaders/kernels.
+
+You can talk to me in Arabic or English. Keep code, comments, and docs in English.
+
+**Design sources of truth (in the project pack):**
+- `design/console-mockup-v4-latest.html`: interactive Console Mode mockup (one self-contained file; open it in a browser). **Implement it faithfully; ask me before deviating.**
+- `references/console-home-structure.jpg` and `references/quick-menu-structure.jpg`: my hand-made structure sketches.
+- `assets/logo/logo-final.png`: the approved logo. `assets/logo/logo-sketch.png`: the original sketch.
+- `assets/art-samples/`: sample images used by the mockup (Hollow Knight banner, Brave logo). Real game art must come from Steam (see 2.6).
+- Figma was dropped. An old file exists (https://www.figma.com/design/goEzwRiSKGL6b9PCyCGDTt) with the brand sheet and PC Mode screens, but it is out of date; ignore it unless I ask.
+
+---
+
+## 1. Identity and design
+
+- **Owner name:** Urax. **System name:** UraxOS.
+- **Logo (approved):** `assets/logo/logo-final.png`: a bold rounded capital "U" in blue, a sharp four-point sparkle inside the U's counter space, and a tapering diagonal tail crossing the right arm with a clean gap. Treat it as a swappable asset. A clean vector (SVG) version is still needed for the boot screen, icons and installer.
+- **Official color:** **Urax Blue `#4FB3F6`**. My sketch used a more saturated blue (`#0A9BFF`); confirm with me before changing the theme.
+- **Palette:** Deep Space `#0B1220` (background), Surface `#121B2E` (cards), Mist `#E8F1FB` (text), Muted `#9FB3C8` (secondary text), Border `#2A3A55`.
+- **Fonts:** Space Grotesk (Latin headings, wordmark), Inter (Latin body), **Cairo** (Arabic text; the mockup uses it for all UI text). Bundle all three with system fallbacks. Open question for me: Cairo for everything, or Cairo only for Arabic.
+- **Language:** the UI must support **Arabic (RTL) and English**. The mockup UI text is Arabic. Layout must mirror correctly for RTL where it makes sense, while the Console home tile row and the Quick Menu stay as in the mockup. Ask me before changing any layout direction.
+- **Theme:** dark by default (TV and desk friendly). Colors, fonts, radii and logo live in a swappable theme layer.
+- **Design reference (older):** https://claude.ai/artifact/1MKLd8stepFL3Vu3GbHfK6
+- Safety, security and antivirus design will be discussed later (see 5.4).
+
+---
+
+## 2. Vision
+
+I boot or launch UraxOS and get one system with two modes.
+
+**Console Mode**: behaves like a game console, with my own design.
+- Fullscreen, controller-first launcher
+- Power-on and boot flow, profile welcome (see 2.1)
+- Home with horizontal app tiles (see 2.1)
+- MQM, the quick radial menu opened by holding L2 (see 2.1)
+- Quick Menu, a glass panel opened from anywhere with the Home button (see 2.1)
+- Screenshots and video recording (Share button shortcut)
+- Notifications center
+- Photo gallery
+- System updates
+- Game library on the home screen (PC games and console-style apps together)
+
+**PC Mode**: behaves like Windows, with my own design.
+- Taskbar, start menu, window management
+- File Explorer
+- Task Manager (processes, CPU, RAM, GPU, temperature)
+- Install and run apps: Steam, Discord, browsers, other games
+- Linux-native apps, Flatpak apps, and Windows apps/games through Proton/Wine where they work
+- Realistic goal: "most things a normal Linux PC can do", not literally everything Windows can do
+
+Switching between modes is fast and needs no reboot. The home screen has a "PC Mode" tile for this.
+
+### 2.1 Console Mode UX spec (from the approved mockup)
+
+All sizes below are for a 1920x1080 stage and should scale to the real screen.
+
+**Boot flow**
+1. Off state: black screen with a round glowing power button and the caption "press to power on". Enter/Space/click starts it.
+2. Startup chime (short rising four-note tone).
+3. Boot screen: black background. First a thin glowing **outline of the approved logo** appears and its glow grows outward from the logo's own edges (not from the screen edges), then the logo fills in smoothly and keeps a slow breathing glow. Only the logo and the words "Booting" (Arabic: جار التشغيل) are shown: no wordmark, no progress bar, no changing status lines. Duration is about 4.6 s in the mockup; the real boot screen follows the real boot progress.
+4. Profile picker (see 2.2), then the welcome: round avatar with the initial and "Welcome, <name>", then Home.
+5. Shutdown and Restart (from the Quick Menu) return to the off state; Restart powers on again automatically.
+
+**Home**
+- Top-left: clock (24h). Top-right: status corner (see below). Bottom-left: controller hints.
+- A translucent blurred band across the middle holds a horizontal row of app tiles. Order in the mockup: Gallery, a Steam game (Hollow Knight as the example), Brave, Steam, App Library, PC Mode.
+- Tile: rounded square (about 220x208) with the app icon on a gradient. The focused tile grows (about 375x355), becomes fully bright, gets a 5 px Urax Blue ring and a soft blue glow. Unfocused tiles are dimmed.
+- Moving focus scrolls the row smoothly so the focused tile stays at the left third.
+- Under the focused tile: the app name (large, bold) and the source line (for example "From Steam"). On focus change the old text slides out to the left and the new text slides in from the left, name first, then the source line.
+- The full-screen background changes per focused app with a cross-fade and a slow drift. For a Steam game, the background uses that game's own Steam art from the local Steam library; otherwise a themed gradient.
+- Launching an app: a circular reveal from the center, showing the app icon, name and a spinner, then the app. A "Home" action returns to Home.
+- Toasts: a small pill near the bottom center for short feedback ("Screenshot saved to Gallery", "Wi-Fi: on").
+- Screenshot feedback: a quick white flash plus a toast.
+
+**Status corner (top-right)**
+- Wi-Fi icon, Bluetooth icon (dimmed when off), a yellow pulsing charging bolt (only while charging), battery percentage, and a battery icon whose fill follows the percentage.
+
+**MQM (hold L2 / LT)**
+- A glass half-circle hangs from the top edge of the screen, partly off-screen. While L2 is held it grows to full size and the screen dims slightly. Releasing L2 closes it. On touch or mouse, tapping the half-circle keeps it open until tapped outside.
+- Five options sit on its lower edge at fixed angles. They are picked with the **right stick** (the direction picks the nearest option; a dead zone avoids accidental picks). Only the selected icon grows (about 1.45x) and its name shows below. **No pointer line.** Confirm with A.
+- Options: Settings, Wi-Fi, Bluetooth, Library, and a fifth unnamed slot with an X icon that does nothing (reserved).
+- Wi-Fi and Bluetooth toggle immediately; Library jumps to the App Library tile; Settings is not designed yet.
+- Mouse: moving the mouse aims the same way.
+- **MQM exists only on the Home screen.** Inside any app, game, Settings, Gallery or Library it is hidden and disabled (the L2 button is dimmed).
+- On touch screens a quick tap on the L2 button toggles the MQM (stays open); holding behaves like the physical trigger.
+- Settings is the first option and uses a **gear icon**.
+
+**Quick Menu (Home button on the controller; `H` on keyboard)**
+- A glass panel slides in from the left (about 700 px wide) over a blurred, darkened background. Title "Quick Menu".
+- Top row (first, default focus): **Return to Home**. It closes the Quick Menu and whatever is open (app, Settings, Gallery, Library) and goes to Home. On Home it only shows a toast.
+- Then the rows: the current app (its icon and name), Sound, Network and devices, Power.
+- **Sub-options are hidden until a row is chosen.** Choosing a row (A, Right, or click) makes the row list fade out and slide to the left, and that row's sub-options fade in from the right in the same place, under a small heading with the row's name. Back (B, Left, Esc, or the heading) reverses it.
+- Every sub-option list ends with an explicit **Back** row (arrow plus "Back"), so I am never stuck in a sub-list. Up from the first sub-option wraps to Back.
+- Sub-options in the mockup:
+  - Current app: Continue, Screenshot (saves a new item into the Gallery), Close app.
+  - Sound: Volume up, Volume down, Mute.
+  - Network and devices: Wi-Fi on/off, Bluetooth on/off, Connected devices.
+  - Power: Rest mode (not designed yet), **Switch user** (returns to the profile picker without rebooting), Restart, Shut down.
+- Focus style: the focused row is solid Urax Blue with dark text; the selected row in an unfocused list is a soft blue highlight.
+- Quick Apps (5.5, item 29) will live inside the Quick Menu later; where they go is still to be decided.
+
+### 2.2 User accounts and profile picker (PS4-style)
+
+- After the boot screen, a screen "Who is using the device?" (Arabic: من يستخدم الجهاز؟) shows a horizontal row of round avatars: each user, then **Guest**, then **New user** (dashed circle with +, hidden at 5 users).
+- Left/Right moves focus (the focused avatar grows, gets a blue ring and glow, its name turns white); A or click enters.
+- **New user form:** name (max 12 chars, must be unique), avatar color (6 gradients), optional 4-digit PIN. Created users appear in the picker.
+- **PIN:** a user with a PIN shows a 4-dot entry with an on-screen keypad (also hardware keyboard digits). A wrong PIN shakes the dots and clears them.
+- **Guest:** no saved data.
+- After login: welcome screen, then Home. **Switch user** (Quick Menu, Power) returns to the picker without rebooting.
+- Real system: each profile is a separate Linux user with its own home, settings, Steam account link and saved connected services. PINs are stored hashed, never in plain text. Settings has the matching "Accounts and services" section.
+
+### 2.3 Settings app
+
+Opened from the MQM gear. Full screen, dark. Left: category list (scrolls). Right: rows of the selected category. Navigation: Up/Down moves; Right enters the rows; Left or B goes back; B on the category list closes Settings. Row types: toggle, select (Left/Right changes the value), slider (Left/Right steps by 10), info, action, and service.
+
+Categories (all required, in this order):
+1. **Display:** resolution, refresh rate, brightness, HDR.
+2. **Sound:** output device, volume, surround, interface sounds.
+3. **Network:** Wi-Fi (toggle, linked to the status corner), network name, Ethernet, IP, device name, VPN.
+4. **Devices:** controller status, rumble, stick sensitivity, Bluetooth (toggle), keyboard and mouse, button mapping.
+5. **Accounts and services:** current user, switch user, auto login, PIN, then **Connected services** (see 2.7).
+6. **Power:** battery state, rest mode after N minutes, auto power-off, **performance mode** (Saver / Balanced / Performance).
+7. **Updates:** version, check for updates, auto update, **roll back to the previous version** (safety net for bad updates).
+8. **Storage and games:** used space, Steam library folder, compatibility layer (official Proton or Proton-GE), download while resting, move games.
+9. **Personalization:** theme, language (Arabic or English), 24-hour clock, wallpaper.
+10. **Security:** screen lock with PIN, firewall, app permissions, threat scan (later).
+11. **Accessibility:** font size, high contrast, reduce motion, screen reader.
+12. **Parental controls:** daily play time, age rating limit, purchase lock.
+13. **Backup and reset:** automatic backup, create backup now, factory reset (always confirm; never touches other disks).
+14. **About:** system, CPU, RAM, GPU, kernel.
+
+### 2.4 Gallery (stage 1 done in the mockup)
+
+- Opened from the Gallery tile. Header with tabs: All, Screenshots, Videos, Favorites, Albums.
+- Grid of 16:9 thumbnails grouped by date (Today, Yesterday, N days ago). Each thumbnail shows the game name badge; videos show a play icon and duration; favorites show a star.
+- **Albums** are generated automatically per game; opening one shows only that game's items.
+- **Viewer** (full screen): Left/Right previous/next, Up toggles the info panel (game, type, date, resolution, size), Down toggles favorite, A zooms, B closes. On-screen buttons mirror these.
+- The Quick Menu "Screenshot" adds a real item to the Gallery.
+- **Stage 2 (not built yet):** set as wallpaper, delete with confirmation, share through connected services (Discord, Twitch, YouTube), copy to USB, multi-select, sort, storage bar, video playback, clip trimming, and "save the last 15 minutes" (see 5.5).
+
+### 2.5 App Library (stage 1 done in the mockup)
+
+- Opened from the App Library tile. Tabs: All, Games, Apps, Steam, Favorites, "In your account" (owned but not installed). A sort chip: last played, name, size.
+- Grid of 6 portrait cards (2:3). Badges: star (favorite), cloud (not installed), "Update", download percentage with a progress bar.
+- **Game page:** large hero background, cover, details (source, status, play time, last played, size) and buttons: Play (or Download / Update), **Pin to Home** (adds a real tile to the Home row), Favorite, Uninstall (two presses to confirm), Back.
+- **Stage 2 (not built yet):** on-screen keyboard search, per-game settings (performance mode, resolution, controller layout, Proton version), download queue with pause, collections, **add a non-Steam app**, compatibility badge per game (source to be verified, for example ProtonDB, before relying on it).
+
+### 2.6 Game art from Steam
+
+- Icons and backgrounds for Steam games come from Steam, not from local drawings. Each game entry stores its Steam app id (Hollow Knight is 367520).
+- Needed images per game: portrait cover (library 600x900), wide hero (library hero), logo. In the mockup these load from Steam's CDN with the pattern `https://cdn.cloudflare.steamstatic.com/steam/apps/<appid>/library_600x900.jpg` and `.../library_hero.jpg`, and fall back to embedded images if offline.
+- Real system: download once, cache on disk, refresh when changed; prefer the art already in the local Steam library cache when present. Verify the exact file names against the local Steam cache before relying on them.
+- Non-Steam apps use a local icon plus a themed gradient background.
+- The Home background of a game with a wide hero image **pans slowly left and right** (about 90 s per sweep); other backgrounds keep the soft drift. Both stop under "reduced motion".
+
+### 2.7 Connected services
+
+- Services shown in Settings, Accounts and services: **Steam** (linked), Twitch, YouTube, Discord, Xbox, plus "Add another service".
+- Linking uses a **device code flow** like a TV: the console shows a short code, and I confirm it from my phone. No password typing on the console. (The mockup only simulates this.)
+- Design the services as a plugin list: each service is a small descriptor (name, login method, what it provides). Adding a service must not require changing the UI.
+- Honest limits: Xbox can offer account linking, friends and achievements through Microsoft's APIs, but **running Xbox games on Linux is not possible**. Discord and Twitch/YouTube are for notifications, sharing, and overlay chat; verify each service's current API terms before building.
+
+**Controller map (mockup)**
+- D-pad or left stick: move focus. A: confirm. B: back. Home: Quick Menu. L2 (hold): MQM. Right stick: pick an MQM option.
+- Keyboard equivalents: arrows, Enter/Space, Esc, `H` or Tab, `L` or `Q` (hold).
+- Inside Settings, Gallery and Library: same D-pad/arrows to move, A/Enter to open, B/Esc to go back.
+
+**Other behavior**
+- Respect "reduced motion": switch off the drift, pulses and long transitions.
+- The mockup rotates to fit a portrait phone; that is for previewing only and is not a product feature.
+
+---
+
+## 3. Base system strategy
+
+Do not build an OS from scratch. Build UraxOS **on top of an existing Linux base**.
+- First, evaluate existing gaming-oriented distributions (for example Bazzite, ChimeraOS, SteamOS-like images) and a plain Arch or Fedora base, then **recommend one with trade-offs and wait for my approval**.
+- UraxOS = base image + our Wayland shell (Console Mode and PC Mode) + services (network, Bluetooth, audio, updates) + theme layer + installer/branding.
+- Use Flatpak for apps where possible, so the base stays clean and updates are safe.
+
+---
+
+## 4. Development strategy: PC first, hardware abstraction always
+
+1. Develop and test everything in a **VM (QEMU)** and on a real PC.
+2. Every hardware-related module has an interface with a **mock** (VM/tests) and **real** implementations per target: `pc` (default) and `ps4` (optional, later).
+3. Console Mode and PC Mode never contain target-specific code.
+4. Each phase ends with a "verify on real hardware" checklist.
+
+### PC target details
+- Installable ISO, UEFI boot, installer with: full-disk install, **dual boot beside Windows**, and a **live USB** mode (try without installing).
+- GPU support: AMD and Intel (open Mesa drivers) and NVIDIA (proprietary driver, Wayland) must all be considered; document known issues.
+- Secure Boot: document the approach (signed shim or instructions to disable).
+- Never touch other disks without an explicit, confirmed selection.
+
+### PS4 target details (optional, later)
+- Console: PS4 Slim, HEN 13.52, GoldHEN v2.4b18.12, southbridge **Belize2 A0 (0x40100)**.
+- The jailbreak is tethered: after a full power-off GoldHEN must be loaded again; Rest Mode keeps it.
+- Belize2 on Slim is the least-proven PS4 Linux combination. Black screens and missing Wi-Fi have been reported; some kernel builds claim CUH-2115B works. Treat as **unverified**.
+- Candidate community builds to try, one at a time: feeRnt `ps4-linux-12xx` (5.15.15-belize, then 6.15.4 aeolia-belize), X-F1REBALL Arch KDE (Belize kernel, tested on 13.52), and the Baikal kernel as a last resort.
+- Black screen playbook: wait 1 to 2 minutes; set 1080p, HDR and Deep Color off, test HDCP both off and on; try switching TTY (Ctrl+Alt+F2 then F1/F7); add `bootargs.txt` next to the kernel; try the next kernel.
+- Wired Ethernet is the baseline. Wi-Fi/Bluetooth depend on the chip and kernel build; keep a USB Wi-Fi/Bluetooth dongle as fallback (choose one with a known Linux chip).
+- Boot from external USB/HDD only; never touch internal storage.
+- Do not update the console firmware above 13.52.
+- PS4 hardware is weak: favor light games, use Moonlight/Steam Link for heavy ones. Verify 3D acceleration (ps4-mesa) and Vulkan level before promising Proton games.
+- Expect a 1 to 2 minute black screen at start; the launcher should say so.
+- The blur, glow and drift effects in 2.1 are the heaviest parts of the UI: build them so they can be reduced or switched off per target.
+
+---
+
+## 5. Features
+
+### 5.1 Core (required for a daily-usable system)
+1. **Networking UI**: Wi-Fi and Ethernet scan, connect with password (on-screen keyboard), manual and automatic connection, saved networks, smooth switching. Build on NetworkManager over D-Bus.
+2. **Bluetooth UI**: pair, connect, forget keyboards, mice, controllers and headphones. Build on BlueZ.
+3. **Audio**: HDMI/speakers, Bluetooth headphones (A2DP, mic profile if possible), volume control, via PipeWire.
+4. **Display settings**: resolution, refresh rate, scaling, HDR if feasible.
+5. **On-screen keyboard** usable with a controller (Arabic and English layouts).
+6. **Power**: shutdown, restart, rest mode, screensaver/suspend (suspend only where reliable; on PS4 use a screensaver instead).
+7. **Storage manager**: free space, move games between drives, clear cache.
+8. **Unified settings app**: network, Bluetooth, audio, display, users, updates.
+9. **Stability tooling**: watchdog, crash logs saved to a user-visible folder (USB-friendly on PS4).
+
+### 5.2 Supported apps, games and accessories (must-have list)
+
+| Item | Plan | Expectation |
+|---|---|---|
+| Brave | Flatpak or native package | Should work |
+| Chrome / Chromium | Official package or Flatpak (Chromium) | Should work |
+| Firefox | Native or Flatpak | Should work |
+| Claude Desktop | No official Linux build. Provide Claude as a web app (claude.ai) in a dedicated app window; ask me before using any unofficial community build | Web app version |
+| Steam | Native or Flatpak, with Proton | Should work on PC |
+| Godot | Linux editor and exports | Should work |
+| Unity | Unity Hub/Editor exist for Linux | PC: should work; PS4: editor best-effort |
+| Minecraft | Java Edition via an official or open launcher (no official Bedrock for Linux) | Should work on PC |
+| Stray, Peak | Steam + Proton | PC: should work; PS4: verify |
+| PS4 controller (DualShock 4) | Bluetooth/USB, remap, rumble, gyro | Should work |
+| Xbox controller | Bluetooth (xpadneo or similar) or USB | Should work |
+| Wireless keyboard, mouse | Bluetooth or USB dongle | Should work |
+| Wireless headphones | Bluetooth audio via PipeWire | Should work; verify latency |
+
+Known limits: games with Windows-only anti-cheat will not run; some DRM or launcher quirks break Proton games.
+
+### 5.3 Apps and games features
+10. **Steam integration**: detect Steam and installed games (parse `libraryfolders.vdf` and `appmanifest_*.acf`), show them as tiles in Console Mode (with their Steam art as the Home background, see 2.1), launch through Steam, support Proton.
+11. **Game streaming**: Moonlight and Steam Link.
+12. **Emulators**: RetroArch as a section in Console Mode.
+13. **Media apps**: local video player, YouTube/Netflix via browser.
+14. **Performance modes**: power saver / balanced / max, plus an overlay with FPS, temperature and RAM.
+15. **Controller remapping** per game.
+16. **Remote control** from my phone, plus photo and file upload from the phone.
+17. **User accounts** with parental controls and play-time limits. The profile name and initial shown in the boot welcome come from here.
+18. **Backup and restore** for settings and game saves.
+19. **Signed OTA updates** with rollback.
+
+### 5.4 Later (design extension points now, implement later)
+20. App store (Flatpak backend).
+21. Switchable themes and animated wallpapers.
+22. Advanced notification center and Discord voice chat inside Console Mode.
+23. Security: sandboxed apps with a permission model, nftables firewall, optional ClamAV scanning.
+24. Boot animation using the final logo (the mockup's wordmark sweep is the starting point).
+
+### 5.5 Capture, overlay and resume features
+25. **Recorder**: screen recording via PipeWire, GPU encoding (VAAPI), Share button shortcut. Quality is configurable.
+26. **Replay (instant replay)**: rolling buffer of the last gameplay.
+    - Options: Off / 5 / 10 / 15 minutes. Maximum for v1: 15 minutes.
+    - Buffer location and quality are configurable.
+    - Raising the limit (30 / 60 minutes) is a future item, evaluated after the full version and measured on the PS4 target.
+27. **Overlay**: floating mini windows (YouTube, Discord) above games, handled by our compositor. Must stay lightweight.
+28. **Notifications**: Discord, YouTube (browser) and other apps are captured and shown in our own notification center.
+29. **Quick Apps**: small apps inside the Quick Menu (volume, gallery, a web link in a small window). Placement inside the Quick Menu is still to be designed.
+30. **Quick Resume**: research track, no promise yet.
+    - Try system hibernate on PC first.
+    - Fallback: restore the last game and last save, not the exact moment.
+    - CRIU is experimental and not planned for v1.
+
+---
+
+## 6. Technical constraints
+
+- **Stack:** Wayland compositor plus Qt/QML or similar. Propose the stack and justify it before using it. It must stay light enough for a PS4-class machine so the PS4 port remains possible. It must be able to do the blur, glow and animations in 2.1 with a reduced mode.
+- **Separation:** hardware-specific code isolated behind interfaces; the shell runs in QEMU/VM.
+- **Safety:** installers and disk tools must be conservative, confirm destructive actions, and never touch disks the user did not select.
+- **Logging:** write logs to a user-visible folder for debugging.
+
+---
+
+## 7. Roadmap
+
+- **Phase 0 (PC):** dev environment, base image choice (with my approval), VM setup, project structure, hardware abstraction layer with mocks.
+- **Phase 1 (PC):** minimal shell, controller navigation, theme layer using the UraxOS palette, fonts and approved logo, Arabic/RTL text rendering, boot flow and profile welcome (mocked).
+- **Phase 2 (PC):** Console Mode in full, matching the mockup: boot flow, profile picker with PIN/guest/switch user, Home tiles, per-app backgrounds, status corner, MQM, Quick Menu, toasts, Settings shell, Gallery and Library stage 1, screenshots, notifications center base, with mocked data.
+- **Phase 3 (PC):** PC Mode (desktop, file explorer, task manager, browsers via Flatpak).
+- **Phase 4 (PC):** Steam library integration and Steam art cache (2.6), settings app wired to real services, networking and Bluetooth UI, audio, display, connected services framework (2.7).
+- **Phase 5 (PC):** installer ISO, live USB, dual boot, GPU support matrix, first real-PC tests.
+- **Phase 6 (PC):** performance modes, streaming, emulators, Replay (15 min max), Overlay, Discord/YouTube notifications, verify the 5.2 compatibility table.
+- **Phase 7:** updates with rollback, backups, users, security, final boot animation with the vector logo.
+- **Phase 8 (optional, PS4):** hardware sanity check with community Linux builds on my console (display, input, Ethernet, Wi-Fi/Bluetooth, memory size), record results in `docs/hardware-report.md`, then add a `ps4` target and a launcher app.
+- **Separate research task:** Quick Resume (see 5.5, item 30).
+
+### Design items still open (not for Claude Code to invent)
+1. Screens still not designed: Wi-Fi detail screen (scan, password with on-screen keyboard), Bluetooth pairing screen, Notifications center, Rest mode, on-screen keyboard, Gallery stage 2, App Library stage 2, per-service detail pages. (Settings, Gallery stage 1, Library stage 1 and the accounts picker are designed in the mockup.)
+2. PC Mode screens exist in Figma (desktop, Start menu, File Explorer, Task Manager) and need my review.
+3. Vector (SVG) version of the approved logo, and its wiring into the boot screen and icons.
+4. Font decision (Cairo for everything or only for Arabic).
+5. Security and antivirus design (to be discussed later).
+6. Logo gradient: the mockup uses flat Urax Blue `#4FB3F6`; the original artwork used a more saturated gradient. Ask me before changing.
+7. The real Steam portrait cover for Hollow Knight (the mockup uses a crop of the wide banner).
+
+---
+
+## 8. How to work
+
+1. **First**, inspect the repo and propose the base system options. Do not write code yet.
+2. **Propose** an architecture and refine this roadmap, then **wait for my approval**.
+3. Implement **phase by phase**, with tests, a short README per module, and a "verify on real hardware" checklist at the end of each phase.
+4. **Ask me before major design decisions.** Explain trade-offs briefly.
+5. Keep the theme layer separate so design changes never touch logic.
+6. Treat `design/console-mockup-v4-latest.html` as the UX source of truth for Console Mode; if the real shell cannot match something in it, tell me and propose options.
+7. If something requires jailbreak or exploit internals, stop and tell me instead of writing it.
