@@ -1,6 +1,6 @@
 # Architecture proposal (Phase 0, needs owner approval)
 
-Status: PROPOSAL. Nothing here is implemented yet.
+Status: Qt 6 / QML approved by the owner. Layout still to be confirmed. Nothing implemented yet.
 
 ## Layers
 1. Base image (see `base-distro-options.md`).

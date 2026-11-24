@@ -1,6 +1,6 @@
 # UraxOS progress log
 
-## Done (design phase, in the HTML mockup v4)
+## Done (design phase, in the HTML mockup v5)
 - Approved logo (vector trace in `assets/logo/logo-vector-traced.svg`; a clean hand-made SVG is still wanted).
 - Boot flow: power button, chime, boot screen (logo outline glow, then fill, text "Booting" only), profile picker (users, Guest, New user, optional PIN), welcome, Home.
 - Home: tile band, per-app backgrounds, Steam-art backgrounds with slow left-right pan, status corner, toasts.
@@ -17,10 +17,9 @@
 - Cloud-first development; the owner tests on a PC later (VM image first, then live USB).
 
 ## Open questions for the owner
-- Font: Cairo for everything or only Arabic (Space Grotesk/Inter for Latin).
+- Font: Urax Display for Latin headings, Cairo for Arabic (proposed; owner review pending).
 - Logo color: flat `#4FB3F6` or the original saturated gradient.
 - Real Steam portrait cover for Hollow Knight (mockup uses a crop of the banner).
-- Base distro choice (Phase 0): propose Bazzite / ChimeraOS / Arch / Fedora with trade-offs.
 
 ## Next design items
 - Gallery stage 2, Library stage 2 (search with on-screen keyboard, per-game settings, add non-Steam app).
@@ -32,3 +31,21 @@
 - Plan fixes: stale "Settings is not designed yet" removed (Settings is designed, see 2.3); PIN wording corrected (4-digit PIN is a convenience lock, not encryption).
 - Added proposals awaiting approval: `base-distro-options.md`, `architecture-proposal.md`; added `verify-on-hardware.md`.
 - No code written yet, by design (plan section 8: propose first, wait for approval).
+
+## Decisions (owner, latest)
+- Base distro: Arch (plain). GPU: the owner has a discrete card (taken as NVIDIA; confirm the exact model).
+- Shell stack: Qt 6 / QML (recommendation accepted).
+- Custom brand font requested; built as Urax Display (see below).
+
+## v5 mockup changes (design/console-mockup-v5-latest.html; v4 kept in design/archive)
+- Fixed: Gallery, Library and Settings were mostly static; added features and menus (no large new screens).
+- Gallery: viewer options menu (wallpaper, share, USB, delete with confirm), storage bar.
+- Library: per-game settings panel (performance, resolution, FPS cap, compatibility layer).
+- Settings: footer hints, live effects (theme color, 24h clock, font size, contrast, reduced motion), new rows and a restore-defaults action.
+- Headings use the new Urax Display font (embedded as WOFF2).
+- Key `O` / controller Y opens the contextual options.
+- These are proposals; the owner has not given the final design decision, so each can be changed or reverted.
+
+## Font
+- `assets/fonts/UraxDisplay-Bold.ttf/.woff2`, built by `python3 tools/build_font.py` (needs fonttools, shapely, brotli). Latin caps, digits, punctuation; sparkle period. No Arabic glyphs (Cairo fallback).
+- Open: a custom Arabic companion face; owner review of letter shapes.

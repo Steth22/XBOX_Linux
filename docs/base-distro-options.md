@@ -1,6 +1,6 @@
 # Base system options (Phase 0 proposal, needs owner approval)
 
-Status: PROPOSAL. No choice has been made. Facts below come from general knowledge and must be re-verified against each
+Status: DECIDED by the owner: plain Arch (PC target first). Original proposal kept below for reference. Facts below come from general knowledge and must be re-verified against each
 project's current documentation before we commit (versions, defaults and maintenance status change).
 
 ## Requirements that drive the choice

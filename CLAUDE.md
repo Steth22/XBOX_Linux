@@ -1,6 +1,6 @@
 # CLAUDE.md: UraxOS
 
-Read `plan/UraxOS_PLAN_v7.md` first. It is the master plan and prompt. The UX source of truth is `design/console-mockup-v4-latest.html`
+Read `plan/UraxOS_PLAN_v7.md` first. It is the master plan and prompt. The UX source of truth is `design/console-mockup-v5-latest.html`
 (open it in a browser; it is one self-contained file). Older plans and mockups are in `plan/archive` and `design/archive` for history only.
 
 ## Working rules
