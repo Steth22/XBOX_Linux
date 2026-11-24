@@ -1,4 +1,9 @@
 #include "bridge.h"
+#include "windows.h"
+#include <LayerShellQt/Window>
+#include <QRegion>
+#include <QWindow>
+#include <QtMath>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -59,7 +64,10 @@ void Bridge::reboot() {
   QProcess::startDetached("systemctl", {"reboot"});
 }
 
-void Bridge::pcMode() { m_window->hide(); }
+void Bridge::pcMode() {
+  m_window->hide();
+  QProcess::startDetached("urax-shell", {"--desktop"});  // no-op if the desktop already runs
+}
 
 void Bridge::launch(const QString &command) {
   auto *p = new QProcess(this);
@@ -218,4 +226,34 @@ QString Bridge::pictures() {
     list.append(o);
   }
   return QString::fromUtf8(QJsonDocument(list).toJson(QJsonDocument::Compact));
+}
+
+// ---------- PC Mode ----------
+void Bridge::setTracker(WindowTracker *t) {
+  m_tracker = t;
+  connect(t, &WindowTracker::changed, this, &Bridge::windowsChanged);
+}
+void Bridge::spawn(const QString &command) { QProcess::startDetached("/bin/sh", {"-c", command}); }
+void Bridge::consoleMode() { QProcess::startDetached("urax-shell", {}); }
+QString Bridge::windows() { return m_tracker ? m_tracker->json() : QStringLiteral("[]"); }
+void Bridge::winToggle(const QString &id) { if (m_tracker) m_tracker->toggle(id); }
+void Bridge::winActivate(const QString &id) { if (m_tracker) m_tracker->activate(id); }
+void Bridge::winMinimize(const QString &id) { if (m_tracker) m_tracker->minimize(id); }
+void Bridge::winClose(const QString &id) { if (m_tracker) m_tracker->close(id); }
+void Bridge::showDesktop(bool on) { if (m_tracker) m_tracker->showDesktop(on); }
+
+void Bridge::setInput(const QString &rectsJson) {
+  auto *w = m_window->windowHandle();
+  if (!w) return;
+  QRegion r;
+  for (const auto &v : QJsonDocument::fromJson(rectsJson.toUtf8()).array()) {
+    const auto o = v.toObject();
+    r += QRect(qFloor(o["x"].toDouble()), qFloor(o["y"].toDouble()), qCeil(o["w"].toDouble()), qCeil(o["h"].toDouble()));
+  }
+  w->setMask(r);
+}
+
+void Bridge::setExclusive(int px) {
+  if (auto *w = m_window->windowHandle())
+    if (auto *ls = LayerShellQt::Window::get(w)) ls->setExclusiveZone(px);
 }

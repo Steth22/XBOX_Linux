@@ -20,13 +20,27 @@
     apps: cb => call('apps', [], J(cb)),
     screenshot: cb => call('screenshot', [], cb),
     pictures: cb => call('pictures', [], J(cb)),
-    onAltF4: cb => { window.__uraxAltF4 = cb; }
+    onAltF4: cb => { window.__uraxAltF4 = cb; },
+    mode: () => (window.__URAX_SYS || {}).mode,
+    surface: () => (window.__URAX_SYS || {}).surface,
+    spawn: c => call('spawn', [c]),
+    consoleMode: () => call('consoleMode', []),
+    windows: cb => call('windows', [], J(cb)),
+    winToggle: id => call('winToggle', [id]),
+    winActivate: id => call('winActivate', [id]),
+    winMinimize: id => call('winMinimize', [id]),
+    winClose: id => call('winClose', [id]),
+    showDesktop: on => call('showDesktop', [!!on]),
+    setInput: rects => call('setInput', [JSON.stringify(rects)]),
+    setExclusive: px => call('setExclusive', [Math.round(px)]),
+    onWindows: cb => { window.__uraxWin = cb; }
   };
   function init() {
     if (!window.qt || !window.QWebChannel) return;
     new QWebChannel(qt.webChannelTransport, ch => {
       api = ch.objects.sys;
       api.altF4.connect(() => window.__uraxAltF4 && window.__uraxAltF4());
+      if (api.windowsChanged) api.windowsChanged.connect(() => window.__uraxWin && window.__uraxWin());
       q.splice(0).forEach(x => call(...x));
     });
   }
