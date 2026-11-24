@@ -197,6 +197,11 @@ Categories (all required, in this order):
 - Reusable component (`kbOpen(input, onEnter)`): the notification reply box is the first user; Wi-Fi passwords and Library search will reuse it.
 - Not designed yet: predictive text/emoji, caps lock, hold-to-repeat delete.
 
+### 2.10 Virtual controller for testing (mockup only)
+
+- An on-screen controller (D-pad, left and right sticks, cross/circle/square/triangle, L1/L2/R1/R2, UB, Options) feeds the same input path as a real gamepad (standard mapping), so every screen, the boot flow, notifications and the keyboard can be tested by touch or mouse. A real gamepad, when connected, takes priority.
+- Toggle with the "يد التحكم" button at the bottom center (or `G`). It starts on by default for touch devices and remembers the choice. It is a test tool, not a product feature.
+
 **Controller map (mockup)**
 - D-pad or left stick: move focus. A: confirm. B: back. Home: Quick Menu. L2 (hold): MQM. Right stick: pick an MQM option.
 - Keyboard equivalents: arrows, Enter/Space, Esc, `H` or Tab, `L` or `Q` (hold).
