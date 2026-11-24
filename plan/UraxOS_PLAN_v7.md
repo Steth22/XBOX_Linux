@@ -189,11 +189,13 @@ Categories (all required, in this order):
 
 ### 2.9 On-screen keyboard for controllers (added in v5, proposal)
 
-- A docked, sharp-cornered keyboard slides up from the bottom edge. It opens automatically when a text box is used with a controller or touch (not when a hardware keyboard was the last input); `Tab` toggles it for testing.
-- Layouts: Arabic (default follows the interface language), English, and a symbols/numbers layer. A globe-style key switches language (shows `EN` or the Arabic letter ع), `123`/`ABC` switches layer, Shift is one-shot (in Arabic it shows the diacritics row), plus Space, Backspace and Enter/send.
-- Controls: D-pad or stick moves the highlighted key (keeps the horizontal position across rows), **cross** types, **square** deletes, **triangle** adds a space, **circle** closes the keyboard. The top strip shows these hints.
-- It is a reusable component (`kbOpen(input, onEnter)`); the notification reply box is the first user. Wi-Fi passwords and Library search will reuse it.
-- Not designed yet: predictive text/emoji, L1/R1 shortcuts, caps lock.
+- Modeled on the PlayStation 4/5 keyboard system, in the Urax look: a compact floating panel docked at the bottom center (not full width), sharp corners, a column of action keys on the right (delete, shift, symbols, language, enter) and a full-width space bar. The exact Sony button mapping below was written from memory and is **unverified**; it is isolated in a few lines and easy to change.
+- Opens automatically when a text box is used with a controller or touch (not when a hardware keyboard was the last input); `Tab` toggles it for testing.
+- Layouts: Arabic (default follows the interface language), English, symbols. Shift is one-shot (in Arabic it shows the diacritics row).
+- Controls: D-pad or stick moves the highlighted key; **cross** types; **L2** deletes; **R2** adds a space; **L1/R1** move the text cursor (there is a real caret, text is inserted at the cursor); **square** Shift; **triangle** letters/symbols; **Options** sends; **circle** closes. Keyboard test keys: Backspace, Space, `[` `]`, Shift.
+- While it is open, L2 deletes (it does not dismiss the notification).
+- Reusable component (`kbOpen(input, onEnter)`): the notification reply box is the first user; Wi-Fi passwords and Library search will reuse it.
+- Not designed yet: predictive text/emoji, caps lock, hold-to-repeat delete.
 
 **Controller map (mockup)**
 - D-pad or left stick: move focus. A: confirm. B: back. Home: Quick Menu. L2 (hold): MQM. Right stick: pick an MQM option.

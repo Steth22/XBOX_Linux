@@ -53,4 +53,4 @@
 ## Notifications (v5 mockup)
 - Flush left card with attached typing box, sharp corners; UB selects, L2 dismisses, cross = reply, triangle = floating video. See plan 2.8.
 - Open: notification center, stacking.
-- On-screen keyboard for controllers added (AR/EN/symbols, reusable). See plan 2.9. Open: predictive text, emoji, L1/R1 shortcuts, caps lock.
+- On-screen keyboard redone in PS4/PS5 style (compact floating panel, L2 delete, R2 space, L1/R1 cursor, real caret). Button mapping from memory, needs verification against a real PS4/PS5. See plan 2.9.
