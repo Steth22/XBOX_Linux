@@ -31,6 +31,15 @@ void WindowTracker::add(PlasmaWindow *w) {
     connect(w, sig, this, &WindowTracker::changed);
   connect(w, &PlasmaWindow::unmapped, this, [this] { QTimer::singleShot(0, this, &WindowTracker::changed); });
   connect(w, &QObject::destroyed, this, &WindowTracker::changed);
+  // Wayland does not let a window take focus by itself. When Console Mode comes back
+  // (after PC Mode or after a game exits), the desktop hands it the keyboard.
+  auto focusConsole = [w] {
+    if (w->appId() != "uraxos-shell") return;
+    for (int ms : {150, 500, 1000, 2000, 3500})
+      QTimer::singleShot(ms, w, [w] { if (!w->isActive()) w->requestActivate(); });
+  };
+  connect(w, &PlasmaWindow::appIdChanged, w, focusConsole);
+  focusConsole();
   emit changed();
 }
 
@@ -82,4 +91,11 @@ void WindowTracker::close(const QString &id) {
 }
 void WindowTracker::showDesktop(bool on) {
   if (m_pwm) m_pwm->setShowingDesktop(on);
+}
+
+bool WindowTracker::hasVisible(const QString &appId) const {
+  if (!m_pwm) return false;
+  for (auto *w : m_pwm->windows())
+    if (w->isValid() && w->appId() == appId && !w->isMinimized()) return true;
+  return false;
 }

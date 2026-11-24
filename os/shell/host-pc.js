@@ -15,10 +15,9 @@
       ? 'html,body,#fit,#stage,#pc{background:transparent!important}#pcwall,#pcicons,#pcwins,#pcsnap{display:none!important}'
       : '#pctb,#pcstart,#pcfly,#pctv,#pclock,#pcnight{display:none!important}');
   document.head.appendChild(css);
-  if (window.FSD && FSD.Desktop) FSD.Desktop.ch = [];
-  pcOpen();
-  const xf = document.getElementById('pcxf');
-  if (xf) xf.className = '';
+  css.textContent += '.psh:has(+ .psrc:empty),.psrc:empty{display:none!important}';
+  if (typeof FSD !== 'undefined' && FSD.Desktop) FSD.Desktop.ch = [];
+  pcRecent = () => [];
 
   // ---- real apps behind the design's app keys ----
   const REAL = {
@@ -41,6 +40,9 @@
   PIN = PIN.filter(k => !missing.includes(k));
   PSTART.splice(0, PSTART.length, ...PSTART.filter(k => !missing.includes(k)));
   PAPPS.console.open = () => U.consoleMode();
+  DESK.forEach(d => { if (d.app === 'brave') d.n = 'Firefox'; });
+  DESK[0].f = () => U.spawn('dolphin /');
+  DESK[1].f = () => U.spawn('dolphin trash:/');
 
   // Built-in design windows become the real apps.
   pcExplorer = () => openApp('files');
@@ -131,6 +133,7 @@
         rects = [box($('#pctb'))];
         const t = $('#toast');
         if (t.classList.contains('show')) rects.push(box(t));
+        rects = rects.filter(r => r.w > 0 && r.h > 0 && r.x > -r.w && r.x < innerWidth);
         document.querySelectorAll('#nwrap > *').forEach(n => { if (vis(n)) rects.push(box(n)); });
       }
       const key = JSON.stringify(rects.map(r => [r.x, r.y, r.w, r.h].map(Math.round)));
@@ -152,5 +155,9 @@
   }, 400);
   U.volume(v => { if (typeof v === 'number' && v >= 0) { vol = v; st.vol = v; } });
   U.net(o => { if (o && Array.isArray(o.nets)) { WIFI.nets = o.nets; WIFI.cur = o.current || null; } });
+  // Start PC Mode only after every override is in place.
+  pcOpen();
+  const xf = document.getElementById('pcxf');
+  if (xf) xf.className = '';
   refresh();
 })();

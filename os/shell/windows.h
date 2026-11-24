@@ -19,6 +19,7 @@ public:
   void minimize(const QString &id);
   void close(const QString &id);
   void showDesktop(bool on);
+  bool hasVisible(const QString &appId) const;  // e.g. Console Mode is on screen
 
 signals:
   void changed();

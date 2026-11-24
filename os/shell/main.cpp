@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
       ls->setAnchors({LayerShellQt::Window::AnchorTop, LayerShellQt::Window::AnchorBottom,
                       LayerShellQt::Window::AnchorLeft, LayerShellQt::Window::AnchorRight});
       ls->setExclusiveZone(-1);
-      ls->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
+      ls->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
       ls->setScope("uraxos-desk");
     }
     if (auto *ls = LayerShellQt::Window::get(bar->windowHandle())) {
@@ -150,11 +150,29 @@ int main(int argc, char *argv[]) {
     bar->windowHandle()->setMask(QRegion(0, scr.height() - 48, scr.width(), 48));
     desk->show();
     bar->show();
+    // Console Mode is a fullscreen window; the taskbar (top layer) must not float over it.
+    QObject::connect(tracker, &WindowTracker::changed, bar, [tracker, bar, scr] {
+      const bool console = tracker->hasVisible("uraxos-shell");
+      if (console == bar->isHidden()) return;
+      if (console) bar->hide();
+      else {
+        bar->resize(scr);
+        bar->show();
+      }
+    });
     views << desk << bar;
   } else {
     auto *view = makeView("console");
     if (dev) view->resize(1600, 900), view->show(); else view->showFullScreen();
     view->setFocus();
+    // After hide()/show() Qt does not give the web content its keyboard focus back by itself.
+    QObject::connect(view->windowHandle(), &QWindow::activeChanged, view, [view] {
+      if (!view->windowHandle()->isActive()) return;
+      view->activateWindow();
+      view->setFocus(Qt::ActiveWindowFocusReason);
+      if (auto *p = view->focusProxy()) p->setFocus(Qt::ActiveWindowFocusReason);
+      view->page()->runJavaScript("window.focus()");
+    });
     views << view;
   }
 
@@ -168,6 +186,7 @@ int main(int argc, char *argv[]) {
       v->raise();
       v->activateWindow();
       v->setFocus();
+      if (auto *p = v->focusProxy()) p->setFocus();
     }
   });
 

@@ -97,3 +97,11 @@
 - [ ] Steam installs and opens from the Steam tile; a game launches and the console returns after quitting.
 - [ ] PC Mode and back (Console Mode icon).
 - [ ] Sound, network, Shut down/Restart.
+
+## 2026-11-24: PC Mode is our design (owner decision)
+- Owner rejected the stock Plasma desktop ("I want ours"). Decision: our design 100%, Plasma stays hidden as the window engine only.
+- `urax-shell --desktop` runs the v5 PC Mode as two layer-shell surfaces: `desk` (wallpaper + icons, background layer) and `bar` (taskbar, Start, flyouts, dialogs; top layer with an input mask so only visible parts take clicks, and an exclusive zone for the taskbar). `plasmashell` is masked.
+- `os/shell/windows.*` reads real KWin windows (org_kde_plasma_window_management) for the taskbar: running/active state, click to focus/minimize, close from the context menu, Show desktop.
+- Design apps map to real apps for now: Files=Dolphin, Browser=Firefox, Terminal=Konsole, Settings=System Settings, Task Manager=System Monitor, Text Editor=KWrite, Photos=Gwenview. App windows use the "Urax" color scheme. Replacing these with our own apps is a later step.
+- Bar hides while Console Mode is on screen; the desktop hands keyboard focus back to Console Mode when it returns.
+- Verified in QEMU: boot to Console Mode, keyboard nav, PC Mode tile -> our desktop, taskbar click opens Files, Start opens Terminal, taskbar tracks windows, Console Mode icon returns to the console with keyboard working.

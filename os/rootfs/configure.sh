@@ -28,7 +28,7 @@ cmake --build /tmp/urax-build -j"$(nproc)" >/dev/null
 cmake --install /tmp/urax-build >/dev/null
 install -d /usr/share/uraxos/ui
 install -m644 "$SRC/ui/index.html" /usr/share/uraxos/ui/index.html
-install -m644 "$SRC/shell/bridge.js" "$SRC/shell/host.js" /usr/share/uraxos/ui/
+install -m644 "$SRC/shell/bridge.js" "$SRC/shell/host.js" "$SRC/shell/host-pc.js" /usr/share/uraxos/ui/
 install -m644 "$SRC/files/wallpaper.png" /usr/share/uraxos/wallpaper.png
 
 cat > /etc/xdg/autostart/uraxos-shell.desktop <<'EOF'
@@ -39,15 +39,29 @@ Exec=urax-shell
 X-KDE-autostart-phase=2
 NoDisplay=true
 EOF
-cat > /usr/share/applications/uraxos-console.desktop <<'EOF'
+cat > /etc/xdg/autostart/uraxos-desktop.desktop <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=UraxOS PC Mode
+Exec=urax-shell --desktop
+X-KDE-autostart-phase=1
+NoDisplay=true
+EOF
+# KWin only lets known programs list windows: declare it for urax-shell.
+cat > /usr/share/applications/uraxos-shell.desktop <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=Console Mode
-Comment=Back to the UraxOS console interface
-Exec=urax-shell
+Comment=UraxOS console interface
+Exec=/usr/bin/urax-shell
 Icon=input-gamepad
 Categories=System;
+X-KDE-Wayland-Interfaces=org_kde_plasma_window_management,org_kde_kwin_keystate
 EOF
+rm -f /usr/share/applications/uraxos-console.desktop
+# Our PC Mode replaces the Plasma desktop shell (KWin stays as the window engine).
+install -d /etc/systemd/user
+ln -sf /dev/null /etc/systemd/user/plasma-plasmashell.service
 
 # --- Session: autologin straight into Plasma (Wayland) ---
 cat > /etc/greetd/config.toml <<EOF
@@ -65,11 +79,13 @@ EOF
 
 # --- PC Mode look (Urax theme on top of Breeze Dark) ---
 SK=/etc/skel/.config
-install -d "$SK" /etc/skel/Desktop
-cat > "$SK/kdeglobals" <<'EOF'
+install -d "$SK"
+install -Dm644 "$SRC/files/Urax.colors" /usr/share/color-schemes/Urax.colors
+awk '/^\[/{skip=($0=="[General]"||$0=="[KDE]")} !skip' "$SRC/files/Urax.colors" > "$SK/kdeglobals"
+cat >> "$SK/kdeglobals" <<'EOF'
 [General]
 AccentColor=79,179,246
-ColorScheme=BreezeDark
+ColorScheme=Urax
 
 [KDE]
 LookAndFeelPackage=org.kde.breezedark.desktop
@@ -87,29 +103,11 @@ AutoSuspendAction=0
 TurnOffDisplayWhenIdle=false
 DimDisplayWhenIdle=false
 EOF
-cp /usr/share/applications/uraxos-console.desktop /etc/skel/Desktop/
-chmod +x /etc/skel/Desktop/uraxos-console.desktop
 
-# One-time wallpaper on first login.
-cat > /usr/bin/urax-firstlogin <<'EOF'
-#!/bin/sh
-M="$HOME/.config/uraxos-firstlogin-done"
-[ -e "$M" ] && exit 0
-for i in $(seq 1 30); do
-  sleep 3
-  plasma-apply-wallpaperimage /usr/share/uraxos/wallpaper.png >/dev/null 2>&1 && touch "$M" && exit 0
-done
-EOF
-chmod 755 /usr/bin/urax-firstlogin
-cat > /etc/xdg/autostart/uraxos-firstlogin.desktop <<'EOF'
-[Desktop Entry]
-Type=Application
-Name=UraxOS first login
-Exec=urax-firstlogin
-NoDisplay=true
-EOF
+rm -f /etc/xdg/autostart/uraxos-firstlogin.desktop /usr/bin/urax-firstlogin
 
 # Re-apply skel to the user created before the files existed.
+rm -f /etc/skel/Desktop/uraxos-console.desktop "/home/$USER_NAME/Desktop/uraxos-console.desktop"
 cp -rT /etc/skel "/home/$USER_NAME"
 chown -R "$USER_NAME:$USER_NAME" "/home/$USER_NAME"
 install -d -o "$USER_NAME" -g "$USER_NAME" "/home/$USER_NAME/Pictures/Screenshots"
@@ -130,6 +128,6 @@ mkinitcpio -P >/dev/null 2>&1 || mkinitcpio -P
 
 # --- Clean build tools and caches ---
 rm -rf /tmp/urax-build
-pacman -Rns --noconfirm cmake gcc make pkgconf >/dev/null 2>&1 || true
+[ -n "${KEEP_TOOLS:-}" ] || pacman -Rns --noconfirm cmake gcc make pkgconf >/dev/null 2>&1 || true
 pacman -Scc --noconfirm >/dev/null 2>&1 || true
 echo "configure: done"
