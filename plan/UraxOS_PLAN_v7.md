@@ -180,14 +180,12 @@ Categories (all required, in this order):
 
 ### 2.8 Notifications and the UB button (added in v5, proposal)
 
-- **UB** is the controller's system button (PS or Xbox button; `H` on keyboard). It is the Home button used for the Quick Menu.
-- A notification card slides in slowly from the left screen edge, just under the clock, and stays about 10 s. A small hint says what UB + triangle will do.
-- While a card is showing, **UB focuses it** instead of opening the Quick Menu (UB again releases it). Then **triangle** (`O` on keyboard, Y on the pad) runs the primary action, and B dismisses it.
-  - Message (for example Discord): triangle opens a **typing box** directly under the card; Enter sends, Esc goes back. On a controller the on-screen keyboard (not designed yet) is used.
-  - Video (for example YouTube): triangle plays it in a **floating window** (bottom right) that stays above Home and apps. Triangle pauses/plays; square (or `X`, or the close mark) closes it. The mockup simulates playback.
-  - System notice: triangle opens the related screen (for example the Library).
+- **UB** is the controller's system button (PS or Xbox button; `H` on keyboard).
+- A notification slides in slowly from the left edge, flush with the screen edge, just under the clock. Sharp corners, no visible buttons, no hint text inside it. The typing box (messages) is attached directly under the card as one piece.
+- Gameplay buttons are never consumed until the player presses **UB** to select the notification. The bottom hint bar then shows the available buttons.
+- After UB: **L2 dismisses** it; **cross** replies to a message (opens the typing box; Enter sends, Esc goes back); **triangle** plays a video in a **floating window** (bottom right, above Home and apps; triangle pauses/plays, square or `X` closes); cross opens the related screen for system notices. UB again releases the selection.
 - Settings: Personalization has "Notifications" and "Do not disturb" toggles and a test notification. Key `N` sends a demo notification in the mockup.
-- Not designed yet: notification history/center, stacking several cards, per-app notification settings.
+- Not designed yet: notification center, stacking, per-app settings, on-screen keyboard for the typing box.
 
 **Controller map (mockup)**
 - D-pad or left stick: move focus. A: confirm. B: back. Home: Quick Menu. L2 (hold): MQM. Right stick: pick an MQM option.

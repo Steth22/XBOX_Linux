@@ -51,5 +51,5 @@
 - Open: a custom Arabic companion face; owner review of letter shapes.
 
 ## Notifications (v5 mockup)
-- Card from the left under the clock; UB focuses it; triangle = reply (typing box) or floating video player. See plan 2.8.
+- Flush left card with attached typing box, sharp corners; UB selects, L2 dismisses, cross = reply, triangle = floating video. See plan 2.8.
 - Open: notification center, stacking, on-screen keyboard.
