@@ -78,3 +78,8 @@
 ## Windows simulator 0.5 (sim/)
 - Electron app with installer, saved state, real hardware info, controller and keyboard/mouse verified end to end (40 controller/keyboard checks + 16 mouse checks on Electron). Test tools removed. Fixed: desktop icons were blocked by the window layer; Start search now takes typing immediately.
 - Owner to try on Windows 11 with a PS4 controller over Bluetooth.
+
+## 2026-11-24: Real-use test target
+- Owner decision: real-hardware test device is a **PS4 Slim** (CUH-2xxx, Belize southbridge), with GoldHEN already running.
+- Order: finish the VirtualBox alpha image first, then build a PS4 Slim variant from the same rootfs (PS4-patched kernel + initramfs, loaded by the GoldHEN Linux loader).
+- Storage: owner chose the **internal disk** (riskier than USB; back up saves first, and the install guide must warn about this).

@@ -507,7 +507,7 @@ function qNav(dx,dy){if(kbOn){kbMove(dx,dy);return}if(restOn)return;if(dgOn){dgN
 function qOk(){if(!pf){if(QR[pr].act){QR[pr].f();return}pf=1;ps=0;qsDraw(true)}else SUB()[ps].f()}
 function qBack(){if(pf){pf=0;qpDraw()}else qpClose()}
 function flash(){const f=document.createElement('div');f.style.cssText='position:absolute;inset:0;background:#fff;z-index:25;pointer-events:none';stage.appendChild(f);f.animate([{opacity:.85},{opacity:0}],{duration:420}).finished.then(()=>f.remove());galAddShot();toast('Screenshot saved to Gallery')}
-const shut=(re)=>{closeApp();qpClose();held=false;latched=false;sync();$('#boot').classList.remove('gone');setS('off');booting=false;stage.classList.remove('ready');if(!re&&window.urax&&window.urax.quit){try{saveState()}catch(e){}setTimeout(()=>window.urax.quit(),900)}};
+const shut=(re)=>{closeApp();qpClose();held=false;latched=false;sync();$('#boot').classList.remove('gone');setS('off');booting=false;stage.classList.remove('ready');if(!re&&window.urax&&window.urax.quit){try{saveState()}catch(e){}setTimeout(()=>window.urax.quit(),900)}else if(re&&window.urax&&window.urax.reboot){try{saveState()}catch(e){}setTimeout(()=>window.urax.reboot(),900)}};
 $('#qbtn').onclick=()=>qpo?qpClose():qpOpen();
 
 $('#wheel').onclick=()=>{if(!menu()){latched=true;sync()}};

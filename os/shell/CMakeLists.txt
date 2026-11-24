@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.21)
+project(urax-shell VERSION 0.6 LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_AUTOMOC ON)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network WebEngineWidgets WebChannel)
+add_executable(urax-shell main.cpp bridge.cpp bridge.h)
+target_link_libraries(urax-shell PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::WebEngineWidgets Qt6::WebChannel)
+install(TARGETS urax-shell RUNTIME DESTINATION bin)
