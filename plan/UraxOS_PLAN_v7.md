@@ -185,7 +185,15 @@ Categories (all required, in this order):
 - Gameplay buttons are never consumed until the player presses **UB** to select the notification. The bottom hint bar then shows the available buttons.
 - After UB: **L2 dismisses** it; **cross** replies to a message (opens the typing box; Enter sends, Esc goes back); **triangle** plays a video in a **floating window** (bottom right, above Home and apps; triangle pauses/plays, square or `X` closes); cross opens the related screen for system notices. UB again releases the selection.
 - Settings: Personalization has "Notifications" and "Do not disturb" toggles and a test notification. Key `N` sends a demo notification in the mockup.
-- Not designed yet: notification center, stacking, per-app settings, on-screen keyboard for the typing box.
+- Not designed yet: notification center, stacking, per-app settings.
+
+### 2.9 On-screen keyboard for controllers (added in v5, proposal)
+
+- A docked, sharp-cornered keyboard slides up from the bottom edge. It opens automatically when a text box is used with a controller or touch (not when a hardware keyboard was the last input); `Tab` toggles it for testing.
+- Layouts: Arabic (default follows the interface language), English, and a symbols/numbers layer. A globe-style key switches language (shows `EN` or the Arabic letter ع), `123`/`ABC` switches layer, Shift is one-shot (in Arabic it shows the diacritics row), plus Space, Backspace and Enter/send.
+- Controls: D-pad or stick moves the highlighted key (keeps the horizontal position across rows), **cross** types, **square** deletes, **triangle** adds a space, **circle** closes the keyboard. The top strip shows these hints.
+- It is a reusable component (`kbOpen(input, onEnter)`); the notification reply box is the first user. Wi-Fi passwords and Library search will reuse it.
+- Not designed yet: predictive text/emoji, L1/R1 shortcuts, caps lock.
 
 **Controller map (mockup)**
 - D-pad or left stick: move focus. A: confirm. B: back. Home: Quick Menu. L2 (hold): MQM. Right stick: pick an MQM option.

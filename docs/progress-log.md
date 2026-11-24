@@ -52,4 +52,5 @@
 
 ## Notifications (v5 mockup)
 - Flush left card with attached typing box, sharp corners; UB selects, L2 dismisses, cross = reply, triangle = floating video. See plan 2.8.
-- Open: notification center, stacking, on-screen keyboard.
+- Open: notification center, stacking.
+- On-screen keyboard for controllers added (AR/EN/symbols, reusable). See plan 2.9. Open: predictive text, emoji, L1/R1 shortcuts, caps lock.
