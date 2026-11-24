@@ -173,6 +173,44 @@ button{font-family:inherit}
 #kb .kk.sd{flex:none;width:150px;font-size:26px;background:rgba(232,241,251,.16)}#kb .kk.sd.ev{background:transparent;cursor:default}
 #kb .kk.on2{background:rgba(79,179,246,.4)}#kb .kk.fc{background:var(--blue);color:#0B1220}#kb .kk.pr{background:#fff;color:#0B1220}
 #kb .kh{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 26px;font-size:19px;color:var(--muted);margin-top:8px}
+
+/* glyphs + hint bars */
+.gl{height:1.45em;width:1.45em;vertical-align:middle;flex:none;color:#E8F1FB}.gl.w{width:2.4em;height:1.45em}
+.hk{display:inline-flex;align-items:center;gap:10px;white-space:nowrap}.hk .gl+.gl{margin-inline-start:-4px}
+#hints,#lh2,#gh2,#sh2{align-items:center;gap:30px!important;font-size:24px!important}
+#gvh{display:flex;justify-content:center;gap:30px;font-size:23px}
+/* library: title row + tabs row */
+#lib .gt,#gal .gt{font-size:50px!important;top:36px!important}#lib .gt svg,#gal .gt svg{width:50px!important;height:50px!important}
+#ltabs{left:56px!important;right:56px!important;top:128px!important;gap:10px!important}
+#gtabs{left:56px!important;right:56px!important;top:128px!important;gap:10px!important;align-items:center}
+.ltb,.gtb{font-size:27px!important;padding:10px 24px!important;border-radius:0!important}
+.ltb.on,.gtb.on{background:rgba(79,179,246,.22)!important;color:#fff!important;box-shadow:inset 0 -3px 0 var(--blue)}
+.ltb.fc,.gtb.fc{background:var(--blue)!important;color:#0B1220!important;box-shadow:none}
+#ltabs>.gl,#gtabs>.gl{font-size:32px;opacity:.9}
+.ltb.so{display:inline-flex;align-items:center;gap:10px}
+#lbody,#gbody{top:212px!important;bottom:108px!important}
+.lgr{grid-template-columns:repeat(7,1fr)!important;gap:22px!important}
+.lk{border-radius:12px!important}.lk .lc{font-size:84px!important;margin-top:-34px!important}.lk .lc svg{width:84px!important;height:84px!important}
+.lk .ln{font-size:23px!important;padding:30px 14px 12px!important}
+#lcnt{position:absolute;right:56px;top:56px;font-size:26px;color:var(--muted)}
+.gi{border-radius:10px!important}
+/* gallery header info */
+#gcnt{top:44px!important;font-size:26px!important}
+#gstor{top:88px!important;bottom:auto!important;width:auto!important;font-size:20px!important;gap:12px!important}#gstor .sb2{width:180px}
+/* settings */
+#sl{border-right:1px solid #2A3A55;padding-right:22px;width:500px!important}
+.sli{height:68px!important;margin-bottom:6px!important;font-size:31px!important;border-radius:0!important}.sli svg{width:34px!important;height:34px!important}
+.sli.on{box-shadow:inset 4px 0 0 var(--blue)}
+#sc .sh{text-align:left;unicode-bidi:plaintext;margin-bottom:4px!important}
+#sc .sdsc{font-size:25px;color:var(--muted);margin:0 0 22px 6px;text-align:left;unicode-bidi:plaintext}
+.sr{border-radius:0!important;min-height:84px!important;font-size:33px!important}
+.ssub{text-align:left;unicode-bidi:plaintext;font-size:26px!important;letter-spacing:.3px;text-transform:none}
+.vp #gvb{display:none}.vp #gvh{bottom:44px}
+/* toggle button for the virtual pad */
+#vpt{left:auto!important;right:440px!important;bottom:40px!important;transform:none!important}
+/* virtual pad shapes */
+#vp .vr .vb{border-radius:34px 34px 10px 10px!important}#vp .vr .vb.trg{border-radius:46px 46px 12px 12px!important;height:88px!important}
+#vp .vb svg{width:46px;height:46px}#vp .vfc .vb svg{width:72px;height:72px}#vp .vdp .vb svg{width:40px;height:40px}
 #vpt{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:32;font:600 22px 'Cairo',system-ui,sans-serif;padding:8px 22px;border:1px solid #2A3A55;background:rgba(14,22,40,.85);color:var(--muted);cursor:pointer}#vpt.on{color:#0B1220;background:var(--blue);border-color:var(--blue)}#kb.on~#vpt{display:none}
 #vp{position:absolute;inset:0;z-index:31;pointer-events:none;display:none}.vp #vp{display:block}.vp #l2,.vp #qbtn{display:none}.vp #hints{left:450px!important}.vp #kb{left:440px;width:1040px}
 .vp #stage *{pointer-events:none!important}.vp #vp .vb,.vp #vp .stk,.vp #vpt{pointer-events:auto!important}
@@ -208,7 +246,7 @@ button{font-family:inherit}
 <div id="bar"><div id="track"></div></div>
 <div id="info"><div id="name" dir="auto"></div><div id="sub" dir="auto"></div></div>
 <div id="hints"><span>◀ ▶ تنقّل</span><span>Enter تشغيل</span><span>L مطولاً: MQM</span><span>H: Quick Menu</span></div>
-<div id="app"></div><div id="lib"><div class="gt"><svg viewBox="0 0 24 24" id="libico"></svg><span>مكتبة التطبيقات</span></div><div id="ltabs"></div><div id="lbody"></div><div id="lh2"><span>← → ↑ ↓ تنقّل</span><span>Enter فتح</span><span>L1 R1 تبديل القوائم</span><span>O إعدادات اللعبة</span><span>Esc رجوع</span></div>
+<div id="app"></div><div id="lib"><div class="gt"><svg viewBox="0 0 24 24" id="libico"></svg><span>مكتبة التطبيقات</span></div><div id="lcnt"></div><div id="ltabs"></div><div id="lbody"></div><div id="lh2"><span>← → ↑ ↓ تنقّل</span><span>Enter فتح</span><span>L1 R1 تبديل القوائم</span><span>O إعدادات اللعبة</span><span>Esc رجوع</span></div>
 <div id="ldet"><div id="ldhero"></div><div id="ldcov"></div><div id="ldinf"><h1 id="ldn" dir="auto"></h1><div id="ldm"></div><div id="ldb"></div><div id="lset"></div></div></div></div>
 <div id="gal"><div class="gt"><svg viewBox="0 0 24 24" id="gico"></svg><span>المعرض</span></div><div id="gtabs"></div><div id="gcnt"></div><div id="gbody"></div><div id="gstor"><span id="gstt"></span><div class="sb2"><i id="gstb"></i></div></div><div id="gh2"><span>← → ↑ ↓ تنقّل</span><span>Enter فتح</span><span>Esc رجوع</span></div>
 <div id="gv"><div id="gvi"></div><div id="gvp"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></div><div id="gvn"></div><div id="gvf">★</div><div id="gvh">← → للتنقل • ↑ معلومات • ↓ مفضلة • Enter تكبير • O خيارات • Esc إغلاق</div><div id="gvb"><button class="bt sc" id="gvpr" type="button">السابق</button><button class="bt sc" id="gvnx" type="button">التالي</button><button class="bt sc" id="gvin" type="button">معلومات</button><button class="bt sc" id="gvzm" type="button">تكبير</button><button class="bt sc" id="gvfv" type="button">★ مفضلة</button><button class="bt sc" id="gvmn" type="button">⋯ خيارات</button><button class="bt" id="gvcl" type="button">إغلاق</button></div><div id="gvinfo"></div><div id="gmenu"></div></div></div>
@@ -310,12 +348,12 @@ const l2=$('#l2');let l2t=0;l2.addEventListener('pointerdown',e=>{e.preventDefau
 stage.addEventListener('pointermove',e=>{if(!menu())return;const r=stage.getBoundingClientRect();let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);if(rot){const t=dx;dx=dy;dy=-t}aimAt(dx/sc,dy/sc+540,90)});
 addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key;lastIn='kb';if(kbOn){if(k.startsWith('Arrow'))e.preventDefault();if(k==='Tab'){e.preventDefault();kbClose();return}if(k==='Backspace'){e.preventDefault();kbBack();return}if(k==='['){e.preventDefault();kbCur(-1);return}if(k===']'){e.preventDefault();kbCur(1);return}if(k===' '){e.preventDefault();kbSpace();return}if(k==='Shift'){kbShiftT();return}if(k==='Home'){e.preventDefault();kbEdge(0);return}if(k==='End'){e.preventDefault();kbEdge(1);return}if(k==='`'){e.preventDefault();kbLangT();return}if(k==='\\'){e.preventDefault();kbSymT();return}if(k.length===1){e.preventDefault();return}}if(document.activeElement&&document.activeElement.id==='nin'&&!kbOn){if(k==='Tab'){e.preventDefault();kbOpen(document.activeElement,nSend)}else if(k==='Enter'){e.preventDefault();nSend()}else if(k==='Escape')nBack();return}if(nMode&&'lLqQ'.includes(k)){nHide();return}
 if(!$('#boot').classList.contains('gone')){bootKey(e);return}
-if(k==='h'||k==='H'||k==='Tab'){e.preventDefault();ub()}else if(k==='ArrowUp')qNav(0,-1);else if(k==='ArrowDown')qNav(0,1);else if(k==='ArrowLeft')move(-1);else if(k==='ArrowRight')move(1);else if(k==='Enter'||k===' '){e.preventDefault();ok()}else if(k==='Escape')back();else if(k==='o'||k==='O')optKey();else if((k==='['||k===']')&&libOpen)libTabStep(k==='['?-1:1);else if(k==='n'||k==='N')nDemo();else if(k==='g'||k==='G')vpSet(!VP.on);else if(k==='x'||k==='X')fwClose();else if('lLqQ'.includes(k)){held=true;sync()}});
+if(k==='h'||k==='H'||k==='Tab'){e.preventDefault();ub()}else if(k==='ArrowUp')qNav(0,-1);else if(k==='ArrowDown')qNav(0,1);else if(k==='ArrowLeft')move(-1);else if(k==='ArrowRight')move(1);else if(k==='Enter'||k===' '){e.preventDefault();ok()}else if(k==='Escape')back();else if(k==='o'||k==='O')optKey();else if((k==='['||k===']')&&(libOpen||galOpen)){libTabStep(k==='['?-1:1);gTabStep(k==='['?-1:1)}else if((k==='s'||k==='S')&&libOpen)libSortStep();else if(k==='n'||k==='N')nDemo();else if(k==='g'||k==='G')vpSet(!VP.on);else if(k==='x'||k==='X')fwClose();else if('lLqQ'.includes(k)){held=true;sync()}});
 addEventListener('keyup',e=>{if('lLqQ'.includes(e.key)){held=false;sync()}});
 let gp={};function poll(){const p=getPad();
 if(p&&!$('#boot').classList.contains('gone')){const b=i=>p.buttons[i]&&p.buttons[i].pressed,ax=p.axes[0]||0,n={l:b(14)||ax<-.6,r:b(15)||ax>.6,a:b(0)||b(11),b:b(1)},st=$('#boot').dataset.s;if(st==='users'){if(n.l&&!gp.l)uMove(-1);if(n.r&&!gp.r)uMove(1);if(n.a&&!gp.a)uOk()}else if(st==='pin'||st==='new'){if(n.b&&!gp.b)showUsers()}else if(st==='off'){if(n.a&&!gp.a)$('#pw').click()}gp.l=n.l;gp.r=n.r;gp.a=n.a;gp.b=n.b}
 if(p&&$('#boot').classList.contains('gone')){const b=i=>p.buttons[i]&&p.buttons[i].pressed,L2=p.buttons[6]&&p.buttons[6].value>.5,ax=p.axes[0]||0,ay=p.axes[1]||0,n={l:b(14)||ax<-.6,r:b(15)||ax>.6,u:b(12)||ay<-.6,d:b(13)||ay>.6,a:b(0)||b(11),b:b(1),h:b(16)};
-if(n.l||n.r||n.u||n.d||n.a||n.b)lastIn='pad';if(n.l&&!gp.l)move(-1);if(n.r&&!gp.r)move(1);if(n.a&&!gp.a)ok();if(n.b&&!gp.b)back();if(n.u&&!gp.u)qNav(0,-1);if(n.d&&!gp.d)qNav(0,1);if(n.h&&!gp.h)ub();const sq=!!(p.buttons[2]&&p.buttons[2].pressed);if(sq&&!gp.sq){if(kbOn)kbBack();else fwClose()}{const b4=!!(p.buttons[4]&&p.buttons[4].pressed),b5=!!(p.buttons[5]&&p.buttons[5].pressed);if(!kbOn&&!nMode){if(b4&&!gp.b4)libTabStep(-1);if(b5&&!gp.b5)libTabStep(1)}gp.b4=b4;gp.b5=b5}if(kbOn){const now=performance.now(),bp=i=>!!(p.buttons[i]&&p.buttons[i].pressed),l1=bp(4),r1=bp(5),r2=bp(7),op=bp(9),tri=bp(3),rx=p.axes[2]||0,ry=p.axes[3]||0;
+if(n.l||n.r||n.u||n.d||n.a||n.b)lastIn='pad';if(n.l&&!gp.l)move(-1);if(n.r&&!gp.r)move(1);if(n.a&&!gp.a)ok();if(n.b&&!gp.b)back();if(n.u&&!gp.u)qNav(0,-1);if(n.d&&!gp.d)qNav(0,1);if(n.h&&!gp.h)ub();const sq=!!(p.buttons[2]&&p.buttons[2].pressed);if(sq&&!gp.sq){if(kbOn)kbBack();else if(libOpen&&!libDet&&!nMode)libSortStep();else fwClose()}{const b4=!!(p.buttons[4]&&p.buttons[4].pressed),b5=!!(p.buttons[5]&&p.buttons[5].pressed);if(!kbOn&&!nMode){if(b4&&!gp.b4){libTabStep(-1);gTabStep(-1)}if(b5&&!gp.b5){libTabStep(1);gTabStep(1)}}gp.b4=b4;gp.b5=b5}if(kbOn){const now=performance.now(),bp=i=>!!(p.buttons[i]&&p.buttons[i].pressed),l1=bp(4),r1=bp(5),r2=bp(7),op=bp(9),tri=bp(3),rx=p.axes[2]||0,ry=p.axes[3]||0;
 const rep=(id,on,f)=>{if(on){if(!gp['t'+id]){gp['t'+id]=now+420}else if(now>gp['t'+id]){gp['t'+id]=now+80;f()}}else gp['t'+id]=0};
 if(l1&&!gp.l1)kbCur(-1);if(r1&&!gp.r1)kbCur(1);rep('l1',l1,()=>kbCur(-1));rep('r1',r1,()=>kbCur(1));
 if((r2&&!gp.r2||op&&!gp.op)&&kbEnter)kbEnter();
@@ -369,24 +407,24 @@ const SVC={Steam:['#1b6fb5','S'],Twitch:['#9146ff','T'],YouTube:['#e62117','Y'],
 const ic=p=>'<svg viewBox="0 0 24 24">'+p+'</svg>';
 const tg=(t,k,g,s)=>({t,ty:'tg',g:g||(()=>S[k]),s:s||(v=>S[k]=v)}),se=(t,k,o)=>({t,ty:'se',k,o}),sl=(t,k,g,s)=>({t,ty:'sl',g:g||(()=>S[k]),s:s||(v=>S[k]=v)}),inf=(t,v)=>({t,ty:'in',v}),ac=(t,f)=>({t,ty:'ac',f}),hd=t=>({t,ty:'hd'});
 const SC=[
-{n:'الشاشة',i:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',r:()=>[se('الدقة','res',['1280×720','1920×1080','2560×1440','3840×2160']),se('معدل التحديث','hz',['60Hz','120Hz','144Hz']),sl('السطوع','br'),tg('HDR','hdr')]},
-{n:'الصوت',i:'<path d="M4 9.5v5h4l5 4v-13l-5 4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',r:()=>[se('مخرج الصوت','out',['مكبرات HDMI','سماعة بلوتوث','USB']),sl('مستوى الصوت','vol',()=>vol,v=>vol=v),tg('صوت محيطي','surr'),tg('أصوات الواجهة','uis'),ac('اختبار الصوت',()=>toast('♪ اختبار الصوت'))]},
-{n:'الشبكة',i:'<path d="M2.5 9a15 15 0 0 1 19 0M5.5 12.6a10.5 10.5 0 0 1 13 0M8.6 16.2a6 6 0 0 1 6.8 0"/><circle cx="12" cy="19.6" r="1"/>',r:()=>[tg('الواي فاي','wifi',()=>wifi,v=>{wifi=v;stat()}),inf('الشبكة','Home-5G • قوية'),inf('الإيثرنت','غير متصل'),inf('عنوان IP','192.168.1.24'),inf('اسم الجهاز','UraxOS-PC'),tg('VPN','vpn'),ac('اختبار الاتصال',()=>toast('التنزيل 94 Mbps • الاستجابة 12ms (محاكاة)'))]},
-{n:'الأجهزة',i:'<rect x="2.5" y="7" width="19" height="10" rx="5"/><path d="M7.5 10v4M5.5 12h4M16 11h.01M18 13h.01"/>',r:()=>[inf('اليد','يد PS4 • 82%'),tg('الاهتزاز','rumble'),sl('حساسية العصي','sens'),tg('البلوتوث','bt',()=>bt,v=>{bt=v;stat()}),inf('الكيبورد والفأرة','متصلة'),ac('تعيين الأزرار',()=>toast('تعيين الأزرار: قيد التصميم'))]},
-{n:'الحسابات والخدمات',i:'<circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.8-4 3.6-6 7-6s6.2 2 7 6"/>',r:()=>{const a=[inf('المستخدم الحالي',cu?cu.n:'—'),ac('تبديل المستخدم',()=>{setClose();switchUser()}),tg('دخول تلقائي','autolog'),ac('رمز الدخول',()=>toast('تغيير رمز الدخول: قيد التصميم')),hd('الخدمات المرتبطة')];Object.keys(SVC).forEach(k=>a.push({t:k,ty:'sv',k}));a.push(ac('إضافة خدمة أخرى',()=>toast('المزيد من الخدمات قريبًا')));return a}},
-{n:'الطاقة',i:'<path d="M12 3v8M6.4 6.6a8 8 0 1 0 11.2 0"/>',r:()=>[inf('البطارية',pct+'%'+(charging?' • تشحن':'')),se('وضع الراحة بعد','sleep',['5 دقائق','15 دقيقة','30 دقيقة','أبدًا']),se('إطفاء تلقائي','off',['أبدًا','بعد ساعة','بعد 3 ساعات']),se('نمط الأداء','perf',['توفير','متوازن','أداء']),ac('وضع الراحة الآن',()=>{setClose();toast('وضع الراحة: قيد التصميم')})]},
-{n:'التحديثات',i:'<path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/>',r:()=>[inf('الإصدار','UraxOS 0.1 (تجريبي)'),ac('التحقق من التحديثات',()=>toast('النظام محدّث')),tg('تحديث تلقائي','autoupd'),se('قناة التحديث','chan',['مستقرة','تجريبية']),ac('الرجوع للإصدار السابق',()=>toast('سيعيد التشغيل بالإصدار السابق (محاكاة)'))]},
-{n:'التخزين والألعاب',i:'<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',r:()=>[inf('المساحة','412 / 1000 GB <span class="sb" style="display:inline-block;width:220px;vertical-align:middle;margin-inline-start:14px"><i style="width:41%"></i></span>'),inf('مكتبة Steam','~/.steam'),se('طبقة التوافق','proton',['Proton الرسمي','Proton-GE']),tg('تنزيل أثناء الراحة','dlrest'),ac('نقل الألعاب',()=>toast('نقل الألعاب: قيد التصميم'))]},
-{n:'التخصيص',i:'<circle cx="12" cy="12" r="9"/><circle cx="8" cy="10" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="10" r="1"/>',r:()=>[se('السمة','theme',['Urax Blue','أخضر','بنفسجي']),se('اللغة','lang',['العربية','English']),tg('الوقت 24 ساعة','t24'),ac('تغيير الخلفية',()=>toast('تغيير الخلفية: قيد التصميم')),tg('الإشعارات','notif'),tg('عدم الإزعاج','dnd'),ac('إشعار تجريبي',()=>nDemo()),ac('استعادة الإعدادات الافتراضية',()=>{Object.assign(S,{theme:'Urax Blue',t24:true,font:'متوسط',contrast:false,motion:false});applyS();tick();toast('أُعيدت إعدادات التخصيص والإتاحة الافتراضية')})]},
-{n:'الأمان',i:'<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/>',r:()=>[tg('قفل الشاشة بالرمز','lock'),tg('الجدار الناري','fw'),inf('أذونات التطبيقات','قيد التصميم'),inf('فحص التهديدات','قريبًا')]},
-{n:'الإتاحة',i:'<circle cx="12" cy="5" r="2"/><path d="M5 9h14M12 9v6M8 21l4-6 4 6"/>',r:()=>[se('حجم الخط','font',['صغير','متوسط','كبير']),tg('تباين عالٍ','contrast'),tg('تقليل الحركة','motion'),tg('قارئ الشاشة','sr')]},
-{n:'الرقابة الأبوية',i:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',r:()=>[se('وقت اللعب اليومي','limit',['بدون حد','ساعتان','4 ساعات']),se('تقييد العمر','age',['الكل','+12','+16','+18']),tg('قفل الشراء','buylock')]},
-{n:'النسخ الاحتياطي',i:'<path d="M12 4v10M8 10l4 4 4-4M5 19h14"/>',r:()=>[tg('نسخ احتياطي تلقائي','bk'),ac('إنشاء نسخة الآن',()=>toast('تم إنشاء نسخة (محاكاة)')),ac('إعادة ضبط المصنع',()=>toast('محاكاة فقط: لن يُمسح شيء'))]},
-{n:'حول الجهاز',i:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/>',r:()=>[inf('النظام','UraxOS 0.1'),inf('المعالج','AMD Ryzen (محاكاة)'),inf('الذاكرة','16 GB'),inf('الرسوميات','RDNA (محاكاة)'),inf('نواة لينكس','6.x')]}];
+{n:'الشاشة',d:'الدقة ومعدل التحديث والسطوع',i:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',r:()=>[se('الدقة','res',['1280×720','1920×1080','2560×1440','3840×2160']),se('معدل التحديث','hz',['60Hz','120Hz','144Hz']),sl('السطوع','br'),tg('HDR','hdr')]},
+{n:'الصوت',d:'مخرج الصوت ومستواه',i:'<path d="M4 9.5v5h4l5 4v-13l-5 4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',r:()=>[se('مخرج الصوت','out',['مكبرات HDMI','سماعة بلوتوث','USB']),sl('مستوى الصوت','vol',()=>vol,v=>vol=v),tg('صوت محيطي','surr'),tg('أصوات الواجهة','uis'),ac('اختبار الصوت',()=>toast('♪ اختبار الصوت'))]},
+{n:'الشبكة',d:'الواي فاي والإيثرنت والاتصال',i:'<path d="M2.5 9a15 15 0 0 1 19 0M5.5 12.6a10.5 10.5 0 0 1 13 0M8.6 16.2a6 6 0 0 1 6.8 0"/><circle cx="12" cy="19.6" r="1"/>',r:()=>[tg('الواي فاي','wifi',()=>wifi,v=>{wifi=v;stat()}),inf('الشبكة','Home-5G • قوية'),inf('الإيثرنت','غير متصل'),inf('عنوان IP','192.168.1.24'),inf('اسم الجهاز','UraxOS-PC'),tg('VPN','vpn'),ac('اختبار الاتصال',()=>toast('التنزيل 94 Mbps • الاستجابة 12ms (محاكاة)'))]},
+{n:'الأجهزة',d:'أيادي التحكم والبلوتوث والملحقات',i:'<rect x="2.5" y="7" width="19" height="10" rx="5"/><path d="M7.5 10v4M5.5 12h4M16 11h.01M18 13h.01"/>',r:()=>[inf('اليد','يد PS4 • 82%'),tg('الاهتزاز','rumble'),sl('حساسية العصي','sens'),tg('البلوتوث','bt',()=>bt,v=>{bt=v;stat()}),inf('الكيبورد والفأرة','متصلة'),ac('تعيين الأزرار',()=>toast('تعيين الأزرار: قيد التصميم'))]},
+{n:'الحسابات والخدمات',d:'المستخدمون والخدمات المرتبطة',i:'<circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.8-4 3.6-6 7-6s6.2 2 7 6"/>',r:()=>{const a=[inf('المستخدم الحالي',cu?cu.n:'—'),ac('تبديل المستخدم',()=>{setClose();switchUser()}),tg('دخول تلقائي','autolog'),ac('رمز الدخول',()=>toast('تغيير رمز الدخول: قيد التصميم')),hd('الخدمات المرتبطة')];Object.keys(SVC).forEach(k=>a.push({t:k,ty:'sv',k}));a.push(ac('إضافة خدمة أخرى',()=>toast('المزيد من الخدمات قريبًا')));return a}},
+{n:'الطاقة',d:'البطارية ووضع الراحة والأداء',i:'<path d="M12 3v8M6.4 6.6a8 8 0 1 0 11.2 0"/>',r:()=>[inf('البطارية',pct+'%'+(charging?' • تشحن':'')),se('وضع الراحة بعد','sleep',['5 دقائق','15 دقيقة','30 دقيقة','أبدًا']),se('إطفاء تلقائي','off',['أبدًا','بعد ساعة','بعد 3 ساعات']),se('نمط الأداء','perf',['توفير','متوازن','أداء']),ac('وضع الراحة الآن',()=>{setClose();toast('وضع الراحة: قيد التصميم')})]},
+{n:'التحديثات',d:'إصدار النظام والتحديثات',i:'<path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/>',r:()=>[inf('الإصدار','UraxOS 0.1 (تجريبي)'),ac('التحقق من التحديثات',()=>toast('النظام محدّث')),tg('تحديث تلقائي','autoupd'),se('قناة التحديث','chan',['مستقرة','تجريبية']),ac('الرجوع للإصدار السابق',()=>toast('سيعيد التشغيل بالإصدار السابق (محاكاة)'))]},
+{n:'التخزين والألعاب',d:'المساحة ومكتبة Steam والتوافق',i:'<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',r:()=>[inf('المساحة','412 / 1000 GB <span class="sb" style="display:inline-block;width:220px;vertical-align:middle;margin-inline-start:14px"><i style="width:41%"></i></span>'),inf('مكتبة Steam','~/.steam'),se('طبقة التوافق','proton',['Proton الرسمي','Proton-GE']),tg('تنزيل أثناء الراحة','dlrest'),ac('نقل الألعاب',()=>toast('نقل الألعاب: قيد التصميم'))]},
+{n:'التخصيص',d:'السمة واللغة والوقت والخلفية',i:'<circle cx="12" cy="12" r="9"/><circle cx="8" cy="10" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="10" r="1"/>',r:()=>[se('السمة','theme',['Urax Blue','أخضر','بنفسجي']),se('اللغة','lang',['العربية','English']),tg('الوقت 24 ساعة','t24'),ac('تغيير الخلفية',()=>toast('تغيير الخلفية: قيد التصميم')),tg('الإشعارات','notif'),tg('عدم الإزعاج','dnd'),ac('إشعار تجريبي',()=>nDemo()),ac('استعادة الإعدادات الافتراضية',()=>{Object.assign(S,{theme:'Urax Blue',t24:true,font:'متوسط',contrast:false,motion:false});applyS();tick();toast('أُعيدت إعدادات التخصيص والإتاحة الافتراضية')})]},
+{n:'الأمان',d:'القفل والجدار الناري والأذونات',i:'<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/>',r:()=>[tg('قفل الشاشة بالرمز','lock'),tg('الجدار الناري','fw'),inf('أذونات التطبيقات','قيد التصميم'),inf('فحص التهديدات','قريبًا')]},
+{n:'الإتاحة',d:'حجم الخط والتباين والحركة',i:'<circle cx="12" cy="5" r="2"/><path d="M5 9h14M12 9v6M8 21l4-6 4 6"/>',r:()=>[se('حجم الخط','font',['صغير','متوسط','كبير']),tg('تباين عالٍ','contrast'),tg('تقليل الحركة','motion'),tg('قارئ الشاشة','sr')]},
+{n:'الرقابة الأبوية',d:'وقت اللعب والتقييد العمري',i:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',r:()=>[se('وقت اللعب اليومي','limit',['بدون حد','ساعتان','4 ساعات']),se('تقييد العمر','age',['الكل','+12','+16','+18']),tg('قفل الشراء','buylock')]},
+{n:'النسخ الاحتياطي',d:'حفظ بياناتك واستعادتها',i:'<path d="M12 4v10M8 10l4 4 4-4M5 19h14"/>',r:()=>[tg('نسخ احتياطي تلقائي','bk'),ac('إنشاء نسخة الآن',()=>toast('تم إنشاء نسخة (محاكاة)')),ac('إعادة ضبط المصنع',()=>toast('محاكاة فقط: لن يُمسح شيء'))]},
+{n:'حول الجهاز',d:'معلومات النظام والعتاد',i:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/>',r:()=>[inf('النظام','UraxOS 0.1'),inf('المعالج','AMD Ryzen (محاكاة)'),inf('الذاكرة','16 GB'),inf('الرسوميات','RDNA (محاكاة)'),inf('نواة لينكس','6.x')]}];
 const sRows=()=>SC[sci].r(),sFocusable=r=>r.ty!=='hd';
 function sDrawList(){const el=$('#sl');el.innerHTML='';SC.forEach((c,k)=>{const d=document.createElement('div');d.className='sli'+(k===sci?' on':'')+(k===sci&&!sf?' fc':'');d.innerHTML=ic(c.i)+'<span dir="auto">'+c.n+'</span>';d.onclick=()=>{sci=k;sri=0;sf=0;sDraw()};el.appendChild(d)})}
 function sVal(r){if(r.ty==='se')return S[r.k];return ''}
-function sDraw(){sDrawList();const el=$('#sc'),rows=sRows();el.innerHTML='<div class="sh" dir="auto">'+SC[sci].n+'</div>';
+function sDraw(){sDrawList();const el=$('#sc'),rows=sRows();el.innerHTML='<div class="sh" dir="auto">'+SC[sci].n+'</div><div class="sdsc">'+SC[sci].d+'</div>';
 if(!rows[sri]||!sFocusable(rows[sri]))sri=Math.max(0,rows.findIndex(sFocusable));
 rows.forEach((r,k)=>{if(r.ty==='hd'){el.insertAdjacentHTML('beforeend','<div class="ssub">'+r.t+'</div>');return}
 const d=document.createElement('div');d.className='sr'+(sf&&k===sri?' fc':'');let l='<span dir="auto">'+r.t+'</span>',v='';
@@ -426,8 +464,8 @@ function gAlbums(){const m={};GAL.forEach(x=>{(m[x.g]=m[x.g]||[]).push(x)});retu
 const gGroup=m=>m<1440?'اليوم':m<2880?'أمس':'قبل '+Math.floor(m/1440)+' أيام';
 function gList(){return gtab===4&&!galAlb?gAlbums():gItems()}
 function gLayout(list){const gs=[];list.forEach((it,k)=>{const n=it.al?'':gGroup(it.m);let g=gs[gs.length-1];if(!g||g.n!==n){g={n,ix:[]};gs.push(g)}g.ix.push(k)});return gs}
-function gStor(){const mb=GAL.reduce((a,x)=>a+(x.t==='vid'?x.mb:2.4),0);$('#gstt').textContent='التخزين: '+mb.toFixed(0)+' MB من 2 GB';$('#gstb').style.width=Math.min(100,mb/20.48)+'%'}
-function gDraw(){gStor();const tb=$('#gtabs');tb.innerHTML='';GTABS.forEach((t,k)=>{const d=document.createElement('div');d.className='gtb'+(k===gtab?' on':'')+(k===gtab&&!gf?' fc':'');d.textContent=t[1];d.onclick=()=>{gtab=k;galAlb=null;gi=0;gf=0;gDraw()};tb.appendChild(d)});
+function gStor(){const mb=GAL.reduce((a,x)=>a+(x.t==='vid'?x.mb:2.4),0);$('#gstt').textContent='التخزين: \u200e'+mb.toFixed(0)+' MB\u200f من \u200e2 GB\u200f';$('#gstt').dir='rtl';$('#gstb').style.width=Math.min(100,mb/20.48)+'%'}
+function gDraw(){gStor();const tb=$('#gtabs');tb.innerHTML=BTN('L1');GTABS.forEach((t,k)=>{const d=document.createElement('div');d.className='gtb'+(k===gtab?' on':'')+(k===gtab&&!gf?' fc':'');d.textContent=t[1];d.onclick=()=>{gtab=k;galAlb=null;gi=0;gf=0;gDraw()};tb.appendChild(d)});tb.insertAdjacentHTML('beforeend',BTN('R1'));
 const list=gList(),body=$('#gbody');body.innerHTML='';$('#gcnt').textContent=(galAlb?galAlb+' • ':'')+GAL.length+' عنصر';
 if(gi>=list.length)gi=Math.max(0,list.length-1);
 if(!list.length){body.innerHTML='<div class="gem">لا توجد عناصر هنا بعد</div>';return}
@@ -492,8 +530,8 @@ if(libSort===1)a.sort((x,y)=>x.n.localeCompare(y.n));else if(libSort===2)a.sort(
 function libCov(it){if(it.key==='hk'&&ART.hk&&ART.hk.t)return "center/cover no-repeat url('"+ART.hk.t+"')";const g='linear-gradient(160deg,'+it.c[0]+','+it.c[1]+')';if(it.key==='brave'&&ART.brave&&ART.brave.l)return "center 42%/46% no-repeat url('"+ART.brave.l+"'),"+g;return g}
 const libGlyph=it=>(it.key==='hk'&&ART.hk&&ART.hk.t)||(it.key==='brave'&&ART.brave&&ART.brave.l)?'':'<span class="lc">'+(it.key==='steam'||it.key==='files'?I[it.key]:it.n.trim().charAt(0).toUpperCase())+'</span>';
 const libAgo=m=>m==null?'لم يُشغَّل بعد':m<60?'قبل '+m+' دقيقة':m<1440?'قبل '+Math.floor(m/60)+' ساعة':'قبل '+Math.floor(m/1440)+' أيام';
-function libDraw(){const tb=$('#ltabs');tb.innerHTML='';LTABS.forEach((t,k)=>{const d=document.createElement('div');d.className='ltb'+(k===libTab?' on':'')+(!libF&&k===libTF?' fc':'');d.textContent=t;d.onclick=()=>{libTab=libTF=k;libI=0;libF=0;libDraw()};tb.appendChild(d)});
-const so=document.createElement('div');so.className='ltb so'+(!libF&&libTF===6?' fc':'');so.textContent='الفرز: '+LSORT[libSort]+' ▾';so.onclick=()=>{libSort=(libSort+1)%3;libTF=6;libDraw()};tb.appendChild(so);
+function libDraw(){const tb=$('#ltabs');tb.innerHTML=BTN('L1');LTABS.forEach((t,k)=>{const d=document.createElement('div');d.className='ltb'+(k===libTab?' on':'')+(!libF&&k===libTF?' fc':'');d.textContent=t;d.onclick=()=>{libTab=libTF=k;libI=0;libF=0;libDraw()};tb.appendChild(d)});
+const so=document.createElement('div');so.className='ltb so'+(!libF&&libTF===6?' fc':'');so.innerHTML=BTN('sq')+'<span>الفرز: '+LSORT[libSort]+'</span>';so.onclick=()=>{libSort=(libSort+1)%3;libTF=6;libDraw()};tb.insertAdjacentHTML('beforeend',BTN('R1'));tb.appendChild(so);$('#lcnt').textContent=libItems().length+' عنصر';
 const list=libItems(),body=$('#lbody');body.innerHTML='';if(libI>=list.length)libI=Math.max(0,list.length-1);
 if(!list.length){body.innerHTML='<div class="lem">لا توجد عناصر هنا</div>';return}
 const gr=document.createElement('div');gr.className='lgr';list.forEach((it,k)=>{const d=document.createElement('div');d.className='lk'+(libF&&k===libI?' fc':'')+(it.inst?'':' ni');
@@ -520,7 +558,7 @@ const b=$('#ldb');b.innerHTML='';libBtns(it).forEach((x,k)=>{const e=document.cr
 let libSetOpen=false,libSi=0;
 const LCFG=[['perf','نمط الأداء',['توفير','متوازن','أداء']],['res','الدقة',['تلقائي','720p','1080p','1440p']],['fps','حد الإطارات',['بدون حد','30','60','120']],['proton','طبقة التوافق',['Proton الرسمي','Proton-GE','أصلي']]];
 const libCfg=it=>it.cfg=it.cfg||{perf:'متوازن',res:'تلقائي',fps:'60',proton:'Proton الرسمي'};
-function libSetDraw(){const el=$('#lset'),it=libDet;el.classList.toggle('on',!!(libSetOpen&&it));$('#ldinf').classList.toggle('so',!!(libSetOpen&&it));if(!libSetOpen||!it)return;const c=libCfg(it);el.innerHTML='<div class="lh">إعدادات '+it.n+' • ↑↓ اختيار • ←→ تغيير • Esc إغلاق</div>'+LCFG.map((r,k)=>'<div class="lsr'+(k===libSi?' fc':'')+'"><span>'+r[1]+'</span><span dir="auto">‹ '+c[r[0]]+' ›</span></div>').join('');Array.from(el.querySelectorAll('.lsr')).forEach((d,k)=>d.onclick=()=>{libSi=k;libSetCycle(1)})}
+function libSetDraw(){const el=$('#lset'),it=libDet;el.classList.toggle('on',!!(libSetOpen&&it));$('#ldinf').classList.toggle('so',!!(libSetOpen&&it));if(!libSetOpen||!it)return;const c=libCfg(it);el.innerHTML='<div class="lh">إعدادات '+it.n+'&nbsp;&nbsp;'+hint([['dpv','اختيار'],['dph','تغيير'],['o','إغلاق']])+'</div>'+LCFG.map((r,k)=>'<div class="lsr'+(k===libSi?' fc':'')+'"><span>'+r[1]+'</span><span dir="auto">‹ '+c[r[0]]+' ›</span></div>').join('');Array.from(el.querySelectorAll('.lsr')).forEach((d,k)=>d.onclick=()=>{libSi=k;libSetCycle(1)})}
 function libSetCycle(dx){const it=libDet,r=LCFG[libSi],c=libCfg(it),i=r[2].indexOf(c[r[0]]);c[r[0]]=r[2][(i+(dx<0?-1:1)+r[2].length)%r[2].length];libSetDraw()}
 function libToggleSet(){if(!libDet||!libDet.inst||libDet.k!=='game')return;libSetOpen=!libSetOpen;libSi=0;libDetDraw()}
 function libDl(it,upd){if(it.dl!=null)return;it.dl=0;toast((upd?'تحديث ':'تنزيل ')+it.n+'…');const h=setInterval(()=>{it.dl=Math.min(1,it.dl+.1);if(it.dl>=1){clearInterval(h);it.dl=null;it.inst=1;it.upd=0;if(it.last==null)it.last=null;toast('اكتمل: '+it.n)}if(libOpen){libDet===it?libDetDraw():libDraw()}},300);if(libDet===it)libDetDraw()}
@@ -528,6 +566,30 @@ function libPin(it){if(it.pin){toast('مثبّتة في الرئيسية مسب�
 function libRun(it){libOpen=false;libDet=null;$('#ldet').classList.remove('on');$('#lib').style.display='none';appOpen=false;launch(-1,{n:it.n,c:it.c,i:it.key||'game'})}
 function libOpenUI(){if(appOpen||libOpen)return;held=false;latched=false;appOpen=true;libOpen=true;libTab=0;libTF=0;libF=0;libI=0;libDet=null;$('#ldet').classList.remove('on');$('#libico').innerHTML=I.lib.replace(/<\/?svg[^>]*>/g,'');stage.classList.add('inapp');sync();const el=$('#lib');el.style.display='block';libDraw();el.animate([{opacity:0,transform:'scale(.97)'},{opacity:1,transform:'none'}],{duration:350,easing:'cubic-bezier(.2,.9,.25,1)'})}
 function libClose(){if(!libOpen)return;libOpen=false;libDet=null;appOpen=false;stage.classList.remove('inapp');const el=$('#lib');el.animate([{opacity:1},{opacity:0}],{duration:250}).finished.then(()=>{if(!libOpen)el.style.display='none'})}
+
+/* ===== Controller button glyphs (used by every hint bar) ===== */
+const GLC='fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
+const GFACE={x:'<path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/>',o:'<circle cx="12" cy="12" r="4.2"/>',sq:'<rect x="8" y="8" width="8" height="8" rx=".6"/>',tri:'<path d="M12 7.2l4.8 8.3H7.2z"/>'};
+function dpadSvg(on){const arm={u:'M9.6 2.5h4.8v6.2L12 11.1 9.6 8.7z',d:'M9.6 21.5h4.8v-6.2L12 12.9l-2.4 2.4z',l:'M2.5 9.6v4.8h6.2l2.4-2.4-2.4-2.4z',r:'M21.5 9.6v4.8h-6.2L12.9 12l2.4-2.4z'};
+return '<svg class="gl" viewBox="0 0 24 24">'+Object.keys(arm).map(k=>'<path d="'+arm[k]+'" fill="'+(on.includes(k)?'currentColor':'rgba(232,241,251,.28)')+'"/>').join('')+'</svg>'}
+function BTN(n){
+if(GFACE[n])return '<svg class="gl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.4" fill="rgba(232,241,251,.10)" '+GLC+'/><g '+GLC+'>'+GFACE[n]+'</g></svg>';
+if(n==='L1'||n==='R1')return '<svg class="gl w" viewBox="0 0 40 24"><path d="M3 20V11Q3 5 11 5h18q8 0 8 6v9z" fill="rgba(232,241,251,.10)" '+GLC+'/><text x="20" y="16.6" text-anchor="middle" fill="currentColor" font-size="12" font-weight="800" font-family="Space Grotesk,Cairo,sans-serif">'+n+'</text></svg>';
+if(n==='L2'||n==='R2')return '<svg class="gl w" viewBox="0 0 34 26"><path d="M4 24V12Q4 2 17 2t13 10v12z" fill="rgba(232,241,251,.10)" '+GLC+'/><text x="17" y="19" text-anchor="middle" fill="currentColor" font-size="11.5" font-weight="800" font-family="Space Grotesk,Cairo,sans-serif">'+n+'</text></svg>';
+if(n==='L1R1')return BTN('L1')+BTN('R1');
+if(n==='dp')return dpadSvg('udlr');if(n==='dph')return dpadSvg('lr');if(n==='dpv')return dpadSvg('ud');if(n==='dpu')return dpadSvg('u');if(n==='dpd')return dpadSvg('d');
+if(n==='rs'||n==='ls')return '<svg class="gl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.4" fill="rgba(232,241,251,.10)" '+GLC+'/><circle cx="12" cy="12" r="5.2" '+GLC+'/><text x="12" y="15" text-anchor="middle" fill="currentColor" font-size="7.5" font-weight="800" font-family="Space Grotesk,sans-serif">'+(n==='rs'?'R':'L')+'</text></svg>';
+if(n==='ub')return '<svg class="gl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.4" fill="rgba(79,179,246,.25)" '+GLC+'/><path d="M8.3 7.2v5.3a3.7 3.7 0 0 0 7.4 0V7.2" '+GLC+' stroke-width="2.2"/></svg>';
+if(n==='opt')return '<svg class="gl" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="6" fill="rgba(232,241,251,.10)" '+GLC+'/><path d="M9 10h6M9 12h6M9 14h6" '+GLC+' stroke-width="1.3"/></svg>';
+return n}
+const hint=a=>a.map(x=>'<span class="hk">'+BTN(x[0])+'<span>'+x[1]+'</span></span>').join('');
+$('#hints').innerHTML=hint([['dph','تنقّل'],['x','تشغيل'],['L2','مطولاً: MQM'],['ub','Quick Menu']]);
+$('#lh2').innerHTML=hint([['dp','تنقّل'],['L1R1','القوائم'],['x','فتح'],['sq','الفرز'],['tri','إعدادات اللعبة'],['o','رجوع']]);
+$('#gh2').innerHTML=hint([['dp','تنقّل'],['L1R1','الأقسام'],['x','فتح'],['o','رجوع']]);
+$('#sh2').innerHTML=hint([['dpv','تنقّل'],['dph','تغيير القيمة'],['x','اختيار'],['o','رجوع']]);
+$('#gvh').innerHTML=hint([['dph','السابق / التالي'],['dpu','معلومات'],['dpd','مفضلة'],['x','تكبير'],['tri','خيارات'],['o','إغلاق']]);
+function gTabStep(d){if(!galOpen||gv>=0)return;gtab=(gtab+d+GTABS.length)%GTABS.length;galAlb=null;gi=0;gf=0;gDraw()}
+function libSortStep(){if(!libOpen||libDet)return;libSort=(libSort+1)%3;libDraw();toast('الفرز: '+LSORT[libSort])}
 
 /* ===== Notifications (UB = Home button) and floating player ===== */
 let nMode=0,nCur=null,nQ=[],nTmr=null,nRi=0,nDi=0,nLog=[];
@@ -554,9 +616,9 @@ return a}
 function nNext(){const n=nQ.shift();if(!n){nCur=null;nHints();return}nCur=n;n.seen=true;nMode=0;nwrap.classList.remove('fo');nDraw();requestAnimationFrame(()=>requestAnimationFrame(()=>nwrap.classList.add('on')));nTmr=setTimeout(nHide,10000)}
 const nHintOrig=$('#hints').innerHTML;
 function nHints(){const h=$('#hints'),n=nCur;if(!n){h.innerHTML=nHintOrig;return}
-if(nMode===0)h.innerHTML='<span>UB تحديد الإشعار</span>';
-else if(nMode===1)h.innerHTML='<span>'+(n.ty==='vid'?'△ تشغيل في نافذة عائمة':n.ty==='msg'?'✕ رد':'✕ فتح')+'</span><span>L2 تجاهل</span><span>UB رجوع</span>';
-else h.innerHTML='<span>Enter إرسال</span><span>Esc رجوع</span><span>L2 تجاهل</span>'}
+if(nMode===0)h.innerHTML=hint([['ub','تحديد الإشعار']]);
+else if(nMode===1)h.innerHTML=hint([n.ty==='vid'?['tri','تشغيل في نافذة عائمة']:['x',n.ty==='msg'?'رد':'فتح'],['L2','تجاهل'],['ub','رجوع']]);
+else h.innerHTML=hint([['R2','إرسال'],['o','رجوع'],['L2','تجاهل']])}
 function nDraw(){const n=nCur;if(!n)return;const a=NAPP[n.app];nc.innerHTML='<div class="ni" style="background:'+a[0]+'">'+a[1]+'</div><div class="nb"><div class="nap">'+n.app+' • الآن</div><div class="ntt" dir="auto">'+n.t+'</div><div class="ntx" dir="auto">'+n.x+'</div></div>';nHints()}
 function nHide(){clearTimeout(nTmr);kbHide();nwrap.classList.remove('on','fo');nr.classList.remove('on');nMode=0;setTimeout(()=>{nCur=null;nNext()},1000)}
 function ub(){if(nCur&&nMode===0&&nwrap.classList.contains('on')){clearTimeout(nTmr);nMode=1;nwrap.classList.add('fo');nDraw();return}if(nMode===1){nMode=0;nwrap.classList.remove('fo');nDraw();nTmr=setTimeout(nHide,6000);return}if(nMode)return;qpo?qpClose():qpOpen()}
@@ -569,7 +631,7 @@ function nBack(){if(nMode===2){const i=$('#nin');if(i)i.blur();nMode=1;nr.classL
 let fwOn=false,fwP=0,fwPlay=true,fwDu=600,fwT=null,fwN=null;
 const fmt=t=>Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');
 function fwOpen(n){fwN=n;fwOn=true;fwP=0;fwPlay=true;fwDu=n.du||600;fw.classList.add('on');fwDraw();clearInterval(fwT);fwT=setInterval(()=>{if(fwPlay){fwP+=.25;if(fwP>=fwDu){fwClose();return}}fwDraw()},250)}
-function fwDraw(){if(!fwOn)return;fw.innerHTML='<div class="fh"><i>▶</i><b dir="auto">'+fwN.x+'</b><span class="fx" id="fwx">✕</span></div><div class="fv"><span>'+(fwPlay?'❚❚':'▶')+'</span><em>محاكاة: في النظام الحقيقي يشتغل المقطع هنا</em></div><div class="fp"><i style="width:'+(fwP/fwDu*100)+'%"></i></div><div class="ff"><span>'+fmt(fwP)+' / '+fmt(fwDu)+'</span><span>△ إيقاف/تشغيل • ▢ أو X إغلاق</span></div>';$('#fwx').onclick=fwClose;fw.querySelector('.fv').onclick=fwToggle}
+function fwDraw(){if(!fwOn)return;fw.innerHTML='<div class="fh"><i>▶</i><b dir="auto">'+fwN.x+'</b><span class="fx" id="fwx">✕</span></div><div class="fv"><span>'+(fwPlay?'❚❚':'▶')+'</span><em>محاكاة: في النظام الحقيقي يشتغل المقطع هنا</em></div><div class="fp"><i style="width:'+(fwP/fwDu*100)+'%"></i></div><div class="ff"><span>'+fmt(fwP)+' / '+fmt(fwDu)+'</span><span>'+hint([['tri','إيقاف / تشغيل'],['sq','إغلاق']])+'</span></div>';$('#fwx').onclick=fwClose;fw.querySelector('.fv').onclick=fwToggle}
 function fwToggle(){if(!fwOn)return;fwPlay=!fwPlay;fwDraw()}
 function fwClose(){if(!fwOn)return;fwOn=false;clearInterval(fwT);fw.classList.remove('on')}
 
@@ -589,7 +651,7 @@ let h='<div class="kt"><span>'+(kbLang==='ar'?'العربية':'English')+(kbLay
 rows.forEach((r,ri)=>{h+='<div class="kr">';r.forEach((t,ci)=>{let c='kk';if(KSIDE.includes(t))c+=' sd';if(t===SPC)c+=' ev';if(ri===kbR&&ci===kbC)c+=' fc';if(t==='⇧'&&kbUp())c+=' on2';
 let lab=t;if(t==='⇧'&&kbCaps)lab='⇪';if(t==='␣'||t===SPC)lab='';else if(t==='LANG')lab=kbLang==='en'?'ع':'EN';else if(kbLang==='en'&&kbLayer==='abc'&&kbUp()&&/^[a-z]$/.test(t))lab=t.toUpperCase();else if(/[\u064B-\u0652]/.test(t))lab='ـ'+t;
 h+='<div class="'+c+'" data-r="'+ri+'" data-c="'+ci+'">'+lab+'</div>'});h+='</div>'});
-h+='<div class="kh"><span>✕ إدخال</span><span>□ حذف</span><span>△ مسافة</span><span>L1 R1 المؤشر</span><span>L2 Capital (مرتان = قفل)</span><span>R2 Enter</span><span>العصا اليمنى: المؤشر</span><span>○ إغلاق</span></div>';
+h+='<div class="kh">'+hint([['x','إدخال'],['sq','حذف'],['tri','مسافة'],['L1R1','المؤشر'],['L2','Capital'],['R2','Enter'],['rs','المؤشر'],['o','إغلاق']])+'</div>';
 kbEl.innerHTML=h;kbEl.querySelectorAll('.kk').forEach(d=>d.onclick=()=>{kbR=+d.dataset.r;kbC=+d.dataset.c;kbPress()})}
 function kbOpen(inp,onEnter){kbIn=inp;kbEnter=onEnter;kbOn=true;inp.inputMode='none';kbLang=S.lang==='English'?'en':'ar';kbLayer='abc';kbShift=false;kbCaps=false;kbR=1;kbC=0;kbDraw();kbEl.classList.add('on');$('#hints').style.visibility='hidden';$('#nrep').classList.add('kbo');inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length)}
 function kbHide(){kbOn=false;kbEl.classList.remove('on');$('#hints').style.visibility='';$('#nrep').classList.remove('kbo')}
@@ -620,11 +682,11 @@ addEventListener('pointerdown',e=>{if(e.pointerType==='touch')lastIn='touch'});
 const VP={b:Array(17).fill(0),t:Array(17).fill(0),a:[0,0,0,0],on:false};
 function getPad(){const r=(navigator.getGamepads?navigator.getGamepads():[])[0];if(r)return r;if(!VP.on)return null;return {buttons:VP.b.map(v=>({pressed:!!v,value:v?1:0})),axes:VP.a.slice()}}
 const vpEl=document.createElement('div');vpEl.id='vp';
-vpEl.innerHTML='<div class="vc vl"><div class="vr"><div class="vb" data-i="6">L2</div><div class="vb" data-i="4">L1</div></div>'
-+'<div class="vdp"><div class="vb" data-i="12" style="grid-area:1/2">▲</div><div class="vb" data-i="14" style="grid-area:2/1">◀</div><div class="vb" data-i="15" style="grid-area:2/3">▶</div><div class="vb" data-i="13" style="grid-area:3/2">▼</div></div>'
-+'<div class="vr2"><div class="stk" data-s="0"><i></i></div><div class="vb rd" data-i="16">UB</div><div class="vb rd" data-i="9">OPT</div></div></div>'
-+'<div class="vc vrt"><div class="vr"><div class="vb" data-i="5">R1</div><div class="vb" data-i="7">R2</div></div>'
-+'<div class="vfc"><div class="vb rd" data-i="3" style="grid-area:1/2">△</div><div class="vb rd" data-i="2" style="grid-area:2/1">□</div><div class="vb rd" data-i="1" style="grid-area:2/3">○</div><div class="vb rd" data-i="0" style="grid-area:3/2">✕</div></div>'
+vpEl.innerHTML='<div class="vc vl"><div class="vr"><div class="vb trg" data-i="6">L2</div><div class="vb" data-i="4">L1</div></div>'
++'<div class="vdp"><div class="vb" data-i="12" style="grid-area:1/2"><svg viewBox="0 0 24 24" style="transform:rotate(0deg)"><path d="M12 5l8 12H4z" fill="currentColor"/></svg></div><div class="vb" data-i="14" style="grid-area:2/1"><svg viewBox="0 0 24 24" style="transform:rotate(-90deg)"><path d="M12 5l8 12H4z" fill="currentColor"/></svg></div><div class="vb" data-i="15" style="grid-area:2/3"><svg viewBox="0 0 24 24" style="transform:rotate(90deg)"><path d="M12 5l8 12H4z" fill="currentColor"/></svg></div><div class="vb" data-i="13" style="grid-area:3/2"><svg viewBox="0 0 24 24" style="transform:rotate(180deg)"><path d="M12 5l8 12H4z" fill="currentColor"/></svg></div></div>'
++'<div class="vr2"><div class="stk" data-s="0"><i></i></div><div class="vb rd" data-i="16">'+BTN('ub')+'</div><div class="vb rd" data-i="9">'+BTN('opt')+'</div></div></div>'
++'<div class="vc vrt"><div class="vr"><div class="vb" data-i="5">R1</div><div class="vb trg" data-i="7">R2</div></div>'
++'<div class="vfc"><div class="vb rd" data-i="3" style="grid-area:1/2">'+'<svg viewBox="0 0 24 24"><g '+GLC+' stroke-width="2">'+GFACE.tri+'</g></svg>'+'</div><div class="vb rd" data-i="2" style="grid-area:2/1">'+'<svg viewBox="0 0 24 24"><g '+GLC+' stroke-width="2">'+GFACE.sq+'</g></svg>'+'</div><div class="vb rd" data-i="1" style="grid-area:2/3">'+'<svg viewBox="0 0 24 24"><g '+GLC+' stroke-width="2">'+GFACE.o+'</g></svg>'+'</div><div class="vb rd" data-i="0" style="grid-area:3/2">'+'<svg viewBox="0 0 24 24"><g '+GLC+' stroke-width="2">'+GFACE.x+'</g></svg>'+'</div></div>'
 +'<div class="vr2 end"><div class="stk" data-s="1"><i></i></div></div></div>';
 stage.appendChild(vpEl);
 vpEl.querySelectorAll('.vb').forEach(el=>{const i=+el.dataset.i;

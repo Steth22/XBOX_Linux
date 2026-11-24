@@ -199,6 +199,13 @@ Categories (all required, in this order):
 - Reusable component (`kbOpen(input, onEnter)`): the notification reply box is the first user; Wi-Fi passwords and Library search will reuse it.
 - Not designed yet: predictive text/emoji, caps lock, hold-to-repeat delete.
 
+### 2.11 Layout and button glyphs (v5 polish)
+
+- Every hint bar uses controller glyphs instead of keyboard text: face buttons (cross, circle, square, triangle) as outlined circles, L1/R1 as bumper shapes, L2/R2 as trigger shapes, the D-pad with the active arms highlighted (all, left/right, up/down, up, down), the right stick, UB and Options. One shared glyph function draws them all (theme-colored, swappable).
+- Library and Gallery: title row (with item count, and storage for the Gallery), then a tab row framed by L1 and R1 glyphs (L1/R1 switch tabs in both). Tabs have sharp corners; the active tab has a blue underline. Library grid has 7 columns so two full rows fit. Library sort chip shows the square glyph (square changes the sort).
+- Settings: a divider between the category list and the content, the selected category has a blue edge, the content heading is left-aligned with a one-line description of the category, rows have sharp corners.
+- The virtual controller uses the same glyphs (bumper/trigger shapes, D-pad arrows, face symbols, UB logo, Options). While it is on, the Gallery viewer's on-screen buttons are hidden (the glyph hint bar remains).
+
 ### 2.10 Virtual controller for testing (mockup only)
 
 - An on-screen controller (D-pad, left and right sticks, cross/circle/square/triangle, L1/L2/R1/R2, UB, Options) feeds the same input path as a real gamepad (standard mapping), so every screen, the boot flow, notifications and the keyboard can be tested by touch or mouse. A real gamepad, when connected, takes priority.
