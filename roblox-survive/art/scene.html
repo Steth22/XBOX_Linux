@@ -1,0 +1,174 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@900&family=Lilita+One&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#000}svg{display:block}</style></head><body>
+<svg id="s" xmlns="http://www.w3.org/2000/svg"></svg>
+<script>
+const mode = location.hash.slice(1) || "thumb1";
+const W = mode === "icon" ? 512 : 1920, H = mode === "icon" ? 512 : 1080;
+const svg = document.getElementById("s");
+svg.setAttribute("width", W); svg.setAttribute("height", H); svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent = svg) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+let seed = 7; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+const defs = el("defs", {});
+function grad(id, stops, x2 = 0, y2 = 1, radial = false) {
+  const g = el(radial ? "radialGradient" : "linearGradient", radial ? { id } : { id, x1: 0, y1: 0, x2, y2 }, defs);
+  stops.forEach(([o, c, a]) => el("stop", { offset: o, "stop-color": c, "stop-opacity": a ?? 1 }, g));
+}
+const night = mode === "thumb2";
+grad("sky", night ? [[0, "#0b1430"], [0.55, "#1f2f5a"], [1, "#3b4f7a"]] : [[0, "#2c2f6b"], [0.45, "#c6567a"], [0.75, "#f39a4d"], [1, "#ffd27a"]]);
+grad("sun", night ? [[0, "#ffffff"], [0.5, "#dfe8ff", 0.9], [1, "#9fb4ff", 0]] : [[0, "#fff6c8"], [0.4, "#ffd56b", 0.95], [1, "#ff9a3c", 0]], 0, 1, true);
+grad("glow", [[0, "#ffb347", 0.85], [0.35, "#ff8a2b", 0.35], [1, "#ff6a00", 0]], 0, 1, true);
+grad("gold", [[0, "#fff1a8"], [0.5, "#ffc93c"], [1, "#e08a1e"]]);
+grad("ground", night ? [[0, "#1f3b2e"], [1, "#0d1c15"]] : [[0, "#4f8a3c"], [1, "#2b5a2a"]]);
+const f = el("filter", { id: "shadow", x: "-20%", y: "-20%", width: "140%", height: "140%" }, defs);
+el("feDropShadow", { dx: 0, dy: H * 0.006, stdDeviation: H * 0.006, "flood-color": "#000", "flood-opacity": 0.55 }, f);
+const blur = el("filter", { id: "blur" }, defs); el("feGaussianBlur", { stdDeviation: 3 }, blur);
+
+// sky, sun/moon, stars
+el("rect", { x: 0, y: 0, width: W, height: H, fill: "url(#sky)" });
+if (night) for (let i = 0; i < 160; i++) el("circle", { cx: rnd() * W, cy: rnd() * H * 0.55, r: rnd() * 1.8 + 0.4, fill: "#fff", opacity: rnd() * 0.7 + 0.3 });
+const sunX = mode === "icon" ? W * 0.72 : W * 0.7, sunY = mode === "icon" ? H * 0.3 : H * 0.36, sunR = mode === "icon" ? 150 : 300;
+el("circle", { cx: sunX, cy: sunY, r: sunR, fill: "url(#sun)" });
+el("circle", { cx: sunX, cy: sunY, r: sunR * 0.28, fill: night ? "#eef2ff" : "#fff2b8" });
+
+// mountain layers
+function mountains(baseY, amp, color, n) {
+  let d = `M0 ${H} L0 ${baseY}`;
+  for (let i = 0; i <= n; i++) { const x = i / n * W; const y = baseY - rnd() * amp; d += ` L${x} ${y}`; }
+  d += ` L${W} ${H} Z`; el("path", { d, fill: color });
+}
+mountains(H * 0.58, H * 0.18, night ? "#2a3963" : "#8a4f7d", 9);
+mountains(H * 0.66, H * 0.12, night ? "#1f2d4f" : "#5b3e6b", 13);
+
+// pine trees
+function pine(x, baseY, h, shade) {
+  const g = el("g", {});
+  const tw = h * 0.07;
+  el("rect", { x: x - tw / 2, y: baseY - h * 0.25, width: tw, height: h * 0.25, fill: "#3b2a1e" }, g);
+  for (let i = 0; i < 4; i++) {
+    const t = i / 4, w = h * (0.55 - t * 0.33), top = baseY - h * (0.22 + t * 0.2) - h * 0.32, bot = baseY - h * (0.16 + t * 0.2);
+    const c = shade(i);
+    el("polygon", { points: `${x},${top} ${x - w / 2},${bot} ${x + w / 2},${bot}`, fill: c }, g);
+  }
+  return g;
+}
+const far = i => night ? ["#16301f", "#1a3824", "#1d3e28", "#21452c"][i] : ["#2d5a3f", "#336547", "#386e4c", "#3e7852"][i];
+const near = i => night ? ["#0e2116", "#11281a", "#142e1e", "#173422"][i] : ["#1f4a32", "#245437", "#295d3c", "#2f6842"][i];
+for (let i = 0; i < 22; i++) pine(rnd() * W, H * (0.7 + rnd() * 0.04), H * (0.22 + rnd() * 0.12), far);
+el("path", { d: `M0 ${H * 0.74} Q ${W * 0.3} ${H * 0.69} ${W * 0.55} ${H * 0.74} T ${W} ${H * 0.72} L ${W} ${H} L 0 ${H} Z`, fill: "url(#ground)" });
+
+// campfire
+function campfire(x, y, s) {
+  el("circle", { cx: x, cy: y - s * 0.4, r: s * 3.2, fill: "url(#glow)" });
+  el("rect", { x: x - s * 1.1, y: y - s * 0.18, width: s * 2.2, height: s * 0.36, rx: s * 0.18, fill: "#5a3b26", transform: `rotate(18 ${x} ${y})` });
+  el("rect", { x: x - s * 1.1, y: y - s * 0.18, width: s * 2.2, height: s * 0.36, rx: s * 0.18, fill: "#6b4630", transform: `rotate(-18 ${x} ${y})` });
+  for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; el("ellipse", { cx: x + Math.cos(a) * s * 1.25, cy: y + Math.sin(a) * s * 0.35 + s * 0.1, rx: s * 0.28, ry: s * 0.2, fill: "#8d8f96" }); }
+  const flame = (w, h, c, dx) => el("path", { d: `M${x + dx - w} ${y} Q ${x + dx - w} ${y - h * 0.5} ${x + dx} ${y - h} Q ${x + dx + w} ${y - h * 0.5} ${x + dx + w} ${y} Z`, fill: c });
+  flame(s * 0.75, s * 2.2, "#ff6a1a", 0); flame(s * 0.5, s * 1.7, "#ffa31a", s * 0.15); flame(s * 0.28, s * 1.1, "#ffe27a", 0);
+}
+
+// our faceless explorer
+function explorer(x, y, s, withAxe = true) {
+  const g = el("g", { filter: "url(#shadow)" });
+  const skin = "#f1c29b", shirt = "#3f8a5a", shirtD = "#2f6c45", pants = "#5a4532", boots = "#3a2b21";
+  // backpack
+  el("rect", { x: x - s * 0.62, y: y - s * 2.55, width: s * 1.24, height: s * 1.35, rx: s * 0.22, fill: "#7a5536" }, g);
+  el("rect", { x: x - s * 0.75, y: y - s * 2.95, width: s * 1.5, height: s * 0.42, rx: s * 0.21, fill: "#a8463b" }, g);
+  // legs + boots
+  el("rect", { x: x - s * 0.5, y: y - s * 1.15, width: s * 0.42, height: s * 1.0, rx: s * 0.16, fill: pants }, g);
+  el("rect", { x: x + s * 0.08, y: y - s * 1.15, width: s * 0.42, height: s * 1.0, rx: s * 0.16, fill: pants }, g);
+  el("rect", { x: x - s * 0.56, y: y - s * 0.28, width: s * 0.54, height: s * 0.32, rx: s * 0.14, fill: boots }, g);
+  el("rect", { x: x + s * 0.02, y: y - s * 0.28, width: s * 0.54, height: s * 0.32, rx: s * 0.14, fill: boots }, g);
+  // torso
+  el("rect", { x: x - s * 0.62, y: y - s * 2.35, width: s * 1.24, height: s * 1.3, rx: s * 0.3, fill: shirt }, g);
+  el("rect", { x: x - s * 0.03, y: y - s * 2.3, width: s * 0.06, height: s * 1.15, fill: shirtD }, g);
+  el("rect", { x: x - s * 0.45, y: y - s * 2.0, width: s * 0.28, height: s * 0.22, rx: s * 0.05, fill: shirtD }, g);
+  el("rect", { x: x + s * 0.17, y: y - s * 2.0, width: s * 0.28, height: s * 0.22, rx: s * 0.05, fill: shirtD }, g);
+  el("rect", { x: x - s * 0.64, y: y - s * 1.22, width: s * 1.28, height: s * 0.16, fill: "#5c3f28" }, g);
+  el("rect", { x: x - s * 0.09, y: y - s * 1.24, width: s * 0.18, height: s * 0.2, fill: "#d9b14a" }, g);
+  // arms
+  el("rect", { x: x - s * 0.98, y: y - s * 2.3, width: s * 0.36, height: s * 1.15, rx: s * 0.18, fill: shirt, transform: `rotate(8 ${x - s * 0.8} ${y - s * 2.2})` }, g);
+  el("circle", { cx: x - s * 0.98, cy: y - s * 1.12, r: s * 0.2, fill: skin }, g);
+  // axe in the right hand (raised)
+  if (withAxe) {
+    el("rect", { x: x + s * 0.62, y: y - s * 2.3, width: s * 0.36, height: s * 0.95, rx: s * 0.18, fill: shirt, transform: `rotate(-35 ${x + s * 0.8} ${y - s * 2.2})` }, g);
+    const hx = x + s * 1.28, hy = y - s * 1.55;
+    el("rect", { x: hx - s * 0.07, y: hy - s * 1.55, width: s * 0.14, height: s * 1.9, rx: s * 0.06, fill: "#7a5434", transform: `rotate(18 ${hx} ${hy})` }, g);
+    el("path", { d: `M${hx + s * 0.35} ${hy - s * 1.45} L${hx + s * 1.05} ${hy - s * 1.7} Q ${hx + s * 1.2} ${hy - s * 1.25} ${hx + s * 0.95} ${hy - s * 0.85} L${hx + s * 0.28} ${hy - s * 1.1} Z`, fill: "#b9bec8", transform: `rotate(18 ${hx} ${hy})` }, g);
+    el("circle", { cx: hx, cy: hy, r: s * 0.2, fill: skin }, g);
+  } else {
+    el("rect", { x: x + s * 0.62, y: y - s * 2.3, width: s * 0.36, height: s * 1.15, rx: s * 0.18, fill: shirt, transform: `rotate(-8 ${x + s * 0.8} ${y - s * 2.2})` }, g);
+    el("circle", { cx: x + s * 0.98, cy: y - s * 1.12, r: s * 0.2, fill: skin }, g);
+  }
+  // neck, faceless head, explorer hat
+  el("rect", { x: x - s * 0.17, y: y - s * 2.55, width: s * 0.34, height: s * 0.3, fill: skin }, g);
+  el("circle", { cx: x, cy: y - s * 3.0, r: s * 0.55, fill: skin }, g);
+  el("ellipse", { cx: x, cy: y - s * 3.38, rx: s * 0.95, ry: s * 0.18, fill: "#c4a068" }, g);
+  el("rect", { x: x - s * 0.52, y: y - s * 3.88, width: s * 1.04, height: s * 0.55, rx: s * 0.2, fill: "#d7b47a" }, g);
+  el("rect", { x: x - s * 0.53, y: y - s * 3.5, width: s * 1.06, height: s * 0.12, fill: "#7a5434" }, g);
+  return g;
+}
+
+// faceless wolf silhouette (night art)
+function wolf(x, y, s, flip) {
+  const g = el("g", { transform: flip ? `translate(${2 * x} 0) scale(-1 1)` : "" });
+  const c = "#3c4250";
+  el("rect", { x: x - s * 1.4, y: y - s * 1.6, width: s * 2.4, height: s * 0.95, rx: s * 0.4, fill: c }, g);
+  el("rect", { x: x + s * 0.7, y: y - s * 2.15, width: s * 0.9, height: s * 0.8, rx: s * 0.25, fill: c }, g);
+  el("rect", { x: x + s * 1.4, y: y - s * 1.9, width: s * 0.55, height: s * 0.38, rx: s * 0.15, fill: c }, g);
+  el("polygon", { points: `${x + s * 0.8},${y - s * 2.1} ${x + s * 0.95},${y - s * 2.6} ${x + s * 1.15},${y - s * 2.1}`, fill: c }, g);
+  el("polygon", { points: `${x + s * 1.2},${y - s * 2.1} ${x + s * 1.35},${y - s * 2.6} ${x + s * 1.55},${y - s * 2.1}`, fill: c }, g);
+  for (const lx of [-1.2, -0.6, 0.4, 0.9]) el("rect", { x: x + s * lx, y: y - s * 0.8, width: s * 0.28, height: s * 0.8, rx: s * 0.1, fill: c }, g);
+  el("rect", { x: x - s * 2.1, y: y - s * 1.7, width: s * 0.9, height: s * 0.25, rx: s * 0.12, fill: c, transform: `rotate(-20 ${x - s * 1.3} ${y - s * 1.6})` }, g);
+}
+
+function title(x, y, size, sub) {
+  const t = el("text", { x, y, "font-family": "Cairo", "font-weight": 900, "font-size": size, "text-anchor": "middle", fill: "url(#gold)", stroke: "#3a1d08", "stroke-width": size * 0.07, "paint-order": "stroke", filter: "url(#shadow)" });
+  t.textContent = "البقاء";
+  if (sub) {
+    const e = el("text", { x, y: y + size * 0.62, "font-family": "Lilita One", "font-size": size * 0.42, "text-anchor": "middle", fill: "#ffffff", stroke: "#3a1d08", "stroke-width": size * 0.03, "paint-order": "stroke", "letter-spacing": size * 0.06, filter: "url(#shadow)" });
+    e.textContent = "SURVIVE";
+  }
+}
+function tagline(x, y, size, text) {
+  const pill = el("rect", { fill: "#140d08", opacity: 0.72 });
+  pills.push([pill, size]);
+  const t = el("text", { x, y, "font-family": "Cairo", "font-weight": 900, "font-size": size, "text-anchor": "middle", fill: "#fff", stroke: "#1b1208", "stroke-width": size * 0.12, "paint-order": "stroke" });
+  t.textContent = text;
+  pills[pills.length - 1].push(t);
+}
+const pills = [];
+
+if (mode === "icon") {
+  for (let i = 0; i < 8; i++) pine(rnd() * W, H * 0.8, H * (0.35 + rnd() * 0.15), near);
+  campfire(W * 0.24, H * 0.83, 26);
+  explorer(W * 0.47, H * 0.98, 90);
+  el("rect", { x: 0, y: H * 0.74, width: W, height: H * 0.26, fill: "url(#ground)", opacity: 0.0 });
+  title(W * 0.5, H * 0.21, 116, false);
+} else if (mode === "thumb1") {
+  for (let i = 0; i < 14; i++) { const x = rnd() * W; if (Math.abs(x - W * 0.62) > 260) pine(x, H * (0.86 + rnd() * 0.08), H * (0.38 + rnd() * 0.16), near); }
+  campfire(W * 0.47, H * 0.86, 44);
+  explorer(W * 0.62, H * 0.96, 128);
+  title(W * 0.25, H * 0.32, 250, true);
+  tagline(W * 0.25, H * 0.66, 58, "اجمع • قاتل • انجُ");
+} else {
+  for (let i = 0; i < 14; i++) { const x = rnd() * W; if (Math.abs(x - W * 0.55) > 300) pine(x, H * (0.86 + rnd() * 0.08), H * (0.38 + rnd() * 0.16), near); }
+  campfire(W * 0.42, H * 0.88, 40);
+  explorer(W * 0.55, H * 0.96, 120);
+  wolf(W * 0.8, H * 0.95, 70, true);
+  wolf(W * 0.93, H * 0.9, 52, true);
+  title(W * 0.22, H * 0.3, 230, true);
+  tagline(W * 0.22, H * 0.62, 52, "الليل خطير... ابقَ قرب النار");
+}
+document.fonts.ready.then(() => {
+  for (const [pill, size, t] of pills) {
+    const b = t.getBBox();
+    const px = size * 0.7, py = size * 0.25;
+    pill.setAttribute("x", b.x - px); pill.setAttribute("y", b.y - py);
+    pill.setAttribute("width", b.width + px * 2); pill.setAttribute("height", b.height + py * 2);
+    pill.setAttribute("rx", (b.height + py * 2) / 2);
+  }
+  document.title = "ready";
+});
+</script></body></html>

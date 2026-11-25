@@ -1,0 +1,104 @@
+local L = {}
+
+L.ar = {
+	title = "البقاء",
+	play = "العب", ranking = "الترتيب", rooms = "غرفي", look = "المظهر", settings = "الإعدادات",
+	solo = "فردي", quick = "سريع", friend = "صديق", roomCode = "غرفة بكود",
+	create = "إنشاء", join = "دخول", enter = "ادخل", codeHint = "أدخل الكود", code = "الكود",
+	back = "رجوع", close = "إغلاق", save = "حفظ", saved = "تم الحفظ",
+	rank = "ترتيبك", xp = "خبرة", coins = "فلوس", sp = "مهارة", level = "مستوى",
+	noFriends = "لا أصدقاء في غرف", noRooms = "لا غرف بعد",
+	expired = "الغرفة انتهت", notFound = "الكود غير صحيح", full = "الغرفة ممتلئة",
+	busy = "حاول لاحقًا", teleporting = "جارٍ الانتقال...", wait = "انتظر قليلًا",
+	language = "اللغة", hoursLeft = "تنتهي بعد %d ساعة", players = "لاعبون",
+	skin = "البشرة", shirt = "القميص", pants = "البنطال", hat = "القبعة", extra = "إضافة",
+	bag = "الحقيبة", shop = "المتجر", buy = "شراء", sell = "بيع", sellAll = "بيع الكل",
+	buyBag = "حقيبة %d خانة", locked = "مقفلة", bagFull = "الحقيبة ممتلئة",
+	needCoins = "الفلوس لا تكفي", bought = "تم الشراء", sold = "تم البيع +%d",
+	lobby = "اللوبي", discard = "رمي", menu = "القائمة", levelUp = "مستوى %d!",
+	empty = "فارغ", hotbarTip = "اضغط خانة لتحريكها", tip = "اقطع الأشجار والصخور، والتاجر بجانب النار",
+	picked = "+%d %s", nodeEmpty = "فارغ",
+	hat_none = "بدون", hat_explorer = "مستكشف", hat_cap = "كاب", hat_beanie = "طاقية", hat_cowboy = "كاوبوي", hat_helmet = "خوذة",
+	ex_none = "بدون", ex_backpack = "حقيبة", ex_scarf = "وشاح", ex_belt = "حزام أدوات",
+	p_pick = "اقطف", p_trade = "تسوّق", p_cook = "اطبخ", p_take = "استرجع", p_search = "فتّش",
+	o_berries = "توت", o_vendor = "التاجر", o_fire = "نار", o_bag = "أغراض", o_crate = "صندوق",
+	skills = "المهارات", sk_health = "الصحة", sk_strength = "القوة", sk_luck = "الحظ", sk_speed = "السرعة", sk_resist = "المقاومة", sk_aid = "الإسعاف",
+	skd_health = "+10 صحة قصوى", skd_strength = "+10% ضرر", skd_luck = "توفير الأغراض والنجاة", skd_speed = "حركة أسرع", skd_resist = "جوع وعطش وبرد أبطأ", skd_aid = "علاج أسرع",
+	noPoints = "لا نقاط مهارة", maxed = "الحد الأقصى", upgrade = "ترقية",
+	hunger = "جوع", thirst = "عطش", temp = "حرارة", health = "صحة", night = "ليل", day = "نهار",
+	cooked = "تم الطبخ", noMeat = "لا لحم نيئ", broke = "انكسرت الأداة", noAmmo = "لا ذخيرة",
+	died = "سقطت أغراضك، ابحث عنها", notYours = "ليست لك بعد", lucky = "نجوت بالحظ!",
+	bossSpawn = "استيقظ حارس الغابة!", bossDown = "سقط حارس الغابة!", tooFar = "اقترب من التاجر",
+	placed = "تم الوضع", crateEmpty = "فارغ، عد لاحقًا", freezing = "تشعر بالبرد، ابحث عن نار",
+	starving = "أنت جائع", dehydrated = "أنت عطشان، اشرب من الماء", coinsGot = "+%d فلوس",
+	mob_rabbit = "أرنب", mob_deer = "غزال", mob_wolf = "ذئب", mob_zombie = "زومبي", mob_guardian = "حارس الغابة",
+	info = "معلومات", vendorTip = "التاجر بجانب النار",
+	mob_hare = "أرنب ثلجي", mob_snowwolf = "ذئب ثلجي", mob_polarbear = "دب قطبي", mob_yeti = "اليتي", mob_camel = "جمل", mob_scorpion = "عقرب", mob_scorpionking = "ملك العقارب", mob_goat = "ماعز جبلي", biome_forest = "الغابة", biome_snow = "الثلوج", biome_desert = "الصحراء", biome_mountains = "الجبال", biome_hills = "التلال", stash = "المخزن", stashFull = "المخزن ممتلئ", stashUp = "أصبح مخزنك %d خانة", upgradeStash = "تطوير", p_stash = "افتح", o_stash = "مخزن", yourItems = "أغراضك", tapToMove = "اضغط على غرض لنقله", dropOutside = "اسحب لترتيب الأغراض، واسحب خارج الحقيبة للرمي", st_dmg = "ضرر", st_power = "قوة", st_dur = "متانة", st_armor = "حماية", owned = "لديك", cat_tools = "أدوات", cat_weapons = "أسلحة", cat_armor = "دروع", cat_supplies = "مؤن", needPickaxe = "تحتاج معولًا", needBetterPickaxe = "تحتاج معولًا حديديًا أو أفضل", armorOn = "لبست الدرع", unequip = "خلع", armorLbl = "الدرع", cooking = "جارٍ الطبخ...", cookedOne = "+1 لحم مطبوخ", day = "اليوم %d", newDay = "بدأ اليوم %d", shopClosed = "المتجر مغلق ليلًا", skillUp = "تمت الترقية: %s", spGot = "+%d نقطة مهارة",
+	roomLimit = "وصلت للحد الأقصى من الغرف", buyRooms = "+2 غرف (30 روبوكس)", passMissing = "غير متاح بعد",
+	deleteRoom = "حذف", roomSettings = "إعدادات الغرفة", maxPlayers = "عدد اللاعبين", access = "الدخول",
+	acc_public = "عامة", acc_friends = "الأصدقاء", acc_request = "بطلب", myRoom = "غرفتي",
+	requestSent = "تم إرسال طلب الانضمام", requestDeclined = "رُفض طلبك", requestTimeout = "لم يرد صاحب الغرفة",
+	ownerOffline = "صاحب الغرفة غير متصل", friendsOnly = "الغرفة للأصدقاء فقط", joinRequest = "%s يريد الانضمام",
+	accept = "قبول", decline = "رفض", deleted = "تم الحذف", confirmDelete = "اضغط مرة أخرى للحذف", roomsCount = "غرفك %d/%d",
+	mob_boar = "خنزير بري", mob_bear = "دب", mob_spider = "عنكبوت", mob_alpha = "زعيم الذئاب",
+	bossSpawnX = "ظهر %s!", bossDownX = "سقط %s!",
+	dragTip = "اسحب لتبديل الأماكن، أو اضغط للخيارات", drop1 = "رمي 1", dropAll = "رمي الكل", split = "تقسيم", dragHere = "اسحب هنا للرمي",
+
+}
+
+L.en = {
+	title = "SURVIVE",
+	play = "Play", ranking = "Ranking", rooms = "My Rooms", look = "Look", settings = "Settings",
+	solo = "Solo", quick = "Quick", friend = "Friend", roomCode = "Room Code",
+	create = "Create", join = "Join", enter = "Enter", codeHint = "Enter code", code = "Code",
+	back = "Back", close = "Close", save = "Save", saved = "Saved",
+	rank = "Your rank", xp = "XP", coins = "Coins", sp = "Skill", level = "Level",
+	noFriends = "No friends in rooms", noRooms = "No rooms yet",
+	expired = "Room expired", notFound = "Invalid code", full = "Room full",
+	busy = "Try later", teleporting = "Teleporting...", wait = "Please wait",
+	language = "Language", hoursLeft = "Ends in %dh", players = "Players",
+	skin = "Skin", shirt = "Shirt", pants = "Pants", hat = "Hat", extra = "Extra",
+	bag = "Bag", shop = "Shop", buy = "Buy", sell = "Sell", sellAll = "Sell all",
+	buyBag = "%d-slot bag", locked = "Locked", bagFull = "Bag full",
+	needCoins = "Not enough coins", bought = "Bought", sold = "Sold +%d",
+	lobby = "Lobby", discard = "Drop", menu = "Menu", levelUp = "Level %d!",
+	empty = "Empty", hotbarTip = "Tap a slot to move it", tip = "Chop trees and rocks, the trader is by the fire",
+	picked = "+%d %s", nodeEmpty = "Empty",
+	hat_none = "None", hat_explorer = "Explorer", hat_cap = "Cap", hat_beanie = "Beanie", hat_cowboy = "Cowboy", hat_helmet = "Helmet",
+	ex_none = "None", ex_backpack = "Backpack", ex_scarf = "Scarf", ex_belt = "Tool belt",
+	p_pick = "Pick", p_trade = "Shop", p_cook = "Cook", p_take = "Take", p_search = "Search",
+	o_berries = "Berries", o_vendor = "Trader", o_fire = "Fire", o_bag = "Items", o_crate = "Crate",
+	skills = "Skills", sk_health = "Health", sk_strength = "Strength", sk_luck = "Luck", sk_speed = "Speed", sk_resist = "Resistance", sk_aid = "First aid",
+	skd_health = "+10 max health", skd_strength = "+10% damage", skd_luck = "Save items, survive", skd_speed = "Move faster", skd_resist = "Slower hunger, thirst, cold", skd_aid = "Faster healing",
+	noPoints = "No skill points", maxed = "Maxed", upgrade = "Upgrade",
+	hunger = "Hunger", thirst = "Thirst", temp = "Temp", health = "Health", night = "Night", day = "Day",
+	cooked = "Cooked", noMeat = "No raw meat", broke = "Tool broke", noAmmo = "No ammo",
+	died = "You dropped your items, find them", notYours = "Not yours yet", lucky = "Lucky escape!",
+	bossSpawn = "The Forest Guardian has awoken!", bossDown = "The Forest Guardian has fallen!", tooFar = "Get closer to the trader",
+	placed = "Placed", crateEmpty = "Empty, come back later", freezing = "You are freezing, find a fire",
+	starving = "You are starving", dehydrated = "You are thirsty, drink water", coinsGot = "+%d coins",
+	mob_rabbit = "Rabbit", mob_deer = "Deer", mob_wolf = "Wolf", mob_zombie = "Zombie", mob_guardian = "Forest Guardian",
+	info = "Info", vendorTip = "The trader is by the fire",
+	mob_hare = "Snow Hare", mob_snowwolf = "Snow Wolf", mob_polarbear = "Polar Bear", mob_yeti = "Yeti", mob_camel = "Camel", mob_scorpion = "Scorpion", mob_scorpionking = "Scorpion King", mob_goat = "Mountain Goat", biome_forest = "Forest", biome_snow = "Snowlands", biome_desert = "Desert", biome_mountains = "Mountains", biome_hills = "Hills", stash = "Storage", stashFull = "Storage is full", stashUp = "Your storage now has %d slots", upgradeStash = "Upgrade", p_stash = "Open", o_stash = "Storage", yourItems = "Your items", tapToMove = "Tap an item to move it", dropOutside = "Drag to arrange, drag outside the bag to drop", st_dmg = "DMG", st_power = "Power", st_dur = "Durability", st_armor = "Armor", owned = "Owned", cat_tools = "Tools", cat_weapons = "Weapons", cat_armor = "Armor", cat_supplies = "Supplies", needPickaxe = "You need a pickaxe", needBetterPickaxe = "You need an iron pickaxe or better", armorOn = "Armor equipped", unequip = "Unequip", armorLbl = "Armor", cooking = "Cooking...", cookedOne = "+1 cooked meat", day = "Day %d", newDay = "Day %d begins", shopClosed = "The shop is closed at night", skillUp = "Upgraded: %s", spGot = "+%d skill point",
+	roomLimit = "Room limit reached", buyRooms = "+2 rooms (30 Robux)", passMissing = "Not available yet",
+	deleteRoom = "Delete", roomSettings = "Room settings", maxPlayers = "Max players", access = "Access",
+	acc_public = "Public", acc_friends = "Friends", acc_request = "By request", myRoom = "Mine",
+	requestSent = "Join request sent", requestDeclined = "Request declined", requestTimeout = "The owner didn't answer",
+	ownerOffline = "The room owner is offline", friendsOnly = "Friends only", joinRequest = "%s wants to join",
+	accept = "Accept", decline = "Decline", deleted = "Deleted", confirmDelete = "Tap again to delete", roomsCount = "Your rooms %d/%d",
+	mob_boar = "Boar", mob_bear = "Bear", mob_spider = "Spider", mob_alpha = "Alpha Wolf",
+	bossSpawnX = "%s has appeared!", bossDownX = "%s has fallen!",
+	dragTip = "Drag to move, tap for options", drop1 = "Drop 1", dropAll = "Drop all", split = "Split", dragHere = "Drag here to drop",
+
+}
+
+function L.t(lang, key)
+	local t = L[lang] or L.ar
+	return t[key] or L.en[key] or key
+end
+
+function L.f(lang, key, ...)
+	return string.format(L.t(lang, key), ...)
+end
+
+return L
