@@ -62,7 +62,7 @@ L.ar = {
 	discovered = "اكتشاف جديد: %s", wear = "ارتدِ", wearing = "ترتديها",
 	youDied = "لقد متّ", killedBy = "قتلك %s", respawnIn = "تعود بعد %d", itemsLeft = "أغراضك بقيت مكان موتك",
 	cause_hunger = "الجوع", cause_cold = "البرد", cause_heat = "الحر", cause_lava = "الحمم", cause_unknown = "مجهول",
-	map = "الخريطة", leg_village = "قرية", leg_trader = "تاجر", leg_cave = "كهف", leg_death = "أغراضك هنا", leg_you = "أنت", explored = "اكتشفت %d%% من العالم",
+	map = "الخريطة", leg_village = "قرية", leg_trader = "تاجر", leg_cave = "كهف", leg_death = "أغراضك هنا", leg_you = "أنت", leg_players = "اللاعبون", explored = "اكتشفت %d%% من العالم",
 	lava = "الحمم تحرقك!", village = "قرية", o_villager = "قروي", villageSafe = "أنت في حماية القرية",
 }
 
@@ -128,7 +128,7 @@ L.en = {
 	discovered = "New discovery: %s", wear = "Wear", wearing = "Wearing",
 	youDied = "You died", killedBy = "Killed by %s", respawnIn = "Back in %d", itemsLeft = "Your items stayed where you fell",
 	cause_hunger = "Hunger", cause_cold = "Cold", cause_heat = "Heat", cause_lava = "Lava", cause_unknown = "Unknown",
-	map = "Map", leg_village = "Village", leg_trader = "Trader", leg_cave = "Cave", leg_death = "Your items", leg_you = "You", explored = "Explored %d%% of the world",
+	map = "Map", leg_village = "Village", leg_trader = "Trader", leg_cave = "Cave", leg_death = "Your items", leg_you = "You", leg_players = "Players", explored = "Explored %d%% of the world",
 	lava = "The lava is burning you!", village = "Village", o_villager = "Villager", villageSafe = "The village guards protect you",
 }
 

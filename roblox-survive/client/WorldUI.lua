@@ -827,12 +827,13 @@ function M.start(gui, remotes)
 		UI.stroke(tip, Color3.new(1, 1, 1), 2)
 		local nose = UI.frame({ Size = UDim2.fromOffset(6, 10), AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 0.35), BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 59, Parent = me })
 		UI.corner(nose, 3)
+		local meTag = UI.text({ Text = T("leg_you"), Size = UDim2.fromOffset(60, 16), AnchorPoint = Vector2.new(0.5, 1), TextSize = 13, TextColor3 = Color3.fromRGB(120, 210, 255), TextStrokeTransparency = 0.2, ZIndex = 60, Parent = board })
 		local others = {}
 		-- legend
-		local legend = UI.frame({ Size = UDim2.new(1, 0, 0, 34), Position = UDim2.new(0, 0, 0, SIZE + 34), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		local legend = UI.frame({ Size = UDim2.new(1, 0, 0, 34), ClipsDescendants = false, Position = UDim2.new(0, 0, 0, SIZE + 34), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
 		UI.list(legend, 14, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
-		for _, l in ipairs({ { "village", c.gold, "leg_village" }, { "coin", Color3.fromRGB(255, 210, 90), "leg_trader" }, { "cave", Color3.fromRGB(170, 150, 200), "leg_cave" }, { "close", Color3.fromRGB(255, 70, 60), "leg_death" } }) do
-			local item = UI.frame({ Size = UDim2.fromOffset(118, 30), BackgroundTransparency = 1, ZIndex = 53, Parent = legend })
+		for _, l in ipairs({ { "village", c.gold, "leg_village" }, { "coin", Color3.fromRGB(255, 210, 90), "leg_trader" }, { "cave", Color3.fromRGB(170, 150, 200), "leg_cave" }, { "close", Color3.fromRGB(255, 70, 60), "leg_death" }, { "dot", Color3.fromRGB(120, 255, 140), "leg_players" } }) do
+			local item = UI.frame({ Size = UDim2.fromOffset(104, 30), BackgroundTransparency = 1, ZIndex = 53, Parent = legend })
 			local ic = UI.frame({ Size = UDim2.fromOffset(24, 24), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), BackgroundColor3 = Color3.fromRGB(20, 20, 24), ZIndex = 54, Parent = item })
 			UI.corner(ic, 12)
 			Icons.draw(l[1], ic, 17, l[2], UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
@@ -844,6 +845,7 @@ function M.start(gui, remotes)
 				local hrp = char and char:FindFirstChild("HumanoidRootPart")
 				if hrp then
 					me.Position = toMap(hrp.Position.X, hrp.Position.Z)
+					meTag.Position = me.Position - UDim2.fromOffset(0, 10)
 					local look = hrp.CFrame.LookVector
 					me.Rotation = math.deg(math.atan2(look.X, -look.Z))
 				end
@@ -852,12 +854,17 @@ function M.start(gui, remotes)
 					if r then
 						local dot = others[pl]
 						if not dot then
-							dot = UI.frame({ Size = UDim2.fromOffset(10, 10), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.fromRGB(120, 255, 140), ZIndex = 57, Parent = board })
-							UI.corner(dot, 5)
+							dot = UI.frame({ Size = UDim2.fromOffset(12, 12), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.fromRGB(120, 255, 140), ZIndex = 57, Parent = board })
+							UI.corner(dot, 6)
+							UI.stroke(dot, Color3.new(0, 0, 0), 1.5)
+							UI.text({ Text = pl.DisplayName, Size = UDim2.fromOffset(120, 16), AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -2), TextSize = 13, TextColor3 = Color3.fromRGB(170, 255, 180), TextStrokeTransparency = 0.2, ZIndex = 60, Parent = dot })
 							others[pl] = dot
 						end
 						dot.Position = toMap(r.Position.X, r.Position.Z)
 					end
+				end
+				for pl, dot in pairs(others) do
+					if not pl.Parent or not pl.Character then dot:Destroy() others[pl] = nil end
 				end
 				task.wait(0.1)
 			end

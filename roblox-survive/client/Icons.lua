@@ -85,6 +85,7 @@ function D.medal(f, c)
 	box(f, 0.5, 0.68, 0.46, 0.46, c, 0.15, 45)
 	box(f, 0.5, 0.68, 0.22, 0.22, c:Lerp(Color3.new(1, 1, 1), 0.45), 0.15, 45)
 end
+function D.dot(f, c) box(f, 0.5, 0.5, 0.6, 0.6, c, "round") end
 function D.map(f, c)
 	box(f, 0.22, 0.5, 0.3, 0.82, c, 0.08, 4) box(f, 0.5, 0.5, 0.3, 0.82, c:Lerp(Color3.new(0, 0, 0), 0.25), 0.08, -4) box(f, 0.78, 0.5, 0.3, 0.82, c, 0.08, 4)
 	box(f, 0.62, 0.38, 0.22, 0.22, Color3.fromRGB(220, 70, 60), "round")
