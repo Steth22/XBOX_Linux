@@ -25,6 +25,7 @@ C.SKILL_DROP_CHANCE = 0.01
 C.STASH_BASE = 10 -- storage slots at level 1
 C.STASH_STEP = 10 -- extra slots per upgrade
 C.STASH_MAX_LVL = 6
+C.MAP_CELLS = 48 -- the world map is a 48 x 48 grid of cells that get revealed as you explore
 function C.stashCost(lvl) -- price to go from lvl to lvl + 1
 	return math.floor(150 * lvl ^ 1.6 / 10) * 10
 end

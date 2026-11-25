@@ -100,4 +100,13 @@ check("armor looks", function()
 	assert(not rig:FindFirstChild("Armor"))
 	rig:Destroy()
 end)
+check("world map data", function()
+	local W = require(SSS.Services.World)
+	local Config = require(RS.Shared.Config)
+	assert(Config.MAP_CELLS == 48)
+	-- map places exist for the explored check
+	local n = 0
+	for _, f in ipairs({ "Villages", "Outposts", "Caves" }) do n += #workspace[f]:GetChildren() end
+	assert(n > 15, "places " .. n)
+end)
 return results

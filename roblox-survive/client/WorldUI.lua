@@ -760,6 +760,110 @@ function M.start(gui, remotes)
 		end
 	end
 
+	---------------------------------------------------------------- world map (only what you have explored)
+	local mapPoisList, mapExplored = {}, ""
+	local REGION_COLOR = {
+		forest = Color3.fromRGB(70, 128, 60), hills = Color3.fromRGB(128, 156, 88), snow = Color3.fromRGB(226, 232, 240),
+		desert = Color3.fromRGB(218, 188, 128), mountains = Color3.fromRGB(128, 128, 138), beach = Color3.fromRGB(224, 208, 158),
+		jungle = Color3.fromRGB(36, 104, 58), volcano = Color3.fromRGB(82, 52, 46),
+	}
+	local SEA = Color3.fromRGB(44, 92, 140)
+	local function cellColor(x, z)
+		local d = math.max(math.abs(x), math.abs(z))
+		if d > Biomes.SEA then return SEA end
+		local col = REGION_COLOR[Biomes.at(x, z)] or REGION_COLOR.forest
+		local n = math.noise(x / 180, z / 180, 5.5) * 0.18
+		return n > 0 and col:Lerp(Color3.new(1, 1, 1), n) or col:Lerp(Color3.new(0, 0, 0), -n)
+	end
+	local mapCells = {} -- index -> Frame (kept between opens)
+	local function mapModal()
+		local content = openModal("map", T("map"), UDim2.fromOffset(580, 650))
+		local N = Config.MAP_CELLS
+		local SIZE = 500
+		local cell = SIZE / N
+		local H = Biomes.HALF
+		local seen = 0
+		for i = 1, #mapExplored do if mapExplored:sub(i, i) == "1" then seen += 1 end end
+		UI.text({ Text = Locale.f(lang, "explored", math.floor(seen / (N * N) * 100 + 0.5)), Size = UDim2.new(1, 0, 0, 22), TextSize = 15, TextColor3 = c.dim, ZIndex = 53, Parent = content })
+		local board = UI.frame({ Size = UDim2.fromOffset(SIZE, SIZE), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 26), BackgroundColor3 = Color3.fromRGB(16, 18, 22), ClipsDescendants = true, ZIndex = 53, Parent = content })
+		UI.corner(board, 10)
+		UI.stroke(board, c.card2, 2)
+		local function toMap(x, z)
+			return UDim2.fromOffset((x + H) / (2 * H) * SIZE, (z + H) / (2 * H) * SIZE)
+		end
+		local function explored(x, z)
+			local cx, cz = math.floor((x + H) / (2 * H) * N), math.floor((z + H) / (2 * H) * N)
+			if cx < 0 or cz < 0 or cx >= N or cz >= N then return false end
+			local i = cz * N + cx + 1
+			return mapExplored:sub(i, i) == "1"
+		end
+		-- terrain of the explored cells
+		mapCells = {}
+		for i = 1, #mapExplored do
+			if mapExplored:sub(i, i) == "1" then
+				local cx, cz = (i - 1) % N, (i - 1) // N
+				local wx, wz = -H + (cx + 0.5) * (2 * H / N), -H + (cz + 0.5) * (2 * H / N)
+				mapCells[i] = UI.frame({ Size = UDim2.fromOffset(math.ceil(cell) + 1, math.ceil(cell) + 1), Position = UDim2.fromOffset(cx * cell, cz * cell), BackgroundColor3 = cellColor(wx, wz), BorderSizePixel = 0, ZIndex = 54, Parent = board })
+			end
+		end
+		-- places
+		local function marker(kind, x, z, color, size)
+			local holder = UI.frame({ Size = UDim2.fromOffset(size, size), AnchorPoint = Vector2.new(0.5, 0.5), Position = toMap(x, z), BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.25, ZIndex = 56, Parent = board })
+			UI.corner(holder, size / 2)
+			Icons.draw(kind, holder, size * 0.72, color, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+			return holder
+		end
+		local ICON = { village = { "village", c.gold }, trader = { "coin", Color3.fromRGB(255, 210, 90) }, cave = { "cave", Color3.fromRGB(170, 150, 200) } }
+		for _, poi in ipairs(mapPoisList) do
+			local def = ICON[poi[1]]
+			if def and explored(poi[2], poi[3]) then marker(def[1], poi[2], poi[3], def[2], 22) end
+		end
+		if state.death then
+			marker("close", state.death[1], state.death[2], Color3.fromRGB(255, 70, 60), 24)
+		end
+		-- you (an arrow that turns with you) and the other players
+		local me = UI.frame({ Size = UDim2.fromOffset(16, 16), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, ZIndex = 58, Parent = board })
+		local tip = UI.frame({ Size = UDim2.fromOffset(12, 12), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.62), Rotation = 45, BackgroundColor3 = Color3.fromRGB(80, 200, 255), ZIndex = 58, Parent = me })
+		UI.stroke(tip, Color3.new(1, 1, 1), 2)
+		local nose = UI.frame({ Size = UDim2.fromOffset(6, 10), AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 0.35), BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 59, Parent = me })
+		UI.corner(nose, 3)
+		local others = {}
+		-- legend
+		local legend = UI.frame({ Size = UDim2.new(1, 0, 0, 34), Position = UDim2.new(0, 0, 0, SIZE + 34), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		UI.list(legend, 14, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
+		for _, l in ipairs({ { "village", c.gold, "leg_village" }, { "coin", Color3.fromRGB(255, 210, 90), "leg_trader" }, { "cave", Color3.fromRGB(170, 150, 200), "leg_cave" }, { "close", Color3.fromRGB(255, 70, 60), "leg_death" } }) do
+			local item = UI.frame({ Size = UDim2.fromOffset(118, 30), BackgroundTransparency = 1, ZIndex = 53, Parent = legend })
+			local ic = UI.frame({ Size = UDim2.fromOffset(24, 24), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), BackgroundColor3 = Color3.fromRGB(20, 20, 24), ZIndex = 54, Parent = item })
+			UI.corner(ic, 12)
+			Icons.draw(l[1], ic, 17, l[2], UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+			UI.text({ Text = T(l[3]), Size = UDim2.new(1, -30, 1, 0), Position = UDim2.fromOffset(30, 0), TextXAlignment = Enum.TextXAlignment.Left, TextSize = 14, ZIndex = 54, Parent = item })
+		end
+		task.spawn(function()
+			while modalKind == "map" and board.Parent do
+				local char = player.Character
+				local hrp = char and char:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					me.Position = toMap(hrp.Position.X, hrp.Position.Z)
+					local look = hrp.CFrame.LookVector
+					me.Rotation = math.deg(math.atan2(look.X, -look.Z))
+				end
+				for _, pl in ipairs(Players:GetPlayers()) do
+					local r = pl ~= player and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart")
+					if r then
+						local dot = others[pl]
+						if not dot then
+							dot = UI.frame({ Size = UDim2.fromOffset(10, 10), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.fromRGB(120, 255, 140), ZIndex = 57, Parent = board })
+							UI.corner(dot, 5)
+							others[pl] = dot
+						end
+						dot.Position = toMap(r.Position.X, r.Position.Z)
+					end
+				end
+				task.wait(0.1)
+			end
+		end)
+	end
+
 	local function skillsModal()
 		local content = openModal("skills", T("skills"), UDim2.fromOffset(560, 560))
 		local head = UI.frame({ Size = UDim2.new(1, 0, 0, 40), BackgroundColor3 = c.card, ZIndex = 53, Parent = content })
@@ -830,6 +934,11 @@ function M.start(gui, remotes)
 	end)
 	Icons.draw("book", ib, 26, c.gold, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 	UI.keyHint(ib, "I", Enum.KeyCode.DPadLeft, UDim2.new(0, -4, 1, 4), Vector2.new(1, 0))
+	local mapB = UI.button({ Text = "", Size = UDim2.fromOffset(52, 52), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -134, 0, 228), BackgroundColor3 = c.card, Parent = root }, function()
+		if modalKind == "map" then closeModal() elseif state then act("map") mapModal() end
+	end)
+	Icons.draw("map", mapB, 26, Color3.fromRGB(150, 200, 120), UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+	UI.keyHint(mapB, "N", Enum.KeyCode.DPadRight, UDim2.new(0, -4, 1, 4), Vector2.new(1, 0))
 	UI.keyHint(mb, "M", Enum.KeyCode.DPadDown, UDim2.new(0, -4, 1, 4), Vector2.new(1, 0))
 
 	---------------------------------------------------------------- aiming for ranged tools
@@ -1015,6 +1124,7 @@ function M.start(gui, remotes)
 		if k == Enum.KeyCode.DPadUp and not modalKind then skillsModal() return end
 		if k == Enum.KeyCode.DPadDown and not modalKind then menuModal() return end
 		if k == Enum.KeyCode.DPadLeft and not modalKind then indexModal() return end
+		if k == Enum.KeyCode.DPadRight and not modalKind then act("map") mapModal() return end
 		if processed then return end
 		if k == Enum.KeyCode.M then
 			if modalKind == "menu" then closeModal() elseif not modalKind then menuModal() end
@@ -1028,6 +1138,8 @@ function M.start(gui, remotes)
 			if modalKind == "bag" then closeModal() else pending = nil bagModal() end
 		elseif input.KeyCode == Enum.KeyCode.K then
 			if modalKind == "skills" then closeModal() else skillsModal() end
+		elseif input.KeyCode == Enum.KeyCode.N then
+			if modalKind == "map" then closeModal() else act("map") mapModal() end
 		elseif input.KeyCode == Enum.KeyCode.I then
 			if modalKind == "index" then closeModal() else indexModal() end
 		end
@@ -1145,6 +1257,15 @@ function M.start(gui, remotes)
 		if key == "openShop" then
 			shopId = a or "forest"
 			if state then shopModal() end
+			return
+		end
+		if key == "mapData" then
+			mapPoisList, mapExplored = a or {}, b or ""
+			if modalKind == "map" then mapModal() end
+			return
+		end
+		if key == "explored" then
+			mapExplored = a or mapExplored
 			return
 		end
 		if key == "deathBy" then

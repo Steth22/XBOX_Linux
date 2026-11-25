@@ -36,6 +36,55 @@ local beds = {} -- [Player] = bed model they own
 local lastHit = {} -- [Player] = what hurt them last (shown on the death screen)
 local placedOnce = {} -- [Player] = already put at their saved spot this visit
 local lamp = {} -- [Player] = hotbar/bag slot of the lantern hanging in the left hand
+local deathBag = {} -- [Player] = { model, x, z } items left where the player died
+local mapDirty = {} -- [Player] = explored cells changed since the last send
+
+-- world map: reveal the cells around a position (a string of "0"/"1", one per cell)
+local MAPN = Config.MAP_CELLS
+local CELL = (2 * Biomes.HALF) / MAPN
+local function reveal(player, pos)
+	local room = Data.room(player)
+	if not room then return end
+	local ex = room.explored
+	if type(ex) ~= "string" or #ex ~= MAPN * MAPN then ex = string.rep("0", MAPN * MAPN) end
+	local cx = math.floor((pos.X + Biomes.HALF) / CELL)
+	local cz = math.floor((pos.Z + Biomes.HALF) / CELL)
+	local changed = false
+	for dz = -2, 2 do
+		for dx = -2, 2 do
+			local x, z = cx + dx, cz + dz
+			if dx * dx + dz * dz <= 5 and x >= 0 and z >= 0 and x < MAPN and z < MAPN then
+				local i = z * MAPN + x + 1
+				if ex:sub(i, i) ~= "1" then
+					ex = ex:sub(1, i - 1) .. "1" .. ex:sub(i + 1)
+					changed = true
+				end
+			end
+		end
+	end
+	room.explored = ex
+	if changed then mapDirty[player] = true end
+end
+
+-- places shown on the map (only where the player has explored)
+local pois = nil
+local function mapPois()
+	if pois then return pois end
+	pois = {}
+	local function add(kind, p) table.insert(pois, { kind, math.floor(p.X), math.floor(p.Z) }) end
+	local camp = workspace:FindFirstChild("Camp")
+	if camp then add("trader", camp:GetPivot().Position) end
+	for _, o in ipairs(workspace:FindFirstChild("Outposts") and workspace.Outposts:GetChildren() or {}) do add("trader", o:GetPivot().Position) end
+	for _, v in ipairs(workspace:FindFirstChild("Villages") and workspace.Villages:GetChildren() or {}) do
+		local c = v:GetAttribute("Center")
+		if c then add("village", c) end
+	end
+	for _, cv in ipairs(workspace:FindFirstChild("Caves") and workspace.Caves:GetChildren() or {}) do
+		local e = cv:GetAttribute("Entry")
+		if e then add("cave", e) end
+	end
+	return pois
+end
 
 -- the lantern hangs from the left hand while the right hand keeps its tool
 local function setLamp(player, on)
@@ -116,6 +165,7 @@ local function snapshot(player)
 		end)(),
 		sleeping = sleeping[player] ~= nil,
 		lamp = lamp[player] or 0,
+		death = (deathBag[player] and deathBag[player][1].Parent) and { deathBag[player][2], deathBag[player][3] } or nil,
 		dex = room.dex,
 		stash = Inventory.stashView(room.stash), stashLvl = room.stash.lvl,
 		stashCost = room.stash.lvl < Config.STASH_MAX_LVL and Config.stashCost(room.stash.lvl) or nil,
@@ -712,7 +762,8 @@ local function onCharacter(player, char)
 		if r and hrp then
 			local items = Inventory.takeAll(r.inv)
 			if #items > 0 then
-				Loot.drop(hrp.Position, items, player.UserId)
+				local bag = Loot.drop(hrp.Position, items, player.UserId)
+				if bag then deathBag[player] = { bag, math.floor(hrp.Position.X), math.floor(hrp.Position.Z) } end
 				notify(player, "died")
 			end
 		end
@@ -1072,6 +1123,10 @@ function actions.leave(player)
 end
 
 function actions.state(player) push(player) end
+function actions.map(player, room)
+	notify(player, "mapData", mapPois(), room.explored or string.rep("0", MAPN * MAPN))
+	mapDirty[player] = nil
+end
 function actions.wearMedal(player, room, region)
 	if type(region) ~= "string" or not room.dex.medals[region] then return end
 	room.dex.neck = region
@@ -1295,6 +1350,8 @@ function World.start(r)
 		lastHit[player] = nil
 		placedOnce[player] = nil
 		lamp[player] = nil
+		deathBag[player] = nil
+		mapDirty[player] = nil
 		selected[player] = nil
 		cooldown[player] = nil
 		luckCd[player] = nil
@@ -1314,6 +1371,11 @@ function World.start(r)
 					and hum.FloorMaterial ~= Enum.Material.Air and hum.FloorMaterial ~= Enum.Material.Water then
 					local p = hrp.Position
 					rr.pos = { math.floor(p.X * 10) / 10, math.floor(p.Y * 10) / 10, math.floor(p.Z * 10) / 10 }
+				end
+				if hrp and hum and hum.Health > 0 then reveal(pl, hrp.Position) end
+				if mapDirty[pl] and tick % 3 == 0 and rr then
+					mapDirty[pl] = nil
+					notify(pl, "explored", rr.explored)
 				end
 				local ok, err = pcall(lightAndBuffs, pl)
 				if not ok then Debug.log("tick.buffs", err) end
