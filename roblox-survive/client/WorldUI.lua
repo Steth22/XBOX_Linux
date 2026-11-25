@@ -496,10 +496,22 @@ function M.start(gui, remotes)
 		local cam = workspace.CurrentCamera
 		if not cam then return end
 		if on and not camState then
-			local camp = workspace:FindFirstChild("Camp")
-			local trader = camp and camp:FindFirstChild("Trader")
-			local hrp = trader and trader:FindFirstChild("HumanoidRootPart")
-			if not hrp then return end
+			-- the trader nearest to the player (camp, outposts or the secret markets)
+			local me = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			local hrp, best
+			for _, folderName in ipairs({ "Camp", "Outposts", "BlackMarkets" }) do
+				local f = workspace:FindFirstChild(folderName)
+				if f then
+					for _, d in ipairs(f:GetDescendants()) do
+						if d:IsA("Model") and d.Name == "Trader" then
+							local r = d:FindFirstChild("HumanoidRootPart")
+							local dist = r and me and (r.Position - me.Position).Magnitude or math.huge
+							if r and (not best or dist < best) then hrp, best = r, dist end
+						end
+					end
+				end
+			end
+			if not hrp or (best or math.huge) > 60 then return end
 			camState = { type = cam.CameraType, cf = cam.CFrame }
 			local look = hrp.CFrame.LookVector
 			local up = Vector3.new(0, 1, 0)
