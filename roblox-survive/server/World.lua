@@ -34,6 +34,7 @@ local buffs = {} -- [Player] = { [name] = expiry clock }
 local sleeping = {} -- [Player] = bed model
 local beds = {} -- [Player] = bed model they own
 local lastHit = {} -- [Player] = what hurt them last (shown on the death screen)
+local placedOnce = {} -- [Player] = already put at their saved spot this visit
 
 local function hasBuff(player, name)
 	local b = buffs[player]
@@ -568,9 +569,24 @@ local function onCharacter(player, char)
 	local profile = Data.profile(player)
 	Appearance.apply(char, profile and profile.look)
 	local spawn = workspace:FindFirstChild("ForestSpawn")
-	if spawn then
+	local saved = Data.room(player) and Data.room(player).pos
+	if saved and not placedOnce[player] then
+		-- back where the player left the room
+		char:PivotTo(CFrame.new(saved[1], saved[2] + 3, saved[3]))
+		-- far from the camp the ground may still be rebuilding: hold the player until it is solid
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if root and not workspace:GetAttribute("TerrainReady") then
+			root.Anchored = true
+			task.spawn(function()
+				local t0 = os.clock()
+				while not workspace:GetAttribute("TerrainReady") and os.clock() - t0 < 90 do task.wait(0.5) end
+				if root.Parent then root.Anchored = false end
+			end)
+		end
+	elseif spawn then
 		char:PivotTo(CFrame.new(spawn.Position + Vector3.new(rng:NextNumber(-8, 8), 4, rng:NextNumber(-8, 8))))
 	end
+	placedOnce[player] = true
 	selected[player] = 0
 	Survival.reset(player)
 	local room = Data.room(player)
@@ -590,6 +606,8 @@ local function onCharacter(player, char)
 	hum.Health = hum.MaxHealth
 	hum.Died:Connect(function()
 		notify(player, "deathBy", lastHit[player] or "unknown")
+		local rr = Data.room(player)
+		if rr then rr.pos = nil end
 		lastHit[player] = nil
 		-- ragdoll: joints become ball sockets so the body collapses onto the ground
 		pcall(function()
@@ -1093,6 +1111,11 @@ local function onJoin(player)
 		if not serverCode then Rooms.touch(code) end
 		serverRec = rec
 		if (rec.day or 1) > (ReplicatedStorage:GetAttribute("Day") or 1) then ReplicatedStorage:SetAttribute("Day", rec.day) end
+		-- the room keeps its time of day between visits (a fresh server would start in the morning)
+		if not serverCode and type(rec.clock) == "number" then
+			Lighting.ClockTime = rec.clock % 24
+			ReplicatedStorage:SetAttribute("Night", Lighting.ClockTime < 6 or Lighting.ClockTime > 18.5)
+		end
 		local isOwner = rec.owner == player.UserId
 		if not isOwner then
 			if #Players:GetPlayers() > (rec.maxPlayers or Config.MAX_PLAYERS) then Rooms.toLobby(player, "full") return end
@@ -1189,7 +1212,15 @@ function World.start(r)
 		p.CharacterAdded:Connect(function(char) onCharacter(p, char) end)
 		task.spawn(onJoin, p)
 	end
+	local function saveClock()
+		if serverCode and serverCode ~= "TEST00" then
+			local clock, day = Lighting.ClockTime, ReplicatedStorage:GetAttribute("Day") or 1
+			Rooms.update(serverCode, function(rec) rec.clock = clock rec.day = math.max(rec.day or 1, day) end)
+		end
+	end
+	game:BindToClose(saveClock)
 	Players.PlayerRemoving:Connect(function(player)
+		if #Players:GetPlayers() <= 1 then task.spawn(saveClock) end
 		if sleeping[player] then
 			local bed = sleeping[player]
 			sleeping[player] = nil
@@ -1200,6 +1231,7 @@ function World.start(r)
 		beds[player] = nil
 		buffs[player] = nil
 		lastHit[player] = nil
+		placedOnce[player] = nil
 		selected[player] = nil
 		cooldown[player] = nil
 		luckCd[player] = nil
@@ -1212,6 +1244,14 @@ function World.start(r)
 			task.wait(1)
 			tick += 1
 			for _, pl in ipairs(Players:GetPlayers()) do
+				-- remember where the player stands (saved with the room)
+				local hrp, hum = hrpOf(pl)
+				local rr = Data.room(pl)
+				if rr and hrp and hum and hum.Health > 0 and placedOnce[pl] and tick % 3 == 0 and not sleeping[pl]
+					and hum.FloorMaterial ~= Enum.Material.Air and hum.FloorMaterial ~= Enum.Material.Water then
+					local p = hrp.Position
+					rr.pos = { math.floor(p.X * 10) / 10, math.floor(p.Y * 10) / 10, math.floor(p.Z * 10) / 10 }
+				end
 				local ok, err = pcall(lightAndBuffs, pl)
 				if not ok then Debug.log("tick.buffs", err) end
 				push(pl)
@@ -1227,6 +1267,10 @@ function World.start(r)
 				for _, pl in ipairs(Players:GetPlayers()) do Rooms.setPresence(pl.UserId, serverCode) end
 			end
 			if serverCode and tick % 1200 == 0 then Rooms.touch(serverCode) end
+			if serverCode and serverCode ~= "TEST00" and tick % 45 == 0 then
+				local clock, day = Lighting.ClockTime, ReplicatedStorage:GetAttribute("Day") or 1
+				task.spawn(Rooms.update, serverCode, function(rec) rec.clock = clock rec.day = math.max(rec.day or 1, day) end)
+			end
 		end
 	end)
 end

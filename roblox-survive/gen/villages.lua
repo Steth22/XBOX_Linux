@@ -69,60 +69,151 @@ local function randomLook()
 	return { skin = vr:NextInteger(1, 6), shirt = vr:NextInteger(1, 8), pants = vr:NextInteger(1, 6), hat = ({ "none", "cap", "beanie", "explorer", "cowboy" })[vr:NextInteger(1, 5)], extra = ({ "none", "scarf", "belt", "backpack" })[vr:NextInteger(1, 4)] }
 end
 
--- ---------------------------------------------------------------- houses (one style per region)
+-- ---------------------------------------------------------------- houses (a style per region, every house different)
 local STYLE = {
-	forest = { wall = Color3.fromRGB(140, 100, 66), roof = Color3.fromRGB(120, 52, 40), mat = Enum.Material.WoodPlanks, roofMat = Enum.Material.WoodPlanks, kind = "cottage" },
-	hills = { wall = Color3.fromRGB(196, 186, 160), roof = Color3.fromRGB(70, 90, 120), mat = Enum.Material.Plaster, roofMat = Enum.Material.Slate, kind = "cottage" },
-	snow = { wall = Color3.fromRGB(110, 80, 56), roof = Color3.fromRGB(236, 240, 248), mat = Enum.Material.WoodPlanks, roofMat = Enum.Material.Snow, kind = "cottage" },
-	desert = { wall = Color3.fromRGB(214, 180, 128), roof = Color3.fromRGB(196, 160, 110), mat = Enum.Material.Sandstone, roofMat = Enum.Material.Sandstone, kind = "flat" },
-	jungle = { wall = Color3.fromRGB(130, 96, 60), roof = Color3.fromRGB(150, 130, 70), mat = Enum.Material.Wood, roofMat = Enum.Material.Grass, kind = "stilt" },
-	beach = { wall = Color3.fromRGB(176, 140, 96), roof = Color3.fromRGB(196, 170, 100), mat = Enum.Material.WoodPlanks, roofMat = Enum.Material.Grass, kind = "stilt" },
+	forest = { walls = { Color3.fromRGB(150, 108, 70), Color3.fromRGB(128, 92, 60), Color3.fromRGB(170, 130, 88) }, roofs = { Color3.fromRGB(120, 52, 40), Color3.fromRGB(70, 60, 56), Color3.fromRGB(96, 70, 44) }, mat = Enum.Material.WoodPlanks, roofMat = Enum.Material.WoodPlanks, kind = "gable", ground = Enum.Material.Grass },
+	hills = { walls = { Color3.fromRGB(206, 196, 170), Color3.fromRGB(226, 214, 190), Color3.fromRGB(190, 178, 150) }, roofs = { Color3.fromRGB(70, 90, 120), Color3.fromRGB(150, 70, 56), Color3.fromRGB(90, 96, 100) }, mat = Enum.Material.Plaster, roofMat = Enum.Material.Slate, kind = "gable", ground = Enum.Material.Grass },
+	snow = { walls = { Color3.fromRGB(110, 80, 56), Color3.fromRGB(96, 70, 50), Color3.fromRGB(130, 96, 66) }, roofs = { Color3.fromRGB(236, 240, 248) }, mat = Enum.Material.WoodPlanks, roofMat = Enum.Material.Snow, kind = "gable", ground = Enum.Material.Snow },
+	desert = { walls = { Color3.fromRGB(214, 180, 128), Color3.fromRGB(226, 196, 150), Color3.fromRGB(196, 160, 112) }, roofs = { Color3.fromRGB(196, 160, 110), Color3.fromRGB(230, 220, 200) }, mat = Enum.Material.Sandstone, roofMat = Enum.Material.Sandstone, kind = "flat", ground = Enum.Material.Sand },
+	jungle = { walls = { Color3.fromRGB(130, 96, 60), Color3.fromRGB(112, 84, 54) }, roofs = { Color3.fromRGB(150, 130, 70), Color3.fromRGB(120, 110, 60) }, mat = Enum.Material.Wood, roofMat = Enum.Material.Grass, kind = "stilt", ground = Enum.Material.Mud },
+	beach = { walls = { Color3.fromRGB(176, 140, 96), Color3.fromRGB(200, 170, 130) }, roofs = { Color3.fromRGB(196, 170, 100), Color3.fromRGB(176, 150, 90) }, mat = Enum.Material.WoodPlanks, roofMat = Enum.Material.Grass, kind = "stilt", ground = Enum.Material.Sand },
 }
+local function pick(list) return list[vr:NextInteger(1, #list)] end
 
-local function house(m, x, z, rot, st)
-	local g = ground(x, z)
-	workspace.Terrain:FillBlock(CFrame.new(x, g - 3, z) * CFrame.Angles(0, rot, 0), Vector3.new(16, 6, 14), Enum.Material.Ground)
-	local base = CFrame.new(x, g, z) * CFrame.Angles(0, rot, 0)
-	local W, D, H = 12, 10, 8
+-- variant: 1 cottage, 2 two storeys, 3 long house, 4 cottage with a porch
+local function house(m, x, z, rot, st, variant)
+	local W, D, H = 16, 14, 10
+	if variant == 2 then W, D, H = 17, 14, 18 elseif variant == 3 then W, D, H = 24, 12, 10 end
+	W += vr:NextNumber(-1, 1.5)
+	D += vr:NextNumber(-1, 1)
+	local porch = variant == 4 and 5 or 0
+	local wall, roof = pick(st.walls), pick(st.roofs)
+	local rotCF = CFrame.Angles(0, rot, 0)
+	-- ground under the whole footprint
+	local gMin, gMax = math.huge, -math.huge
+	for _, cx in ipairs({ -W / 2 - 1, 0, W / 2 + 1 }) do
+		for _, cz in ipairs({ -D / 2 - 1, 0, D / 2 + 1 + porch }) do
+			local wp = (CFrame.new(x, 0, z) * rotCF * CFrame.new(cx, 0, cz)).Position
+			local gg = ground(wp.X, wp.Z)
+			gMin, gMax = math.min(gMin, gg), math.max(gMax, gg)
+		end
+	end
+	local stilt = st.kind == "stilt"
+	local floorY = stilt and (gMax + 4) or (gMax + 0.6)
+	local T = workspace.Terrain
+	-- terrain: a solid pad up to the floor (not for stilt huts) and nothing inside the house
+	if not stilt then
+		local bottom = gMin - 6
+		local top = floorY - 0.5
+		T:FillBlock(CFrame.new(x, (bottom + top) / 2, z) * rotCF * CFrame.new(0, 0, porch / 2), Vector3.new(W + 6, top - bottom, D + 6 + porch), st.ground)
+	end
+	T:FillBlock(CFrame.new(x, floorY + (H + 24) / 2, z) * rotCF * CFrame.new(0, 0, porch / 2), Vector3.new(W + 3, H + 24, D + 3 + porch), Enum.Material.Air)
+	local base = CFrame.new(x, floorY, z) * rotCF
 	local function p(name, size, cf, color, mat, shape, collide)
 		return part(m, name, size, base * cf, color, mat, shape, collide ~= false)
 	end
-	if st.kind == "stilt" then
-		for _, sx in ipairs({ -1, 1 }) do for _, sz in ipairs({ -1, 1 }) do
-			p("Post", Vector3.new(1, 5, 1), CFrame.new(sx * (W / 2 - 0.5), 1.5, sz * (D / 2 - 0.5)), Color3.fromRGB(100, 72, 46), Enum.Material.Wood)
+	local stone, beam = Color3.fromRGB(120, 118, 114), Color3.fromRGB(86, 62, 42)
+	if stilt then
+		for _, sx in ipairs({ -1, 0, 1 }) do for _, sz in ipairs({ -1, 1 }) do
+			local hgt = floorY - gMin + 2
+			p("Post", Vector3.new(1, hgt, 1), CFrame.new(sx * (W / 2 - 0.5), -hgt / 2, sz * (D / 2 - 0.5)), beam, Enum.Material.Wood)
 		end end
-		base = base * CFrame.new(0, 3.5, 0)
-		p("Stairs", Vector3.new(3, 0.4, 5), CFrame.new(0, -1.8, D / 2 + 2) * CFrame.Angles(math.rad(35), 0, 0), Color3.fromRGB(110, 80, 50), Enum.Material.WoodPlanks)
-	end
-	p("Floor", Vector3.new(W, 0.5, D), CFrame.new(0, 0.25, 0), Color3.fromRGB(96, 70, 48), Enum.Material.WoodPlanks)
-	p("Wall", Vector3.new(W, H, 0.6), CFrame.new(0, H / 2, -D / 2), st.wall, st.mat)
-	for _, sx in ipairs({ -1, 1 }) do
-		p("Wall", Vector3.new(0.6, H, D), CFrame.new(sx * W / 2, H / 2, 0), st.wall, st.mat)
-		p("Wall", Vector3.new(W / 2 - 1.6, H, 0.6), CFrame.new(sx * (W / 4 + 0.8), H / 2, D / 2), st.wall, st.mat)
-	end
-	p("Wall", Vector3.new(3.2, H - 6, 0.6), CFrame.new(0, H - (H - 6) / 2, D / 2), st.wall, st.mat)
-	-- window glow
-	for _, sx in ipairs({ -1, 1 }) do
-		local w = p("Window", Vector3.new(0.2, 2, 2.4), CFrame.new(sx * (W / 2 + 0.31), H * 0.55, 0), Color3.fromRGB(255, 210, 140), Enum.Material.Neon, nil, false)
-		w.Transparency = 0.2
-	end
-	if st.kind == "flat" then
-		p("Roof", Vector3.new(W + 0.6, 0.6, D + 0.6), CFrame.new(0, H + 0.3, 0), st.roof, st.roofMat)
-		p("Parapet", Vector3.new(W + 0.6, 1, 0.5), CFrame.new(0, H + 1, -D / 2), st.roof, st.roofMat)
-		p("Parapet", Vector3.new(W + 0.6, 1, 0.5), CFrame.new(0, H + 1, D / 2), st.roof, st.roofMat)
+		for i = 0, 5 do
+			p("Step", Vector3.new(4, 0.4, 1.2), CFrame.new(0, -0.6 - i * 0.7, D / 2 + 1 + i * 1.1), Color3.fromRGB(110, 80, 50), Enum.Material.WoodPlanks)
+		end
 	else
-		local pitch = math.rad(st.kind == "stilt" and 40 or 32)
-		local half = D / 2 + 1
-		local len = half / math.cos(pitch) + 0.4
-		local rise = (D / 4) * math.tan(pitch)
-		p("Roof", Vector3.new(W + 2, 0.6, len), CFrame.new(0, H + rise + 0.3, half / 2) * CFrame.Angles(pitch, 0, 0), st.roof, st.roofMat)
-		p("Roof", Vector3.new(W + 2, 0.6, len), CFrame.new(0, H + rise + 0.3, -half / 2) * CFrame.Angles(-pitch, 0, 0), st.roof, st.roofMat)
+		p("Foundation", Vector3.new(W + 0.8, 1.4, D + 0.8), CFrame.new(0, -0.5, 0), stone, Enum.Material.Cobblestone)
+		p("Doorstep", Vector3.new(4.4, 0.8, 1.6), CFrame.new(0, -0.6, D / 2 + 1.1), stone, Enum.Material.Cobblestone)
+	end
+	p("Floor", Vector3.new(W, 0.4, D), CFrame.new(0, 0.2, 0), Color3.fromRGB(110, 80, 54), Enum.Material.WoodPlanks)
+	-- walls: back, sides, front with a door; window glass with frames
+	local T2 = 0.8
+	local function windowAt(cf, w, h)
+		local gl = p("Glass", Vector3.new(w, h, 0.25), cf, Color3.fromRGB(255, 214, 150), Enum.Material.Glass, nil, false)
+		gl.Transparency = 0.35
+		p("Frame", Vector3.new(w + 0.4, 0.3, 0.4), cf * CFrame.new(0, h / 2, 0), beam, Enum.Material.Wood, nil, false)
+		p("Frame", Vector3.new(w + 0.4, 0.3, 0.4), cf * CFrame.new(0, -h / 2, 0), beam, Enum.Material.Wood, nil, false)
+		p("Sill", Vector3.new(w + 0.8, 0.25, 0.7), cf * CFrame.new(0, -h / 2 - 0.2, 0.2), beam, Enum.Material.Wood, nil, false)
+	end
+	p("Wall", Vector3.new(W, H, T2), CFrame.new(0, H / 2, -D / 2), wall, st.mat)
+	for _, sx in ipairs({ -1, 1 }) do
+		p("Wall", Vector3.new(T2, H, D), CFrame.new(sx * W / 2, H / 2, 0), wall, st.mat)
+		windowAt(CFrame.new(sx * (W / 2 + 0.05), math.min(H, 10) * 0.55, 0) * CFrame.Angles(0, math.rad(90), 0), 3, 2.6)
+		p("Wall", Vector3.new(W / 2 - 2.2, H, T2), CFrame.new(sx * (W / 4 + 1.1), H / 2, D / 2), wall, st.mat)
+		windowAt(CFrame.new(sx * (W / 4 + 1.1), math.min(H, 10) * 0.55, D / 2 + 0.05), 2.8, 2.4)
+	end
+	windowAt(CFrame.new(0, math.min(H, 10) * 0.55, -D / 2 - 0.05), 3.4, 2.4)
+	p("Wall", Vector3.new(4.4, H - 7, T2), CFrame.new(0, H - (H - 7) / 2, D / 2), wall, st.mat)
+	-- the door stands half open
+	local hinge = base * CFrame.new(-2.1, 3.5, D / 2)
+	part(m, "Door", Vector3.new(4, 7, 0.3), hinge * CFrame.Angles(0, math.rad(-70), 0) * CFrame.new(2, 0, 0), Color3.fromRGB(96, 62, 40), Enum.Material.WoodPlanks, nil, true)
+	-- corner beams
+	for _, sx in ipairs({ -1, 1 }) do for _, sz in ipairs({ -1, 1 }) do
+		p("Beam", Vector3.new(1, H, 1), CFrame.new(sx * W / 2, H / 2, sz * D / 2), beam, Enum.Material.Wood)
+	end end
+	if variant == 2 then
+		-- second storey: a beam band, an inner floor and more windows
+		p("Band", Vector3.new(W + 0.4, 0.8, D + 0.4), CFrame.new(0, 9, 0), beam, Enum.Material.Wood, nil, false)
+		p("UpperFloor", Vector3.new(W - 1, 0.4, D - 5), CFrame.new(0, 9, -2.4), Color3.fromRGB(110, 80, 54), Enum.Material.WoodPlanks)
 		for _, sx in ipairs({ -1, 1 }) do
-			p("Gable", Vector3.new(0.5, rise * 2, D * 0.6), CFrame.new(sx * W / 2, H + rise * 0.7, 0), st.wall, st.mat)
+			windowAt(CFrame.new(sx * (W / 4 + 1.1), 13.5, D / 2 + 0.05), 2.8, 2.4)
+			windowAt(CFrame.new(sx * (W / 2 + 0.05), 13.5, 0) * CFrame.Angles(0, math.rad(90), 0), 3, 2.4)
+		end
+		windowAt(CFrame.new(0, 13.5, D / 2 + 0.05), 2.4, 2.2)
+	end
+	-- roof
+	if st.kind == "flat" then
+		p("Roof", Vector3.new(W + 0.6, 0.6, D + 0.6), CFrame.new(0, H + 0.3, 0), roof, st.roofMat)
+		for _, o in ipairs({ { 0, -D / 2, W + 0.6, 0.5 }, { 0, D / 2, W + 0.6, 0.5 }, { -W / 2, 0, 0.5, D + 0.6 }, { W / 2, 0, 0.5, D + 0.6 } }) do
+			p("Parapet", Vector3.new(o[3], 1.2, o[4]), CFrame.new(o[1], H + 1.1, o[2]), roof, st.roofMat)
+		end
+		if variant ~= 3 then p("Dome", Vector3.new(6, 6, 6), CFrame.new(W / 4, H + 0.6, -D / 6), Color3.fromRGB(240, 236, 226), Enum.Material.Plaster, BALL) end
+		for i = 1, 3 do p("Beam", Vector3.new(0.4, 0.4, 1.4), CFrame.new(-W / 2 + i * W / 4, H - 1, D / 2 + 0.6), beam, Enum.Material.Wood, nil, false) end
+	else
+		local pitch = math.rad(stilt and 42 or vr:NextNumber(28, 38))
+		local over = 1.4
+		local half = D / 2 + over
+		local len = half / math.cos(pitch) + 0.6
+		local rise = (D / 2 + over) * math.tan(pitch) / 2
+		p("Roof", Vector3.new(W + 2.4, 0.7, len), CFrame.new(0, H + rise + 0.2, half / 2) * CFrame.Angles(pitch, 0, 0), roof, st.roofMat)
+		p("Roof", Vector3.new(W + 2.4, 0.7, len), CFrame.new(0, H + rise + 0.2, -half / 2) * CFrame.Angles(-pitch, 0, 0), roof, st.roofMat)
+		p("Ridge", Vector3.new(W + 2.6, 0.8, 0.8), CFrame.new(0, H + rise * 2 + 0.2, 0), beam, Enum.Material.Wood, nil, false)
+		-- gables closed with stacked boards
+		local gr = (D / 2) * math.tan(pitch)
+		for i = 0, 5 do
+			local f = i / 6
+			local w2 = D * (1 - f)
+			if w2 > 0.6 then
+				for _, sx in ipairs({ -1, 1 }) do
+					p("Gable", Vector3.new(T2, gr / 6 + 0.05, w2), CFrame.new(sx * W / 2, H + gr * (f + 1 / 12), 0), wall, st.mat)
+				end
+			end
+		end
+		if not stilt and vr:NextNumber() < 0.6 then
+			p("Chimney", Vector3.new(2.2, H + rise * 2 + 3, 2.2), CFrame.new(W / 2 - 2.5, (H + rise * 2 + 3) / 2, -D / 4), stone, Enum.Material.Cobblestone)
 		end
 	end
-	local lamp = p("Lamp", Vector3.new(0.6, 0.9, 0.6), CFrame.new(2.4, H - 2.5, D / 2 + 0.6), Color3.fromRGB(255, 200, 120), Enum.Material.Neon, nil, false)
+	if porch > 0 then
+		p("Porch", Vector3.new(W - 2, 0.4, porch), CFrame.new(0, 0.2, D / 2 + porch / 2), Color3.fromRGB(110, 80, 54), Enum.Material.WoodPlanks)
+		for _, sx in ipairs({ -1, 1 }) do
+			p("Post", Vector3.new(0.7, 7.6, 0.7), CFrame.new(sx * (W / 2 - 1.5), 3.8, D / 2 + porch - 0.4), beam, Enum.Material.Wood)
+			p("Bench", Vector3.new(3, 0.4, 1.2), CFrame.new(sx * (W / 4 + 1), 1.4, D / 2 + porch - 1.2), beam, Enum.Material.Wood)
+		end
+		p("PorchRoof", Vector3.new(W - 1, 0.5, porch + 1), CFrame.new(0, 7.9, D / 2 + porch / 2) * CFrame.Angles(math.rad(12), 0, 0), roof, st.roofMat)
+	end
+	-- inside: a bed, a table, a chest, a warm light
+	p("Bed", Vector3.new(3.4, 1.2, 6), CFrame.new(-W / 2 + 2.6, 0.9, -D / 2 + 3.6), Color3.fromRGB(150, 50, 60), Enum.Material.Fabric)
+	p("Pillow", Vector3.new(2.4, 0.5, 1.2), CFrame.new(-W / 2 + 2.6, 1.7, -D / 2 + 1.4), Color3.fromRGB(235, 230, 220), Enum.Material.Fabric, nil, false)
+	p("Table", Vector3.new(3.6, 0.3, 2.6), CFrame.new(W / 2 - 3.2, 2.6, -D / 2 + 3), beam, Enum.Material.WoodPlanks)
+	for _, o in ipairs({ { -1.4, -1 }, { 1.4, -1 }, { -1.4, 1 }, { 1.4, 1 } }) do
+		p("Leg", Vector3.new(0.3, 2.4, 0.3), CFrame.new(W / 2 - 3.2 + o[1], 1.4, -D / 2 + 3 + o[2]), beam, Enum.Material.Wood, nil, false)
+	end
+	p("Chest", Vector3.new(2.6, 1.6, 1.6), CFrame.new(W / 2 - 2, 1.2, D / 2 - 2.2), Color3.fromRGB(120, 84, 50), Enum.Material.WoodPlanks)
+	local lampIn = p("LampIn", Vector3.new(0.5, 0.7, 0.5), CFrame.new(0, H - 1.2, 0), Color3.fromRGB(255, 200, 120), Enum.Material.Neon, nil, false)
+	local li = Instance.new("PointLight"); li.Range = 18; li.Brightness = 1.2; li.Color = Color3.fromRGB(255, 190, 120); li.Parent = lampIn
+	local lamp = p("Lamp", Vector3.new(0.6, 0.9, 0.6), CFrame.new(2.8, 6.6, D / 2 + 0.7), Color3.fromRGB(255, 200, 120), Enum.Material.Neon, nil, false)
 	local l = Instance.new("PointLight"); l.Range = 16; l.Brightness = 1.3; l.Color = Color3.fromRGB(255, 180, 100); l.Parent = lamp
+	return math.max(W, D + porch)
 end
 
 local function tower(m, x, z)
@@ -145,14 +236,14 @@ local function tower(m, x, z)
 end
 
 local function village(region, tx, tz)
-	local x, z = findArea(tx, tz, region, 60, 7)
+	local x, z = findArea(tx, tz, region, region == "beach" and 46 or 60, region == "beach" and 8 or 7)
 	if not x then return false end
 	local st = STYLE[region] or STYLE.forest
 	local g = ground(x, z)
 	local center = Vector3.new(x, g, z)
 	local m = Instance.new("Model"); m.Name = "Village_" .. region
 	m:SetAttribute("Center", center)
-	m:SetAttribute("Radius", 62)
+	m:SetAttribute("Radius", 72)
 	m:SetAttribute("Region", region)
 	m.Parent = villagesF
 	local npcs = Instance.new("Folder"); npcs.Name = "NPCs"; npcs.Parent = m
@@ -160,17 +251,21 @@ local function village(region, tx, tz)
 	for _, f in ipairs({ workspace:FindFirstChild("Resources"), workspace:FindFirstChild("Decor") }) do
 		for _, c in ipairs(f and f:GetChildren() or {}) do
 			local ok, pv = pcall(function() return c:GetPivot().Position end)
-			if ok and Vector3.new(pv.X - x, 0, pv.Z - z).Magnitude < 70 then c:Destroy() end
+			if ok and Vector3.new(pv.X - x, 0, pv.Z - z).Magnitude < 82 then c:Destroy() end
 		end
 	end
-	-- houses in a ring, doors facing the square
+	-- the square is levelled first
+	workspace.Terrain:FillCylinder(CFrame.new(x, g - 4, z), 8, 22, st.ground)
+	workspace.Terrain:FillCylinder(CFrame.new(x, g + 14, z), 28, 22, Enum.Material.Air)
+	-- houses in a ring, doors facing the square, every one a little different
 	local nh = 7
+	local variants = { 1, 2, 3, 4, 2, 1, 4 }
 	for i = 1, nh do
-		local a = i / nh * math.pi * 2 + vr:NextNumber(-0.15, 0.15)
-		local r = vr:NextNumber(30, 40)
+		local a = i / nh * math.pi * 2 + vr:NextNumber(-0.12, 0.12)
+		local r = vr:NextNumber(38, 46)
 		local hx, hz = x + math.cos(a) * r, z + math.sin(a) * r
 		local rot = math.atan2(x - hx, z - hz) -- +Z (the door side) towards the centre
-		house(m, hx, hz, rot, st)
+		house(m, hx, hz, rot, st, variants[(i + vr:NextInteger(0, 6)) % 7 + 1])
 	end
 	-- the square: a well and a trader's stall
 	part(m, "Well", Vector3.new(2.2, 6, 6), CFrame.new(x, g + 1.1, z) * UPC, Color3.fromRGB(130, 128, 124), Enum.Material.Cobblestone, CYL, true)
@@ -180,7 +275,7 @@ local function village(region, tx, tz)
 	part(m, "WellRoof", Vector3.new(7, 0.5, 4), CFrame.new(x, g + 7.2, z), Color3.fromRGB(120, 52, 40), Enum.Material.WoodPlanks, nil, true)
 	local sx, sz = x + 14, z
 	local counter = part(m, "Counter", Vector3.new(2.2, 2.6, 8), CFrame.new(sx, g + 1.3, sz), Color3.fromRGB(128, 90, 58), Enum.Material.WoodPlanks, nil, true)
-	part(m, "Awning", Vector3.new(6, 0.3, 9), CFrame.new(sx + 1.4, g + 6.6, sz) * CFrame.Angles(0, 0, math.rad(-12)), st.roof, Enum.Material.Fabric, nil, true)
+	part(m, "Awning", Vector3.new(6, 0.3, 9), CFrame.new(sx + 1.4, g + 6.6, sz) * CFrame.Angles(0, 0, math.rad(-12)), st.roofs[1], Enum.Material.Fabric, nil, true)
 	for _, oz in ipairs({ -4, 4 }) do part(m, "Post", Vector3.new(0.5, 6.6, 0.5), CFrame.new(sx + 3.6, g + 3.3, sz + oz), Color3.fromRGB(100, 72, 46), Enum.Material.Wood, nil, true) end
 	local pr = Instance.new("ProximityPrompt")
 	pr.ActionText = "Shop"; pr.ObjectText = "Trader"; pr.HoldDuration = 0; pr.MaxActivationDistance = 12; pr.RequiresLineOfSight = false
@@ -203,7 +298,7 @@ local function village(region, tx, tz)
 	local pl = Instance.new("PointLight"); pl.Range = 28; pl.Brightness = 2; pl.Color = Color3.fromRGB(255, 160, 80); pl.Parent = core
 	-- two watchtowers with archers, two gate guards
 	for k, a in ipairs({ 0.6, 0.6 + math.pi }) do
-		local deck = tower(m, x + math.cos(a) * 50, z + math.sin(a) * 50)
+		local deck = tower(m, x + math.cos(a) * 60, z + math.sin(a) * 60)
 		local archer = newRig({ skin = vr:NextInteger(1, 6), shirt = 6, pants = 3, hat = "helmet", extra = "none" })
 		if archer then
 			archer.Name = "Archer"
@@ -214,7 +309,7 @@ local function village(region, tx, tz)
 		end
 	end
 	for _, a in ipairs({ math.pi / 2, -math.pi / 2 }) do
-		local gx, gz = x + math.cos(a) * 46, z + math.sin(a) * 46
+		local gx, gz = x + math.cos(a) * 58, z + math.sin(a) * 58
 		local guard = newRig({ skin = vr:NextInteger(1, 6), shirt = 2, pants = 3, hat = "helmet", extra = "none" })
 		if guard then
 			guard.Name = "Guard"
@@ -240,16 +335,16 @@ local function village(region, tx, tz)
 		local a = i / 48 * math.pi * 2
 		local gap = (i % 12) == 0 or (i % 12) == 1
 		if not gap then
-			local fx, fz = x + math.cos(a) * 58, z + math.sin(a) * 58
+			local fx, fz = x + math.cos(a) * 68, z + math.sin(a) * 68
 			local fg = ground(fx, fz)
 			part(m, "Fence", Vector3.new(0.6, 3, 0.6), CFrame.new(fx, fg + 1.2, fz), Color3.fromRGB(110, 80, 52), Enum.Material.Wood, nil, true)
 			local a2 = (i + 1) / 48 * math.pi * 2
-			local nx, nz = x + math.cos(a2) * 58, z + math.sin(a2) * 58
+			local nx, nz = x + math.cos(a2) * 68, z + math.sin(a2) * 68
 			local mid = Vector3.new((fx + nx) / 2, (fg + ground(nx, nz)) / 2 + 2, (fz + nz) / 2)
-			part(m, "Rail", Vector3.new(0.3, 0.3, 7.6), CFrame.lookAt(mid, Vector3.new(nx, mid.Y, nz)), Color3.fromRGB(120, 88, 58), Enum.Material.Wood, nil, false)
+			part(m, "Rail", Vector3.new(0.3, 0.3, 8.8), CFrame.lookAt(mid, Vector3.new(nx, mid.Y, nz)), Color3.fromRGB(120, 88, 58), Enum.Material.Wood, nil, false)
 		end
 	end
-	table.insert(taken, { x, z, 220 })
+	table.insert(taken, { x, z, 240 })
 	return true
 end
 

@@ -130,6 +130,9 @@ function Data.loadRoom(player, code)
 		r.stash = Inventory.fixStash(res.stash)
 		r.hunger = math.clamp(tonumber(res.hunger) or 100, 10, 100)
 		r.thirst = math.clamp(tonumber(res.thirst) or 100, 10, 100)
+		if type(res.pos) == "table" and tonumber(res.pos[1]) and tonumber(res.pos[2]) and tonumber(res.pos[3]) then
+			r.pos = { tonumber(res.pos[1]), tonumber(res.pos[2]), tonumber(res.pos[3]) }
+		end
 		if type(res.dex) == "table" then
 			local Best = require(game:GetService("ReplicatedStorage").Shared.Bestiary)
 			local d = res.dex
@@ -172,7 +175,7 @@ function Data.saveRoom(player)
 	if not r or not code then return end
 	Data.touchRoomList(player, code, r.coins, r.xp)
 	if r._noSave then return end
-	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, dex = r.dex, t = os.time() }
+	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, dex = r.dex, pos = r.pos, t = os.time() }
 	try(function()
 		roomStore:SetAsync("r_" .. code .. "_" .. player.UserId, copy)
 	end)
