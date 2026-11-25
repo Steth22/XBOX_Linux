@@ -50,8 +50,8 @@ end
 
 -- armor: worn on the body, reduces damage taken
 I.defs.leather_armor = { ar = "درع جلدي", en = "Leather Armor", kind = "armor", stack = 1, reduce = 0.15, buy = 140, color = Color3.fromRGB(140, 96, 60), mat = Enum.Material.Fabric }
-I.defs.iron_armor = { ar = "درع حديدي", en = "Iron Armor", kind = "armor", stack = 1, reduce = 0.30, buy = 480, color = Color3.fromRGB(176, 180, 190), mat = Enum.Material.Metal }
-I.defs.diamond_armor = { ar = "درع ألماسي", en = "Diamond Armor", kind = "armor", stack = 1, reduce = 0.45, buy = 1400, color = Color3.fromRGB(110, 220, 245), mat = Enum.Material.Glass }
+I.defs.iron_armor = { ar = "درع حديدي", en = "Iron Armor", kind = "armor", stack = 1, reduce = 0.30, buy = 480, color = Color3.fromRGB(150, 155, 166), mat = Enum.Material.Metal }
+I.defs.diamond_armor = { ar = "درع ألماسي", en = "Diamond Armor", kind = "armor", stack = 1, reduce = 0.45, buy = 1400, color = Color3.fromRGB(80, 176, 214), mat = Enum.Material.Metal }
 
 -- weapons and gear sold at the outposts
 I.defs.spear = { ar = "رمح حديدي", en = "Iron Spear", kind = "tool", class = "spear", stack = 1, dmg = 30, reach = 9, dur = 300, buy = 260 }

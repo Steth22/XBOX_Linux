@@ -40,6 +40,9 @@ def villages():
 def caves():
     return go("caves", g("common.lua") + g("part.lua") + g("ore.lua") + g("caves.lua"))
 
+def fixcabins():
+    return go("fixcabins", g("common.lua") + g("fixcabins.lua"))
+
 def vegetation():
     ok = True
     for part in (1, 2):
@@ -54,3 +57,4 @@ if __name__ == "__main__":
     if what in ("all", "villages"): villages()
     if what in ("all", "caves"): caves()
     if what in ("all", "vegetation"): vegetation()
+    if what in ("all", "fixcabins"): fixcabins()

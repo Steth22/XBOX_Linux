@@ -242,52 +242,52 @@ function A.armor(char, color, material, id)
 	end
 
 	if style == "plate" or style == "crystal" then
+		-- metal plates over the clothes: chest, layered shoulders, bracers, greaves. The trousers stay visible.
 		local edge = style == "crystal" and Enum.Material.Neon or Enum.Material.Metal
-		local edgeC = style == "crystal" and glow or dark
+		local edgeC = style == "crystal" and color:Lerp(Color3.new(1, 1, 1), 0.55) or Color3.fromRGB(70, 72, 78)
+		local plateMat = Enum.Material.Metal
+		local shade = color:Lerp(Color3.new(0, 0, 0), 0.35)
 		if ut then
 			local s = ut.Size
-			addVis(f, ut, Vector3.new(s.X * 1.06, s.Y * 0.96, s.Z * 1.28), CFrame.new(0, s.Y * 0.02, 0), color, nil, mat)
-			addVis(f, ut, Vector3.new(s.X * 0.84, s.Y * 0.5, 0.22), CFrame.new(0, s.Y * 0.14, -s.Z * 0.66), light, nil, mat) -- chest plate
-			addVis(f, ut, Vector3.new(0.14, s.Y * 0.5, 0.26), CFrame.new(0, s.Y * 0.14, -s.Z * 0.7), edgeC, nil, edge) -- centre ridge
-			for i = 0, 1 do
-				addVis(f, ut, Vector3.new(s.X * 0.9, s.Y * 0.13, 0.2), CFrame.new(0, -s.Y * (0.2 + i * 0.17), -s.Z * 0.66), dark, nil, mat) -- belly bands
-			end
-			addVis(f, ut, Vector3.new(0.3, s.X * 0.72, s.Z * 1.3), CFrame.new(0, s.Y * 0.5, 0) * CFrame.Angles(0, 0, math.rad(90)), edgeC, CYLS, edge) -- gorget
+			addVis(f, ut, Vector3.new(s.X * 1.02, s.Y * 0.82, s.Z * 1.22), CFrame.new(0, s.Y * 0.08, 0), shade, nil, plateMat) -- under plate
+			addVis(f, ut, Vector3.new(s.X * 0.9, s.Y * 0.62, 0.3), CFrame.new(0, s.Y * 0.14, -s.Z * 0.6), color, nil, plateMat) -- breastplate
+			addVis(f, ut, Vector3.new(s.X * 0.62, s.Y * 0.34, 0.12), CFrame.new(0, s.Y * 0.22, -s.Z * 0.78), light, nil, plateMat)
+			addVis(f, ut, Vector3.new(0.12, s.Y * 0.62, 0.36), CFrame.new(0, s.Y * 0.14, -s.Z * 0.64), edgeC, nil, edge)
+			addVis(f, ut, Vector3.new(s.X * 0.9, s.Y * 0.62, 0.3), CFrame.new(0, s.Y * 0.14, s.Z * 0.6), color, nil, plateMat) -- backplate
+			addVis(f, ut, Vector3.new(0.26, s.X * 0.62, s.Z * 1.1), CFrame.new(0, s.Y * 0.47, 0) * CFrame.Angles(0, 0, math.rad(90)), shade, CYLS, plateMat) -- gorget
 			for _, x in ipairs({ -1, 1 }) do
-				addVis(f, ut, Vector3.new(0.2, 0.2, 0.2), CFrame.new(x * s.X * 0.36, s.Y * 0.32, -s.Z * 0.78), gold, BALLS, Enum.Material.Metal)
+				addVis(f, ut, Vector3.new(0.18, 0.18, 0.18), CFrame.new(x * s.X * 0.38, s.Y * 0.38, -s.Z * 0.76), gold, BALLS, Enum.Material.Metal)
+				addVis(f, ut, Vector3.new(0.18, 0.18, 0.18), CFrame.new(x * s.X * 0.38, -s.Y * 0.08, -s.Z * 0.76), gold, BALLS, Enum.Material.Metal)
 			end
 		end
 		each(function(side, x)
 			local ua, la = get(side .. "UpperArm") or get(side .. " Arm"), get(side .. "LowerArm")
 			if ua then
 				local s = ua.Size
-				addVis(f, ua, Vector3.new(s.X * 2.0, s.Y * 0.62, s.Z * 1.9), CFrame.new(x * s.X * 0.18, s.Y * 0.3, 0), color, BALLS, mat) -- pauldron
-				addVis(f, ua, Vector3.new(s.X * 1.6, s.Y * 0.18, s.Z * 1.6), CFrame.new(x * s.X * 0.1, s.Y * 0.02, 0), dark, nil, mat)
-				addVis(f, ua, Vector3.new(s.X * 1.5, 0.14, s.Z * 1.5), CFrame.new(x * s.X * 0.18, s.Y * 0.47, 0), edgeC, nil, edge)
+				-- two stacked shoulder plates, close to the arm
+				addVis(f, ua, Vector3.new(s.X * 1.42, s.Y * 0.3, s.Z * 1.42), CFrame.new(x * s.X * 0.1, s.Y * 0.36, 0) * CFrame.Angles(0, 0, math.rad(-x * 14)), color, nil, plateMat)
+				addVis(f, ua, Vector3.new(s.X * 1.3, s.Y * 0.24, s.Z * 1.3), CFrame.new(x * s.X * 0.12, s.Y * 0.14, 0) * CFrame.Angles(0, 0, math.rad(-x * 10)), shade, nil, plateMat)
+				addVis(f, ua, Vector3.new(s.X * 1.46, 0.1, s.Z * 1.46), CFrame.new(x * s.X * 0.1, s.Y * 0.52, 0) * CFrame.Angles(0, 0, math.rad(-x * 14)), edgeC, nil, edge)
 			end
 			if la then
 				local s = la.Size
-				addVis(f, la, Vector3.new(s.X * 1.3, s.Y * 0.72, s.Z * 1.3), CFrame.new(0, -s.Y * 0.05, 0), color, nil, mat) -- vambrace
-				addVis(f, la, Vector3.new(s.X * 1.36, 0.14, s.Z * 1.36), CFrame.new(0, s.Y * 0.3, 0), edgeC, nil, edge)
+				addVis(f, la, Vector3.new(s.X * 1.18, s.Y * 0.55, s.Z * 1.18), CFrame.new(0, s.Y * 0.05, 0), color, nil, plateMat) -- bracer
+				addVis(f, la, Vector3.new(s.X * 1.22, 0.1, s.Z * 1.22), CFrame.new(0, s.Y * 0.33, 0), edgeC, nil, edge)
 			end
-			local ul, ll = get(side .. "UpperLeg"), get(side .. "LowerLeg") or get(side .. " Leg")
-			if ul then
-				local s = ul.Size
-				addVis(f, ul, Vector3.new(s.X * 1.2, s.Y * 0.7, 0.22), CFrame.new(0, s.Y * 0.05, -s.Z * 0.62), color, nil, mat) -- cuisse
-			end
+			local ll = get(side .. "LowerLeg") or get(side .. " Leg")
 			if ll then
 				local s = ll.Size
-				addVis(f, ll, Vector3.new(s.X * 1.22, s.Y * 0.72, s.Z * 1.28), CFrame.new(0, -s.Y * 0.06, 0), color, nil, mat) -- greave
-				addVis(f, ll, Vector3.new(s.X * 0.9, s.X * 0.9, s.X * 0.6), CFrame.new(0, s.Y * 0.42, -s.Z * 0.55), light, BALLS, mat) -- knee
-				addVis(f, ll, Vector3.new(0.12, s.Y * 0.6, 0.2), CFrame.new(0, -s.Y * 0.06, -s.Z * 0.66), edgeC, nil, edge)
+				addVis(f, ll, Vector3.new(s.X * 1.12, s.Y * 0.55, s.Z * 0.5), CFrame.new(0, -s.Y * 0.1, -s.Z * 0.32), color, nil, plateMat) -- shin plate (front only)
+				addVis(f, ll, Vector3.new(s.X * 0.8, s.X * 0.75, s.X * 0.5), CFrame.new(0, s.Y * 0.36, -s.Z * 0.48), light, BALLS, plateMat) -- knee
+				addVis(f, ll, Vector3.new(0.1, s.Y * 0.5, 0.14), CFrame.new(0, -s.Y * 0.1, -s.Z * 0.58), edgeC, nil, edge)
 			end
 		end)
 		if lt then
 			local s = lt.Size
-			addVis(f, lt, Vector3.new(s.X * 1.14, s.Y * 0.38, s.Z * 1.32), CFrame.new(0, s.Y * 0.18, 0), strap, nil, Enum.Material.Fabric) -- belt
-			addVis(f, lt, Vector3.new(0.5, 0.42, 0.14), CFrame.new(0, s.Y * 0.18, -s.Z * 0.68), gold, nil, Enum.Material.Metal)
+			addVis(f, lt, Vector3.new(s.X * 1.1, s.Y * 0.32, s.Z * 1.28), CFrame.new(0, s.Y * 0.22, 0), strap, nil, Enum.Material.Fabric) -- belt
+			addVis(f, lt, Vector3.new(0.46, 0.38, 0.14), CFrame.new(0, s.Y * 0.22, -s.Z * 0.66), gold, nil, Enum.Material.Metal)
 			for _, x in ipairs({ -1, 1 }) do
-				addVis(f, lt, Vector3.new(s.X * 0.42, s.Y * 0.9, 0.16), CFrame.new(x * s.X * 0.26, -s.Y * 0.35, -s.Z * 0.64) * CFrame.Angles(math.rad(-6), 0, 0), color, nil, mat) -- tassets
+				addVis(f, lt, Vector3.new(s.X * 0.38, s.Y * 0.7, 0.14), CFrame.new(x * s.X * 0.27, -s.Y * 0.28, -s.Z * 0.62) * CFrame.Angles(math.rad(-8), 0, 0), color, nil, plateMat) -- tassets
 			end
 		end
 	elseif style == "leather" then
