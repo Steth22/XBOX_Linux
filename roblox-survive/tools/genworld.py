@@ -11,14 +11,15 @@ SAVE = '\nlocal okSave = pcall(function() game:GetService("AssetService"):SavePl
 HALF, RES, BATCHES = 1536, 4, 32
 
 def go(label, src):
-    for attempt in range(3):
+    for attempt in range(8):
         t = time.time()
         r = run(src, timeout=600)
         out = r.get("output") or {}
         print(label, r.get("state"), "%.0fs" % (time.time() - t), json.dumps(out, ensure_ascii=False)[:400], (r.get("error") or {}).get("message", "")[:400] if isinstance(r.get("error"), dict) else str(r.get("error") or "")[:400], flush=True)
         if r.get("state") == "COMPLETE":
             return True
-        time.sleep(5)
+        time.sleep(30 if r.get("state") == "SUBMIT_FAIL" else 5)
+        if r.get("state") == "SUBMIT_FAIL": print("  raw:", str(r.get("raw"))[:200], flush=True)
     return False
 
 def terrain(start=0):
