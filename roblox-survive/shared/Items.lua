@@ -12,7 +12,12 @@ I.defs = {
 	iron = { ar = "حديد", en = "Iron", kind = "res", stack = 40, sell = 10 },
 	gold = { ar = "ذهب", en = "Gold", kind = "res", stack = 30, sell = 25 },
 	diamond = { ar = "ألماس", en = "Diamond", kind = "res", stack = 20, sell = 60 },
-	hide = { ar = "جلد", en = "Hide", kind = "res", stack = 30 },
+	hide = { ar = "جلد", en = "Hide", kind = "res", stack = 20, sell = 45 },
+	hide_desert = { ar = "جلد صحراوي", en = "Desert Hide", kind = "res", stack = 20, sell = 110 },
+	hide_snow = { ar = "جلد ثلجي", en = "Snow Hide", kind = "res", stack = 20, sell = 220 },
+	crystal = { ar = "بلّور", en = "Crystal", kind = "res", stack = 30, sell = 40 },
+	obsidian = { ar = "سَبَج", en = "Obsidian", kind = "res", stack = 20, sell = 95 },
+	mushroom = { ar = "فطر الكهف", en = "Cave Mushroom", kind = "food", stack = 20, hunger = 16, heal = 6 },
 	berries = { ar = "توت", en = "Berries", kind = "food", stack = 20, hunger = 12, heal = 2, buy = 6, buyQty = 2, sell = 1 },
 	meat_raw = { ar = "لحم نيئ", en = "Raw Meat", kind = "food", stack = 20, hunger = 12, heal = 0 },
 	meat_cooked = { ar = "لحم مطبوخ", en = "Cooked Meat", kind = "food", stack = 20, hunger = 40, heal = 10 },
@@ -61,12 +66,29 @@ I.defs.dynamite = { ar = "ديناميت", en = "Dynamite", kind = "place", stac
 I.defs.warm_coat = { ar = "معطف دافئ", en = "Warm Coat", kind = "armor", stack = 1, reduce = 0.2, warm = 16, buy = 420, color = Color3.fromRGB(150, 110, 80), mat = Enum.Material.Fabric }
 I.defs.desert_cloak = { ar = "عباءة الصحراء", en = "Desert Cloak", kind = "armor", stack = 1, reduce = 0.2, cool = 16, buy = 420, color = Color3.fromRGB(226, 206, 160), mat = Enum.Material.Fabric }
 
+-- light: burns only while held, `dur` = seconds of light left
+I.defs.lantern = { ar = "مصباح", en = "Lantern", kind = "light", stack = 1, dur = 720, buy = 1000 }
+-- secret market goods (never below 300)
+I.defs.bed = { ar = "سرير", en = "Bed", kind = "place", stack = 1, buy = 900 }
+I.defs.shadow_blade = { ar = "سيف الظل", en = "Shadow Blade", kind = "tool", class = "sword", stack = 1, dmg = 86, dur = 700, buy = 3200 }
+I.potions = {
+	{ id = "potion_speed", ar = "جرعة السرعة", en = "Speed Potion", buff = "speed", time = 120, buy = 350, color = Color3.fromRGB(90, 200, 255) },
+	{ id = "potion_strength", ar = "جرعة القوة", en = "Strength Potion", buff = "strength", time = 120, buy = 450, color = Color3.fromRGB(230, 70, 60) },
+	{ id = "potion_regen", ar = "جرعة التجدد", en = "Regen Potion", buff = "regen", time = 40, buy = 320, color = Color3.fromRGB(110, 230, 120) },
+	{ id = "potion_stone", ar = "جرعة الحصانة", en = "Stoneskin Potion", buff = "stone", time = 90, buy = 500, color = Color3.fromRGB(160, 150, 140) },
+	{ id = "potion_vision", ar = "جرعة الرؤية الليلية", en = "Night Vision Potion", buff = "vision", time = 240, buy = 380, color = Color3.fromRGB(190, 120, 255) },
+	{ id = "potion_warmth", ar = "جرعة الدفء", en = "Warmth Potion", buff = "warmth", time = 300, buy = 300, color = Color3.fromRGB(255, 160, 60) },
+}
+for _, p in ipairs(I.potions) do
+	I.defs[p.id] = { ar = p.ar, en = p.en, kind = "potion", stack = 5, buff = p.buff, time = p.time, buy = p.buy, color = p.color }
+end
+
 -- shop categories (the bag is shown under "supplies")
 I.shopCats = {
 	{ key = "tools", ids = { "wood_axe", "stone_axe", "iron_axe", "diamond_axe", "wood_pickaxe", "stone_pickaxe", "iron_pickaxe", "diamond_pickaxe" } },
 	{ key = "weapons", ids = { "wood_sword", "stone_sword", "iron_sword", "diamond_sword", "bow", "arrow", "pistol", "ammo" } },
 	{ key = "armor", ids = { "leather_armor", "iron_armor", "diamond_armor" } },
-	{ key = "supplies", ids = { "bandage", "berries", "trap", "campfire" } },
+	{ key = "supplies", ids = { "bandage", "berries", "trap", "campfire", "lantern" } },
 }
 
 -- each trader has its own stock: forest = the main camp, the others are outposts in each region
@@ -75,17 +97,23 @@ I.shops = {
 	snow = {
 		{ key = "weapons", ids = { "spear", "ice_spear", "crossbow", "bolt" } },
 		{ key = "armor", ids = { "warm_coat", "iron_armor" } },
-		{ key = "supplies", ids = { "bandage", "campfire", "berries" } },
+		{ key = "supplies", ids = { "bandage", "campfire", "berries", "lantern" } },
 	},
 	desert = {
 		{ key = "weapons", ids = { "scimitar", "rifle", "rifle_ammo", "pistol", "ammo" } },
 		{ key = "armor", ids = { "desert_cloak", "iron_armor" } },
-		{ key = "supplies", ids = { "bandage", "berries", "trap" } },
+		{ key = "supplies", ids = { "bandage", "berries", "trap", "lantern" } },
 	},
 	mountains = {
 		{ key = "tools", ids = { "iron_pickaxe", "diamond_pickaxe", "war_hammer" } },
 		{ key = "weapons", ids = { "war_hammer", "crossbow", "bolt", "dynamite" } },
 		{ key = "armor", ids = { "iron_armor", "diamond_armor" } },
+		{ key = "supplies", ids = { "bandage", "lantern" } },
+	},
+	-- the secret trader: open day and night, moves around the map
+	black = {
+		{ key = "special", ids = { "bed", "shadow_blade", "lantern" } },
+		{ key = "potions", ids = { "potion_speed", "potion_strength", "potion_regen", "potion_stone", "potion_vision", "potion_warmth" } },
 	},
 }
 function I.inShop(shop, id)
@@ -198,6 +226,32 @@ local SPECS = {
 		P(Vector3.new(0.6, 0.6, 0.6), CFrame.new(0, 0.3, 0), Color3.fromRGB(255, 140, 40), Enum.Material.Neon, BALL) },
 }
 
+SPECS.lantern = { P(Vector3.new(0.9, 0.12, 0.9), CFrame.new(0, -0.7, 0), DARK, Enum.Material.Metal),
+	P(Vector3.new(0.7, 1.1, 0.7), CFrame.new(0, 0, 0), Color3.fromRGB(255, 214, 140), Enum.Material.Neon),
+	P(Vector3.new(0.9, 0.12, 0.9), CFrame.new(0, 0.62, 0), DARK, Enum.Material.Metal),
+	P(Vector3.new(0.12, 1.3, 0.12), CFrame.new(0.4, 0, 0.4), DARK, Enum.Material.Metal),
+	P(Vector3.new(0.12, 1.3, 0.12), CFrame.new(-0.4, 0, -0.4), DARK, Enum.Material.Metal),
+	P(Vector3.new(0.6, 0.6, 0.1), CFrame.new(0, 0.95, 0), DARK, Enum.Material.Metal, CYL) }
+SPECS.bed = { P(Vector3.new(3.2, 0.6, 6.2), CFrame.new(0, 0.3, 0), WOOD, Enum.Material.WoodPlanks),
+	P(Vector3.new(3.0, 0.5, 5.9), CFrame.new(0, 0.85, 0.1), Color3.fromRGB(150, 50, 60), Enum.Material.Fabric),
+	P(Vector3.new(2.4, 0.45, 1.1), CFrame.new(0, 1.2, -2.3), Color3.fromRGB(235, 230, 220), Enum.Material.Fabric),
+	P(Vector3.new(3.2, 1.8, 0.4), CFrame.new(0, 1.2, -3.0), WOOD, Enum.Material.WoodPlanks) }
+for _, p in ipairs(I.potions) do
+	SPECS[p.id] = { P(Vector3.new(0.95, 0.95, 0.95), nil, p.color, Enum.Material.Glass, BALL),
+		P(Vector3.new(0.6, 0.6, 0.6), nil, p.color, Enum.Material.Neon, BALL),
+		P(Vector3.new(0.6, 0.32, 0.32), CFrame.new(0, 0.62, 0) * A(0, 0, r(90)), Color3.fromRGB(200, 225, 235), Enum.Material.Glass, CYL),
+		P(Vector3.new(0.22, 0.26, 0.26), CFrame.new(0, 0.98, 0) * A(0, 0, r(90)), Color3.fromRGB(140, 100, 60), Enum.Material.Wood, CYL) }
+end
+SPECS.mushroom = { P(Vector3.new(0.3, 0.7, 0.3), CFrame.new(0, -0.1, 0), Color3.fromRGB(230, 225, 210)),
+	P(Vector3.new(0.9, 0.45, 0.9), CFrame.new(0, 0.3, 0), Color3.fromRGB(80, 200, 220), Enum.Material.Neon, BALL) }
+local function gemSpec(c1, c2, mat)
+	return { P(Vector3.new(0.5, 1.2, 0.5), A(0, r(45), r(8)), c1, mat),
+		P(Vector3.new(0.38, 0.8, 0.38), CFrame.new(0.38, -0.15, 0.1) * A(0, r(45), r(-25)), c2, mat),
+		P(Vector3.new(0.34, 0.7, 0.34), CFrame.new(-0.34, -0.2, -0.1) * A(0, r(45), r(25)), c1, mat) }
+end
+SPECS.crystal = gemSpec(Color3.fromRGB(150, 110, 255), Color3.fromRGB(190, 150, 255), Enum.Material.Glass)
+SPECS.obsidian = gemSpec(Color3.fromRGB(40, 30, 55), Color3.fromRGB(70, 50, 90), Enum.Material.Glass)
+
 local function recolor(spec, color, mat, from)
 	local out = {}
 	for i, p in ipairs(spec) do
@@ -215,6 +269,11 @@ for _, t in ipairs(TIERS) do
 	SPECS[t.key .. "_pickaxe"] = recolor(SPECS.wood_pickaxe, t.head, t.mat, 3)
 	if t.key ~= "iron" then SPECS[t.key .. "_sword"] = recolor(SPECS.iron_sword, t.head, t.mat, 4) end
 end
+for _, h in ipairs({ { "hide_desert", Color3.fromRGB(214, 176, 112) }, { "hide_snow", Color3.fromRGB(236, 240, 248) } }) do
+	SPECS[h[1]] = { P(Vector3.new(1.6, 0.12, 1.2), A(0, 0, r(8)), h[2], Enum.Material.Fabric),
+		P(Vector3.new(0.9, 0.13, 0.5), CFrame.new(0, 0.02, 0.7), h[2]:Lerp(Color3.new(0, 0, 0), 0.15), Enum.Material.Fabric) }
+end
+SPECS.shadow_blade = recolor(SPECS.iron_sword, Color3.fromRGB(60, 30, 90), Enum.Material.Neon, 4)
 for _, id in ipairs({ "leather_armor", "iron_armor", "diamond_armor" }) do
 	local d = I.defs[id]
 	SPECS[id] = {

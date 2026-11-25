@@ -41,6 +41,8 @@ local REWARD = {
 	iron = { id = "iron", min = 1, max = 2, xp = 9, coins = 4, respawn = 210 },
 	gold = { id = "gold", min = 1, max = 2, xp = 14, coins = 8, respawn = 300, needRock = 3 },
 	diamond = { id = "diamond", min = 1, max = 1, xp = 25, coins = 15, respawn = 480, needRock = 5 },
+	crystal = { id = "crystal", min = 1, max = 3, xp = 16, coins = 6, respawn = 360, needRock = 4 },
+	obsidian = { id = "obsidian", min = 1, max = 2, xp = 30, coins = 14, respawn = 600, needRock = 6 },
 }
 
 function R.init(c)
@@ -53,15 +55,17 @@ function R.init(c)
 			if model:GetAttribute("NodeType") == "bush" then
 				local prompt = model:FindFirstChildWhichIsA("ProximityPrompt", true)
 				if prompt then
+					local gives = model:GetAttribute("Gives") or "berries"
 					prompt:SetAttribute("Key", "pick")
+					if gives ~= "berries" then prompt:SetAttribute("Obj", gives) end
 					prompt.Triggered:Connect(function(player)
 						if model:GetAttribute("Ready") == false then return end
-						if ctx.space(player, "berries") <= 0 then ctx.notify(player, "bagFull") return end
-						local n = rng:NextInteger(2, 3)
+						if ctx.space(player, gives) <= 0 then ctx.notify(player, "bagFull") return end
+						local n = gives == "berries" and rng:NextInteger(2, 3) or rng:NextInteger(1, 2)
 						if ctx.lucky(player, 0.03) then n *= 2 end
-						ctx.give(player, "berries", n)
-						ctx.reward(player, 2, 0)
-						ctx.notify(player, "picked", "berries", n)
+						ctx.give(player, gives, n)
+						ctx.reward(player, gives == "berries" and 2 or 4, 0)
+						ctx.notify(player, "picked", gives, n)
 						ctx.fx("pick", model:GetPivot().Position)
 						model:SetAttribute("Ready", false)
 						prompt.Enabled = false

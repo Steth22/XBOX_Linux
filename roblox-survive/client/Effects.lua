@@ -286,7 +286,8 @@ local function treeFall(node)
 end
 
 local MOB_SOUND = { wolf = "wolf", zombie = "zombie", guardian = "guardian", rabbit = "rabbit", deer = "deer", boar = "boar", bear = "bear", spider = "spider", alpha = "wolf",
-	hare = "rabbit", snowwolf = "wolf", polarbear = "bear", yeti = "guardian", camel = "camel", goat = "deer", scorpion = "spider", scorpionking = "spider" }
+	hare = "rabbit", snowwolf = "wolf", polarbear = "bear", yeti = "guardian", camel = "camel", goat = "deer", scorpion = "spider", scorpionking = "spider",
+	bat = "spider", crawler = "spider", ghoul = "zombie", golem = "guardian" }
 
 local handlers = {}
 function handlers.anim(char, kind) E.anim(char, kind) end
@@ -578,24 +579,82 @@ function E.start(remotes)
 	end
 	E.fireSounds()
 	E.ambience()
+	-- light: real darkness at night and inside caves, thick regional fog, night vision
 	task.spawn(function()
 		local Biomes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Biomes"))
 		local Lighting = game:GetService("Lighting")
+		local cc = Lighting:FindFirstChild("LocalGrade") or Instance.new("ColorCorrectionEffect")
+		cc.Name = "LocalGrade"
+		cc.Parent = Lighting
+		local terrainOnly = RaycastParams.new()
+		terrainOnly.FilterType = Enum.RaycastFilterType.Include
+		terrainOnly.FilterDescendantsInstances = { workspace.Terrain }
 		local current = nil
+		local cave, caveT, nv = 0, false, 0
+		local function mix(a, b, t) return a:Lerp(b, math.clamp(t, 0, 1)) end
+		local function nightFactor(t)
+			if t >= 6.5 and t <= 17.5 then return 0 end
+			if t > 17.5 and t < 19.5 then return (t - 17.5) / 2 end
+			if t >= 4.5 and t < 6.5 then return 1 - (t - 4.5) / 2 end
+			return 1
+		end
+		local last = os.clock()
 		while true do
-			task.wait(1)
+			task.wait(0.1)
+			local now = os.clock()
+			local dt = now - last
+			last = now
 			local lp = Players.LocalPlayer
 			local hrp = lp and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 			local atm = Lighting:FindFirstChildOfClass("Atmosphere")
-			if hrp and atm then
+			if hrp then
 				local b = Biomes.at(hrp.Position.X, hrp.Position.Z)
 				if b ~= current then
 					current = b
-					local f = Biomes.fog[b]
-					TweenService:Create(atm, TweenInfo.new(4), { Density = f.density, Color = f.color, Haze = f.haze }):Play()
 					E.regionChanged = b
 					if E.onRegion then pcall(E.onRegion, b) end
 				end
+				-- under solid rock = inside a cave
+				local up = workspace:Raycast(hrp.Position + Vector3.new(0, 2, 0), Vector3.new(0, 90, 0), terrainOnly)
+				local inCave = up ~= nil
+				if inCave ~= caveT then
+					caveT = inCave
+					if inCave and E.onCave then pcall(E.onCave) end
+				end
+			end
+			cave += ((caveT and 1 or 0) - cave) * math.min(1, dt * 1.6)
+			nv += ((E.vision and 1 or 0) - nv) * math.min(1, dt * 2)
+			local t = Lighting.ClockTime
+			local night = nightFactor(t)
+			local dark = math.max(night, cave)
+			-- day -> pitch black
+			local amb = mix(Color3.fromRGB(100, 108, 118), Color3.fromRGB(3, 3, 6), dark)
+			local out = mix(Color3.fromRGB(128, 136, 148), Color3.fromRGB(4, 4, 9), night)
+			out = mix(out, Color3.new(0, 0, 0), cave)
+			local bright = 2.4 + (0.04 - 2.4) * dark
+			local expo = -0.7 * dark
+			-- night vision lifts everything to a green glow
+			amb = mix(amb, Color3.fromRGB(60, 95, 60), nv * dark)
+			out = mix(out, Color3.fromRGB(70, 110, 70), nv * dark)
+			bright += nv * dark * 1.2
+			expo += nv * dark * 0.9
+			Lighting.Ambient = amb
+			Lighting.OutdoorAmbient = out
+			Lighting.Brightness = bright
+			Lighting.ExposureCompensation = expo
+			cc.TintColor = mix(Color3.new(1, 1, 1), Color3.fromRGB(170, 255, 170), nv * dark)
+			cc.Saturation = -0.35 * dark * (1 - nv)
+			-- distance fog (the Atmosphere object would cancel it, so it is removed)
+			if atm then atm:Destroy() end
+			if current then
+				local f = Biomes.fog[current]
+				local dawn = (t > 4.5 and t < 8.5) and 0.6 or 1 -- thicker morning mist
+				local finish = f.finish * dawn
+				finish = finish + (110 - finish) * night * 0.55 -- you see less at night
+				finish = finish + (85 - finish) * cave
+				Lighting.FogStart = f.start * dawn * (1 - cave * 0.8)
+				Lighting.FogEnd = finish
+				Lighting.FogColor = mix(mix(f.color, Color3.fromRGB(8, 8, 14), night), Color3.new(0, 0, 0), cave)
 			end
 		end
 	end)

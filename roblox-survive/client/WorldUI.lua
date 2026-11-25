@@ -306,6 +306,15 @@ function M.start(gui, remotes)
 	local xpText = UI.text({ Text = "", Size = UDim2.fromOffset(126, 20), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 52), TextXAlignment = Enum.TextXAlignment.Right, TextSize = 15, TextColor3 = c.accent, Parent = hud })
 
 	---------------------------------------------------------------- vitals (right column, under the HUD): health, hunger, armor, temperature gauge
+	local buffBar = UI.frame({ Size = UDim2.fromOffset(600, 30), AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -92), BackgroundTransparency = 1, Parent = root })
+	UI.list(buffBar, 6, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
+	local sleepShade = UI.frame({ Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.15, ZIndex = 90, Visible = false, Parent = root })
+	local sleepText = UI.text({ Text = "", Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0.42, 0), TextSize = 28, ZIndex = 91, Parent = sleepShade })
+	UI.text({ Text = "", Name = "Hint", Size = UDim2.new(1, 0, 0, 24), Position = UDim2.new(0, 0, 0.42, 44), TextSize = 17, TextColor3 = c.dim, ZIndex = 91, Parent = sleepShade })
+	UI.button({ Text = "", Name = "Wake", Size = UDim2.fromOffset(200, 50), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.42, 84), ZIndex = 92, Parent = sleepShade }, function() act("wake") end)
+	UserInputService.JumpRequest:Connect(function()
+		if sleepShade.Visible then act("wake") end
+	end)
 	local vitals = UI.frame({ Size = UDim2.fromOffset(440, 118), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 100), BackgroundColor3 = c.panel, BackgroundTransparency = 0.15, Parent = root })
 	UI.corner(vitals, 16)
 	UI.stroke(vitals, c.card2, 2)
@@ -547,7 +556,7 @@ function M.start(gui, remotes)
 		end
 	end
 	local function shopModal()
-		local content, panel = openModal("shop", T("o_vendor"), UDim2.fromOffset(540, 560))
+		local content, panel = openModal("shop", shopId == "black" and T("o_black") or T("o_vendor"), UDim2.fromOffset(540, 560))
 		cinematic(true)
 		panel.AnchorPoint = Vector2.new(1, 0.5)
 		panel.Position = UDim2.new(1, -28, 0.5, 0)
@@ -623,7 +632,9 @@ function M.start(gui, remotes)
 				if d.dmg then table.insert(stats, T("st_dmg") .. " " .. d.dmg) end
 				if d.class == "axe" then table.insert(stats, T("st_power") .. " " .. d.tree) end
 				if d.class == "pickaxe" then table.insert(stats, T("st_power") .. " " .. d.rock) end
-				if d.dur then table.insert(stats, T("st_dur") .. " " .. d.dur) end
+				if d.kind == "light" then table.insert(stats, T("st_time") .. " " .. string.format("%d:00", d.dur // 60))
+				elseif d.kind == "potion" then table.insert(stats, T("buff_" .. d.buff) .. " " .. string.format("%d:%02d", d.time // 60, d.time % 60))
+				elseif d.dur then table.insert(stats, T("st_dur") .. " " .. d.dur) end
 				if d.reduce then table.insert(stats, T("st_armor") .. " " .. math.floor(d.reduce * 100) .. "%") end
 				if owned[id] then table.insert(stats, T("owned") .. " " .. owned[id]) end
 				local price = tostring(d.buy) .. ((#stats > 0) and ("   |   " .. table.concat(stats, "  -  ")) or "")
@@ -834,6 +845,8 @@ function M.start(gui, remotes)
 			prompt.ObjectText = Items.name(itemId, lang) .. (n > 1 and (" x" .. n) or "")
 		elseif obj then prompt.ObjectText = T("o_" .. obj)
 		elseif key == "pick" then prompt.ObjectText = T("o_berries")
+		elseif key == "trade" and prompt:GetAttribute("Shop") == "black" then
+			prompt.ObjectText = T("o_black")
 		elseif key == "trade" then
 			prompt.ObjectText = T("o_vendor") .. (ReplicatedStorage:GetAttribute("Night") and ("  (" .. T("shopClosed") .. ")") or "")
 		end
@@ -845,7 +858,7 @@ function M.start(gui, remotes)
 		if not kind then return end
 		local hrp = m:WaitForChild("HumanoidRootPart", 5)
 		if not hrp then return end
-		local boss = kind == "guardian" or kind == "alpha"
+		local boss = m:GetAttribute("Boss") == true
 		local bb = UI.new("BillboardGui", { Size = UDim2.fromOffset(boss and 200 or 120, 34), StudsOffsetWorldSpace = Vector3.new(0, hrp.Size.Y / 2 + (boss and 4 or 2), 0), AlwaysOnTop = false, MaxDistance = boss and 200 or 80, Adornee = hrp, Parent = m })
 		local lvl = m:GetAttribute("Level") or 1
 		UI.text({ Text = T("mob_" .. kind) .. "  Lv " .. lvl, Size = UDim2.new(1, 0, 0, 18), TextSize = boss and 18 or 14, TextColor3 = boss and c.gold or c.text, TextStrokeTransparency = 0.4, Parent = bb })
@@ -935,6 +948,22 @@ function M.start(gui, remotes)
 		local red = ad and ad.reduce or 0
 		UI.tween(armorFill, 0.3, { Size = UDim2.fromScale(math.clamp(red / 0.45, 0, 1), 1) })
 		armorText.Text = ad and (Items.name(s.armor, lang) .. "  " .. math.floor(red * 100 + 0.5) .. "%") or "0%"
+		-- active potions
+		local bsig = ""
+		for k, v in pairs(s.buffs or {}) do bsig ..= k .. math.floor(v / 5) end
+		if bsig ~= (buffBar:GetAttribute("Sig") or "") then
+			buffBar:SetAttribute("Sig", bsig)
+			for _, ch in ipairs(buffBar:GetChildren()) do if ch:IsA("GuiObject") then ch:Destroy() end end
+			for k, v in pairs(s.buffs or {}) do
+				local chip = UI.frame({ Size = UDim2.fromOffset(150, 28), BackgroundColor3 = c.panel, BackgroundTransparency = 0.15, Parent = buffBar })
+				UI.corner(chip, 14)
+				UI.text({ Text = T("buff_" .. k) .. "  " .. string.format("%d:%02d", v // 60, v % 60), Size = UDim2.fromScale(1, 1), TextSize = 15, TextColor3 = c.gold, Parent = chip })
+			end
+		end
+		Effects.vision = s.buffs ~= nil and s.buffs.vision ~= nil
+		sleepShade.Visible = s.sleeping == true
+		sleepShade.Hint.Text = T("sleepHint")
+		sleepShade.Wake.Text = T("wake")
 		if s.night ~= lastNight then
 			lastNight = s.night
 			clockIcon:ClearAllChildren()
@@ -992,12 +1021,18 @@ function M.start(gui, remotes)
 		elseif key == "spGot" then text = Locale.f(lang, "spGot", a or 1)
 		elseif key == "newDay" then text = Locale.f(lang, "newDay", a or 1)
 		elseif key == "stashUp" then text = Locale.f(lang, "stashUp", a or 10)
+		elseif key == "drank" then text = Locale.f(lang, "drank", Items.name(a, lang)) Effects.ui("skill")
+		elseif key == "buffEnd" then text = Locale.f(lang, "buffEnd", T("buff_" .. tostring(a)))
+		elseif key == "sleepCount" then
+			sleepText.Text = Locale.f(lang, "sleeping", a or 0, b or 1)
+			return
+		elseif key == "sleepStart" or key == "woke" then return
 		elseif key == "bossSpawn" then text = Locale.f(lang, "bossSpawnX", T("mob_" .. tostring(a or "guardian")))
 		elseif key == "bossDown" then text = Locale.f(lang, "bossDownX", T("mob_" .. tostring(a or "guardian")))
 		else text = T(key) end
 		local color = (key == "bossSpawn" or key == "died") and Color3.fromRGB(90, 30, 30) or nil
 		if key == "picked" then
-			local ore = (a == "stone" or a == "iron" or a == "gold" or a == "diamond")
+			local ore = (a == "stone" or a == "iron" or a == "gold" or a == "diamond" or a == "crystal" or a == "obsidian")
 			Effects.ui(a == "wood" and "collectWood" or (ore and "collectStone" or "pop"))
 		elseif key == "coinsGot" then Effects.ui("coin")
 		elseif key == "sold" then Effects.ui("sell")
@@ -1019,6 +1054,9 @@ function M.start(gui, remotes)
 	Effects.report = function(msg) act("report", msg) end
 	Effects.onRegion = function(b)
 		UI.toast(root, T("biome_" .. b))
+	end
+	Effects.onCave = function()
+		UI.toast(root, T("caveIn"))
 	end
 	act("state")
 	task.delay(5, function() if state then UI.toast(root, T("tip")) end end)

@@ -33,7 +33,7 @@ L.ar = {
 	starving = "أنت جائع", dehydrated = "أنت عطشان، اشرب من الماء", coinsGot = "+%d فلوس",
 	mob_rabbit = "أرنب", mob_deer = "غزال", mob_wolf = "ذئب", mob_zombie = "زومبي", mob_guardian = "حارس الغابة",
 	info = "معلومات", vendorTip = "التاجر بجانب النار",
-	mob_hare = "أرنب ثلجي", mob_snowwolf = "ذئب ثلجي", mob_polarbear = "دب قطبي", mob_yeti = "اليتي", mob_camel = "جمل", mob_scorpion = "عقرب", mob_scorpionking = "ملك العقارب", mob_goat = "ماعز جبلي", biome_forest = "الغابة", biome_snow = "الثلوج", biome_desert = "الصحراء", biome_mountains = "الجبال", biome_hills = "التلال", stash = "المخزن", stashFull = "المخزن ممتلئ", stashUp = "أصبح مخزنك %d خانة", upgradeStash = "تطوير", p_stash = "افتح", o_stash = "مخزن", yourItems = "أغراضك", tapToMove = "اضغط على غرض لنقله", dropOutside = "اسحب لترتيب الأغراض، واسحب خارج الحقيبة للرمي", st_dmg = "ضرر", st_power = "قوة", st_dur = "متانة", st_armor = "حماية", owned = "لديك", cat_tools = "أدوات", cat_weapons = "أسلحة", cat_armor = "دروع", cat_supplies = "مؤن", needPickaxe = "تحتاج معولًا", needBetterPickaxe = "تحتاج معولًا حديديًا أو أفضل", armorOn = "لبست الدرع", unequip = "خلع", armorLbl = "الدرع", cooking = "جارٍ الطبخ...", cookedOne = "+1 لحم مطبوخ", day = "اليوم %d", newDay = "بدأ اليوم %d", shopClosed = "المتجر مغلق ليلًا", skillUp = "تمت الترقية: %s", spGot = "+%d نقطة مهارة",
+	mob_hare = "أرنب ثلجي", mob_snowwolf = "ذئب ثلجي", mob_polarbear = "دب قطبي", mob_yeti = "اليتي", mob_camel = "جمل", mob_scorpion = "عقرب", mob_scorpionking = "ملك العقارب", mob_goat = "ماعز جبلي", biome_forest = "الغابة", biome_snow = "الثلوج", biome_desert = "الصحراء", biome_mountains = "الجبال", biome_hills = "التلال", stash = "المخزن", stashFull = "المخزن ممتلئ", stashUp = "أصبح مخزنك %d خانة", upgradeStash = "تطوير", p_stash = "افتح", o_stash = "مخزن", yourItems = "أغراضك", tapToMove = "اضغط على غرض لنقله", dropOutside = "اسحب لترتيب الأغراض، واسحب خارج الحقيبة للرمي", st_dmg = "ضرر", st_power = "قوة", st_dur = "متانة", st_armor = "حماية", owned = "لديك", cat_tools = "أدوات", cat_weapons = "أسلحة", cat_armor = "دروع", cat_supplies = "مؤن", needPickaxe = "تحتاج معولًا", needBetterPickaxe = "تحتاج معولًا أقوى", armorOn = "لبست الدرع", unequip = "خلع", armorLbl = "الدرع", cooking = "جارٍ الطبخ...", cookedOne = "+1 لحم مطبوخ", day = "اليوم %d", newDay = "بدأ اليوم %d", shopClosed = "المتجر مغلق ليلًا", skillUp = "تمت الترقية: %s", spGot = "+%d نقطة مهارة",
 	roomLimit = "وصلت للحد الأقصى من الغرف", buyRooms = "+2 غرف (30 روبوكس)", passMissing = "غير متاح بعد",
 	deleteRoom = "حذف", roomSettings = "إعدادات الغرفة", maxPlayers = "عدد اللاعبين", access = "الدخول",
 	acc_public = "عامة", acc_friends = "الأصدقاء", acc_request = "بطلب", myRoom = "غرفتي",
@@ -44,6 +44,13 @@ L.ar = {
 	bossSpawnX = "ظهر %s!", bossDownX = "سقط %s!",
 	dragTip = "اسحب لتبديل الأماكن، أو اضغط للخيارات", drop1 = "رمي 1", dropAll = "رمي الكل", split = "تقسيم", dragHere = "اسحب هنا للرمي",
 
+	cat_special = "نوادر", cat_potions = "جرعات", o_black = "التاجر السري", p_sleep = "نَم", o_bed = "سرير",
+	lanternDead = "انطفأ المصباح وانتهت صلاحيته", notTired = "لا تنام إلا في الليل", bedTaken = "السرير مشغول",
+	sleeping = "نائم... %d من %d", wake = "استيقظ", slept = "طلع الصباح", blackMoved = "التاجر السري غيّر مكانه",
+	st_time = "المدة", drank = "شربت %s", buffEnd = "انتهى مفعول %s", sleepHint = "ينتهي الليل إذا نام الجميع",
+	buff_speed = "سرعة", buff_strength = "قوة", buff_regen = "تجدد", buff_stone = "حصانة", buff_vision = "رؤية ليلية", buff_warmth = "دفء",
+	mob_bat = "خفاش", mob_crawler = "زاحف الكهوف", mob_ghoul = "غول", mob_golem = "عملاق الصخر", caveIn = "دخلت كهفًا",
+	o_mushroom = "فطر", bedPlaced = "وُضع السرير، نَم عليه ليلًا",
 }
 
 L.en = {
@@ -79,7 +86,7 @@ L.en = {
 	starving = "You are starving", dehydrated = "You are thirsty, drink water", coinsGot = "+%d coins",
 	mob_rabbit = "Rabbit", mob_deer = "Deer", mob_wolf = "Wolf", mob_zombie = "Zombie", mob_guardian = "Forest Guardian",
 	info = "Info", vendorTip = "The trader is by the fire",
-	mob_hare = "Snow Hare", mob_snowwolf = "Snow Wolf", mob_polarbear = "Polar Bear", mob_yeti = "Yeti", mob_camel = "Camel", mob_scorpion = "Scorpion", mob_scorpionking = "Scorpion King", mob_goat = "Mountain Goat", biome_forest = "Forest", biome_snow = "Snowlands", biome_desert = "Desert", biome_mountains = "Mountains", biome_hills = "Hills", stash = "Storage", stashFull = "Storage is full", stashUp = "Your storage now has %d slots", upgradeStash = "Upgrade", p_stash = "Open", o_stash = "Storage", yourItems = "Your items", tapToMove = "Tap an item to move it", dropOutside = "Drag to arrange, drag outside the bag to drop", st_dmg = "DMG", st_power = "Power", st_dur = "Durability", st_armor = "Armor", owned = "Owned", cat_tools = "Tools", cat_weapons = "Weapons", cat_armor = "Armor", cat_supplies = "Supplies", needPickaxe = "You need a pickaxe", needBetterPickaxe = "You need an iron pickaxe or better", armorOn = "Armor equipped", unequip = "Unequip", armorLbl = "Armor", cooking = "Cooking...", cookedOne = "+1 cooked meat", day = "Day %d", newDay = "Day %d begins", shopClosed = "The shop is closed at night", skillUp = "Upgraded: %s", spGot = "+%d skill point",
+	mob_hare = "Snow Hare", mob_snowwolf = "Snow Wolf", mob_polarbear = "Polar Bear", mob_yeti = "Yeti", mob_camel = "Camel", mob_scorpion = "Scorpion", mob_scorpionking = "Scorpion King", mob_goat = "Mountain Goat", biome_forest = "Forest", biome_snow = "Snowlands", biome_desert = "Desert", biome_mountains = "Mountains", biome_hills = "Hills", stash = "Storage", stashFull = "Storage is full", stashUp = "Your storage now has %d slots", upgradeStash = "Upgrade", p_stash = "Open", o_stash = "Storage", yourItems = "Your items", tapToMove = "Tap an item to move it", dropOutside = "Drag to arrange, drag outside the bag to drop", st_dmg = "DMG", st_power = "Power", st_dur = "Durability", st_armor = "Armor", owned = "Owned", cat_tools = "Tools", cat_weapons = "Weapons", cat_armor = "Armor", cat_supplies = "Supplies", needPickaxe = "You need a pickaxe", needBetterPickaxe = "You need a stronger pickaxe", armorOn = "Armor equipped", unequip = "Unequip", armorLbl = "Armor", cooking = "Cooking...", cookedOne = "+1 cooked meat", day = "Day %d", newDay = "Day %d begins", shopClosed = "The shop is closed at night", skillUp = "Upgraded: %s", spGot = "+%d skill point",
 	roomLimit = "Room limit reached", buyRooms = "+2 rooms (30 Robux)", passMissing = "Not available yet",
 	deleteRoom = "Delete", roomSettings = "Room settings", maxPlayers = "Max players", access = "Access",
 	acc_public = "Public", acc_friends = "Friends", acc_request = "By request", myRoom = "Mine",
@@ -90,6 +97,13 @@ L.en = {
 	bossSpawnX = "%s has appeared!", bossDownX = "%s has fallen!",
 	dragTip = "Drag to move, tap for options", drop1 = "Drop 1", dropAll = "Drop all", split = "Split", dragHere = "Drag here to drop",
 
+	cat_special = "Rare", cat_potions = "Potions", o_black = "Secret Trader", p_sleep = "Sleep", o_bed = "Bed",
+	lanternDead = "Your lantern burned out", notTired = "You can only sleep at night", bedTaken = "This bed is taken",
+	sleeping = "Sleeping... %d of %d", wake = "Wake up", slept = "Morning has come", blackMoved = "The secret trader has moved",
+	st_time = "Time", drank = "You drank %s", buffEnd = "%s wore off", sleepHint = "The night ends when everyone sleeps",
+	buff_speed = "Speed", buff_strength = "Strength", buff_regen = "Regen", buff_stone = "Stoneskin", buff_vision = "Night vision", buff_warmth = "Warmth",
+	mob_bat = "Bat", mob_crawler = "Cave Crawler", mob_ghoul = "Ghoul", mob_golem = "Rock Giant", caveIn = "You entered a cave",
+	o_mushroom = "Mushroom", bedPlaced = "Bed placed, sleep on it at night",
 }
 
 function L.t(lang, key)

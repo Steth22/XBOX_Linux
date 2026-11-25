@@ -28,6 +28,14 @@ local selected = {} -- [Player] = hotbar index
 local cooldown = {} -- [Player] = { [key] = clock }
 local luckCd = {}
 local rng = Random.new()
+local buffs = {} -- [Player] = { [name] = expiry clock }
+local sleeping = {} -- [Player] = bed model
+local beds = {} -- [Player] = bed model they own
+
+local function hasBuff(player, name)
+	local b = buffs[player]
+	return b ~= nil and b[name] ~= nil and b[name] > os.clock()
+end
 
 local function cd(player, key, t)
 	cooldown[player] = cooldown[player] or {}
@@ -58,6 +66,15 @@ local function snapshot(player)
 		skills = room.skills, night = ReplicatedStorage:GetAttribute("Night") == true, clock = Lighting.ClockTime,
 		day = ReplicatedStorage:GetAttribute("Day") or 1,
 		armor = room.inv.armor or false,
+		buffs = (function()
+			local out = {}
+			for k, t in pairs(buffs[player] or {}) do
+				local left = math.floor(t - os.clock())
+				if left > 0 then out[k] = left end
+			end
+			return out
+		end)(),
+		sleeping = sleeping[player] ~= nil,
 		stash = Inventory.stashView(room.stash), stashLvl = room.stash.lvl,
 		stashCost = room.stash.lvl < Config.STASH_MAX_LVL and Config.stashCost(room.stash.lvl) or nil,
 	}
@@ -80,6 +97,7 @@ end
 ---------------------------------------------------------------- context shared with the other systems
 local ctx = {}
 ctx.room = Data.room
+ctx.buff = hasBuff
 ctx.push = push
 ctx.notify = notify
 function ctx.broadcast(key, a)
@@ -118,6 +136,8 @@ function ctx.hurt(player, amount)
 	local room = Data.room(player)
 	local armor = room and room.inv.armor and Items.get(room.inv.armor)
 	if armor then amount *= (1 - armor.reduce) end
+	if hasBuff(player, "stone") then amount *= 0.6 end
+	if sleeping[player] and ctx.wake then ctx.wake(player) end
 	if hum.Health - amount <= 0 and ctx.lucky(player, 0.03) and (not luckCd[player] or os.clock() - luckCd[player] > 90) then
 		luckCd[player] = os.clock()
 		hum.Health = 1
@@ -175,6 +195,7 @@ local function clearTools(player)
 end
 
 local select -- forward
+local applyStats -- forward
 
 local function useDurability(player, index)
 	local room = Data.room(player)
@@ -211,7 +232,7 @@ local function swing(player, index, def)
 		end
 	end
 	if best then
-		Mobs.damage(best, (def.dmg or 5) * (1 + 0.1 * str), player)
+		Mobs.damage(best, (def.dmg or 5) * (1 + 0.1 * str) * (hasBuff(player, "strength") and 1.5 or 1), player)
 		useDurability(player, index)
 		return
 	end
@@ -251,7 +272,7 @@ local function shoot(player, index, dir)
 	ctx.fx("anim", char, def.ammo == "arrow" and "bow" or "gun")
 	if res then
 		local m = Mobs.modelOf(res.Instance)
-		if m then Mobs.damage(m, def.dmg * (1 + 0.1 * skill(player, "strength")), player) end
+		if m then Mobs.damage(m, def.dmg * (1 + 0.1 * skill(player, "strength")) * (hasBuff(player, "strength") and 1.5 or 1), player) end
 	end
 	useDurability(player, index)
 	push(player)
@@ -332,6 +353,28 @@ local function place(player, index, def, id)
 				end
 			end
 		end)
+	elseif id == "bed" then
+		if beds[player] and beds[player].Parent then beds[player]:Destroy() end
+		m.Name = "Bed"
+		m:SetAttribute("Owner", player.UserId)
+		local look = hrp.CFrame.LookVector
+		m:PivotTo(CFrame.lookAt(res.Position + Vector3.new(0, 0.05, 0), res.Position + Vector3.new(look.X, 0.05, look.Z)))
+		for _, p in ipairs(m:GetDescendants()) do
+			if p:IsA("BasePart") then p.CanCollide = true p.CanQuery = true end
+		end
+		local pr = Instance.new("ProximityPrompt")
+		pr.ActionText = "Sleep"
+		pr.ObjectText = "Bed"
+		pr.HoldDuration = 0.5
+		pr.MaxActivationDistance = 9
+		pr.RequiresLineOfSight = false
+		pr:SetAttribute("Key", "sleep")
+		pr:SetAttribute("Obj", "bed")
+		pr.Parent = m.PrimaryPart
+		m.Parent = workspace
+		beds[player] = m
+		pr.Triggered:Connect(function(pl) ctx.sleep(pl, m) end)
+		notify(player, "bedPlaced")
 	elseif id == "trap" then
 		m:SetAttribute("Owner", player.UserId)
 		m.Parent = Mobs.traps()
@@ -357,7 +400,7 @@ local function place(player, index, def, id)
 	end
 	ctx.fx("anim", player.Character, "place")
 	ctx.fx("place", res.Position)
-	notify(player, "placed")
+	if id ~= "bed" then notify(player, "placed") end
 	if not room.inv.slots[index] then select(player, 0) else push(player) end
 end
 
@@ -385,6 +428,18 @@ function select(player, index)
 	local tool = Items.buildTool(id)
 	if tool then
 		if def.kind == "ranged" then tool:SetAttribute("Ranged", true) end
+		if def.kind == "light" then
+			for _, p in ipairs(tool:GetDescendants()) do
+				if p:IsA("BasePart") and p.Material == Enum.Material.Neon then
+					local l = Instance.new("PointLight")
+					l.Range = 42
+					l.Brightness = 2.6
+					l.Shadows = true
+					l.Color = Color3.fromRGB(255, 210, 150)
+					l.Parent = p
+				end
+			end
+		end
 		tool.Activated:Connect(function()
 			local r = Data.room(player)
 			local cur = r and r.inv.slots[index]
@@ -402,6 +457,17 @@ function select(player, index)
 				end
 			elseif def.kind == "place" then
 				place(player, index, def, id)
+			elseif def.kind == "potion" then
+				if not cd(player, "drink", 1) then return end
+				if Inventory.removeSlot(r.inv, index, 1) then
+					buffs[player] = buffs[player] or {}
+					buffs[player][def.buff] = os.clock() + def.time
+					ctx.fx("anim", char, "eat")
+					ctx.fx("skillUp", char)
+					notify(player, "drank", id)
+					applyStats(player)
+					if not r.inv.slots[index] then select(player, 0) else push(player) end
+				end
 			elseif def.kind == "armor" then
 				if not cd(player, "wear", 0.8) then return end
 				local old = r.inv.armor
@@ -432,14 +498,14 @@ local function revalidate(player)
 end
 
 ---------------------------------------------------------------- characters
-local function applyStats(player)
+function applyStats(player)
 	local _, hum = hrpOf(player)
 	if not hum then return end
 	local hp = 100 + 10 * skill(player, "health")
 	local ratio = hum.Health / math.max(1, hum.MaxHealth)
 	hum.MaxHealth = hp
 	hum.Health = math.clamp(hp * ratio, 1, hp)
-	hum.WalkSpeed = 16 + 0.6 * math.min(skill(player, "speed"), Config.SKILL_CAP.speed or 10)
+	hum.WalkSpeed = (16 + 0.6 * math.min(skill(player, "speed"), Config.SKILL_CAP.speed or 10)) * (hasBuff(player, "speed") and 1.3 or 1)
 end
 
 local function guardCharacter(char)
@@ -564,6 +630,219 @@ local function nearVendor(player, shop)
 	return nil
 end
 
+
+---------------------------------------------------------------- sleeping: the night ends when everyone sleeps
+local function sleepCount()
+	local n, total = 0, 0
+	for _, pl in ipairs(Players:GetPlayers()) do
+		local _, hum = hrpOf(pl)
+		if hum and hum.Health > 0 then
+			total += 1
+			if sleeping[pl] then n += 1 end
+		end
+	end
+	return n, total
+end
+local function announceSleep()
+	local n, total = sleepCount()
+	for _, pl in ipairs(Players:GetPlayers()) do notify(pl, "sleepCount", n, total) end
+end
+function ctx.wake(player)
+	local bed = sleeping[player]
+	if not bed then return end
+	sleeping[player] = nil
+	bed:SetAttribute("Sleeper", nil)
+	local hrp, hum = hrpOf(player)
+	if hrp then
+		hrp.Anchored = false
+		if hum then hum.PlatformStand = false end
+		if bed.Parent then
+			hrp.CFrame = CFrame.new((bed:GetPivot() * CFrame.new(3.4, 3, 0)).Position)
+		end
+	end
+	notify(player, "woke")
+	announceSleep()
+	push(player)
+end
+function ctx.sleep(player, bed)
+	if sleeping[player] then ctx.wake(player) return end
+	if not isNight() then notify(player, "notTired") return end
+	local occupant = bed:GetAttribute("Sleeper")
+	if occupant and occupant ~= player.UserId then notify(player, "bedTaken") return end
+	local hrp, hum = hrpOf(player)
+	if not hrp or not hum or hum.Health <= 0 then return end
+	select(player, 0)
+	sleeping[player] = bed
+	bed:SetAttribute("Sleeper", player.UserId)
+	hum.PlatformStand = true
+	hrp.Anchored = true
+	-- lie on the mattress, head on the pillow
+	hrp.CFrame = bed:GetPivot() * CFrame.new(0, 1.9, 0.4) * CFrame.Angles(math.rad(90), 0, 0)
+	notify(player, "sleepStart")
+	announceSleep()
+	push(player)
+end
+local function checkSleep()
+	if not isNight() then
+		for pl in pairs(sleeping) do ctx.wake(pl) end
+		return
+	end
+	local n, total = sleepCount()
+	if n > 0 and n >= total then
+		Survival.skipNight()
+		for pl in pairs(sleeping) do
+			local _, hum = hrpOf(pl)
+			if hum then hum.Health = hum.MaxHealth end
+			ctx.wake(pl)
+		end
+		for _, pl in ipairs(Players:GetPlayers()) do notify(pl, "slept") end
+	end
+end
+
+---------------------------------------------------------------- lantern burn + potion timers (every second)
+local function lightAndBuffs(player)
+	local room = Data.room(player)
+	if not room then return end
+	local idx = selected[player] or 0
+	local slot = idx > 0 and room.inv.slots[idx]
+	local def = slot and Items.get(slot.id)
+	if def and def.kind == "light" then
+		slot.d = (slot.d or def.dur) - 1
+		if slot.d <= 0 then
+			room.inv.slots[idx] = false
+			notify(player, "lanternDead")
+			select(player, 0)
+		end
+	end
+	local b = buffs[player]
+	if b then
+		local _, hum = hrpOf(player)
+		if hasBuff(player, "regen") and hum and hum.Health > 0 then
+			hum.Health = math.min(hum.MaxHealth, hum.Health + 3)
+		end
+		for k, t in pairs(b) do
+			if t <= os.clock() then
+				b[k] = nil
+				notify(player, "buffEnd", k)
+				if k == "speed" then applyStats(player) end
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------- the secret trader: open day and night, never stays long
+local black = { model = nil, spot = nil, vendor = nil }
+local BLACK_STAY = 420
+local function newRig()
+	local ok, rig = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not rig then return nil end
+	for _, d in ipairs(rig:GetDescendants()) do if d:IsA("Script") or d:IsA("LocalScript") then d:Destroy() end end
+	rig:FindFirstChildOfClass("Humanoid").DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	rig.HumanoidRootPart.Anchored = true
+	return rig
+end
+local function bpart(parent, size, cf, color, mat, shape, collide)
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = mat or Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	if shape then p.Shape = shape end
+	p.CanCollide = collide == true
+	p.CanQuery = collide == true
+	p.CanTouch = false
+	p.Parent = parent
+	return p
+end
+local function buildBlack(cf)
+	local folder = workspace:FindFirstChild("BlackMarkets") or Instance.new("Folder")
+	folder.Name = "BlackMarkets"
+	folder.Parent = workspace
+	local m = Instance.new("Model")
+	m.Name = "BlackMarket"
+	local cloth, dark, wood = Color3.fromRGB(46, 30, 58), Color3.fromRGB(24, 18, 30), Color3.fromRGB(70, 50, 36)
+	bpart(m, Vector3.new(11, 0.2, 9), cf * CFrame.new(0, 0.1, 0), cloth, Enum.Material.Fabric)
+	-- low lean-to tent behind the trader
+	for _, x in ipairs({ -1, 1 }) do
+		bpart(m, Vector3.new(0.4, 6, 0.4), cf * CFrame.new(x * 5, 3, 3.6), wood, Enum.Material.Wood, nil, true)
+	end
+	bpart(m, Vector3.new(11, 0.25, 6.4), cf * CFrame.new(0, 5.2, 1.2) * CFrame.Angles(math.rad(-28), 0, 0), dark, Enum.Material.Fabric, nil, true)
+	local counter = bpart(m, Vector3.new(6, 2.4, 1.8), cf * CFrame.new(0, 1.2, -2.2), wood, Enum.Material.WoodPlanks, nil, true)
+	bpart(m, Vector3.new(6.4, 0.25, 2.1), cf * CFrame.new(0, 2.5, -2.2), cloth, Enum.Material.Fabric)
+	for i, id in ipairs({ "potion_vision", "potion_strength", "potion_speed" }) do
+		local it = Items.model(id)
+		if it then
+			for _, d in ipairs(it:GetDescendants()) do if d:IsA("BasePart") then d.Anchored = true end end
+			it:PivotTo(cf * CFrame.new(-1.8 + (i - 1) * 1.8, 3.2, -2.2))
+			it.Parent = m
+		end
+	end
+	for i = 1, 3 do
+		bpart(m, Vector3.new(2, 2, 2), cf * CFrame.new(-4.2 + (i % 2) * 0.6, 1 + (i == 3 and 2 or 0), 2.4 - (i == 3 and 0 or i * 0.1)), Color3.fromRGB(90, 64, 44), Enum.Material.WoodPlanks, nil, true)
+	end
+	local lamp = bpart(m, Vector3.new(0.8, 1.1, 0.8), cf * CFrame.new(2.6, 3.1, -2.2), Color3.fromRGB(190, 120, 255), Enum.Material.Neon)
+	local l = Instance.new("PointLight")
+	l.Range = 16
+	l.Brightness = 1.3
+	l.Color = Color3.fromRGB(180, 110, 255)
+	l.Parent = lamp
+	local rig = newRig()
+	if rig then
+		rig.Name = "Trader"
+		local hum = rig:FindFirstChildOfClass("Humanoid")
+		local hh = hum.HipHeight + rig.HumanoidRootPart.Size.Y / 2
+		local pos = (cf * CFrame.new(0, hh, 0.2)).Position
+		rig:PivotTo(CFrame.lookAt(pos, pos + cf.LookVector))
+		rig.Parent = m
+		Appearance.apply(rig, { skin = 3, shirt = 6, pants = 6, hat = "none", extra = "none" })
+		Appearance.hood(rig)
+	end
+	local pr = Instance.new("ProximityPrompt")
+	pr.ActionText = "Shop"
+	pr.ObjectText = "Secret Trader"
+	pr.HoldDuration = 0
+	pr.MaxActivationDistance = 12
+	pr.RequiresLineOfSight = false
+	pr:SetAttribute("Key", "trade")
+	pr:SetAttribute("Shop", "black")
+	pr.Parent = counter
+	pr.Triggered:Connect(function(player) notify(player, "openShop", "black") end)
+	m.Parent = folder
+	return m, counter
+end
+local function moveBlack()
+	local spotsF = workspace:FindFirstChild("BlackMarketSpots")
+	local spots = spotsF and spotsF:GetChildren() or {}
+	if #spots == 0 then return false end
+	-- don't vanish in front of a customer
+	if black.model then
+		for _, pl in ipairs(Players:GetPlayers()) do
+			local hrp = hrpOf(pl)
+			if hrp and (hrp.Position - black.model:GetPivot().Position).Magnitude < 35 then return false end
+		end
+	end
+	local pick
+	for _ = 1, 10 do
+		pick = spots[rng:NextInteger(1, #spots)]
+		if pick ~= black.spot then break end
+	end
+	if black.model then black.model:Destroy() end
+	for i, v in ipairs(vendors) do
+		if v == black.vendor then table.remove(vendors, i) break end
+	end
+	local m, counter = buildBlack(pick.CFrame)
+	black.model, black.spot = m, pick
+	black.vendor = { part = counter, shop = "black" }
+	table.insert(vendors, black.vendor)
+	Debug.log("black", "moved to " .. tostring(pick.Name))
+	return true
+end
+
 ---------------------------------------------------------------- remote actions
 local actions = {}
 
@@ -609,9 +888,9 @@ function actions.split(player, room, i)
 end
 
 function actions.buy(player, room, id, shop)
-	if isNight() then notify(player, "shopClosed") return end
 	local def = Items.get(id)
 	shop = type(shop) == "string" and shop or "forest"
+	if isNight() and shop ~= "black" then notify(player, "shopClosed") return end
 	if not def or not def.buy or not Items.inShop(shop, id) then return end
 	if not nearVendor(player, shop) then notify(player, "tooFar") return end
 	if room.coins < def.buy then notify(player, "needCoins") return end
@@ -635,10 +914,10 @@ function actions.buyBag(player, room)
 end
 
 function actions.sell(player, room, id)
-	if isNight() then notify(player, "shopClosed") return end
 	local def = Items.get(id)
 	if not def or not def.sell then return end
 	if not nearVendor(player) then notify(player, "tooFar") return end
+	if isNight() and not nearVendor(player, "black") then notify(player, "shopClosed") return end
 	local n = Inventory.count(room.inv, id)
 	if n <= 0 then return end
 	Inventory.remove(room.inv, id, n)
@@ -671,6 +950,7 @@ function actions.leave(player)
 end
 
 function actions.state(player) push(player) end
+function actions.wake(player) if ctx.wake then ctx.wake(player) end end
 
 local reports = 0
 function actions.report(player, room, msg)
@@ -810,13 +1090,12 @@ function World.start(r)
 	Lighting.GlobalShadows = true
 	Lighting.Ambient = Color3.fromRGB(100, 108, 118)
 	Lighting.OutdoorAmbient = Color3.fromRGB(128, 136, 148)
-	if not Lighting:FindFirstChildOfClass("Atmosphere") then
-		local at = Instance.new("Atmosphere")
-		at.Density = 0.4
-		at.Offset = 0.2
-		at.Color = Color3.fromRGB(200, 215, 230)
-		at.Parent = Lighting
+	-- distance fog is driven by each client per region; an Atmosphere would disable it
+	for _, a in ipairs(Lighting:GetChildren()) do
+		if a:IsA("Atmosphere") then a:Destroy() end
 	end
+	Lighting.FogStart = 30
+	Lighting.FogEnd = 240
 
 	for name, fn in pairs({ resources = function() Resources.init(ctx) end, loot = function() Loot.init(ctx) end, mobs = function() Mobs.start(ctx) end, survival = function() Survival.start(ctx) end }) do
 		local ok, err = pcall(fn)
@@ -861,6 +1140,15 @@ function World.start(r)
 		task.spawn(onJoin, p)
 	end
 	Players.PlayerRemoving:Connect(function(player)
+		if sleeping[player] then
+			local bed = sleeping[player]
+			sleeping[player] = nil
+			if bed.Parent then bed:SetAttribute("Sleeper", nil) end
+			task.defer(announceSleep)
+		end
+		if beds[player] and beds[player].Parent then beds[player]:Destroy() end
+		beds[player] = nil
+		buffs[player] = nil
 		selected[player] = nil
 		cooldown[player] = nil
 		luckCd[player] = nil
@@ -872,7 +1160,17 @@ function World.start(r)
 		while true do
 			task.wait(1)
 			tick += 1
-			for _, pl in ipairs(Players:GetPlayers()) do push(pl) end
+			for _, pl in ipairs(Players:GetPlayers()) do
+				local ok, err = pcall(lightAndBuffs, pl)
+				if not ok then Debug.log("tick.buffs", err) end
+				push(pl)
+			end
+			if next(sleeping) then pcall(checkSleep) end
+			if tick == 3 or (tick % BLACK_STAY == 0) then
+				local ok, moved = pcall(moveBlack)
+				if ok and moved and tick > 3 then ctx.broadcast("blackMoved") end
+				if ok and not moved and tick > 3 then tick -= 45 end
+			end
 			if serverCode and tick % 30 == 0 then
 				if serverRec and Rooms.access(serverRec) == "public" then Rooms.advertise(serverCode, #Players:GetPlayers()) end
 				for _, pl in ipairs(Players:GetPlayers()) do Rooms.setPresence(pl.UserId, serverCode) end
@@ -881,5 +1179,7 @@ function World.start(r)
 		end
 	end)
 end
+
+World._test = { buildBlack = buildBlack, moveBlack = moveBlack, ctx = ctx }
 
 return World

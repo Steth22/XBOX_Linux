@@ -243,6 +243,25 @@ function A.armor(char, color, material)
 	end
 end
 
+-- a deep dark hood and a long cloak (the secret trader)
+function A.hood(char)
+	local f = char:FindFirstChild("Body")
+	local head = char:FindFirstChild("Head")
+	local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+	local waist = char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso")
+	if not f or not head or not torso then return end
+	local cloak = Color3.fromRGB(28, 22, 34)
+	local d = math.max(head.Size.X, head.Size.Y) * 1.22
+	addVis(f, head, Vector3.new(d * 1.25, d * 1.3, d * 1.3), CFrame.new(0, d * 0.12, d * 0.08), cloak, BALLS, Enum.Material.Fabric)
+	addVis(f, head, Vector3.new(d * 1.0, d * 0.9, 0.12), CFrame.new(0, d * 0.05, -d * 0.52), Color3.fromRGB(8, 6, 10), nil, Enum.Material.Fabric)
+	local s = torso.Size
+	addVis(f, torso, Vector3.new(s.X * 1.25, s.Y * 1.05, s.Z * 1.3), CFrame.new(0, 0, 0.05), cloak, nil, Enum.Material.Fabric)
+	if waist then
+		local w = waist.Size
+		addVis(f, waist, Vector3.new(w.X * 1.35, w.Y * 3.2, w.Z * 1.45), CFrame.new(0, -w.Y * 1.3, 0.05), cloak, nil, Enum.Material.Fabric)
+	end
+end
+
 -- Applies the look to a character (R15 preferred, R6 fallback). Faceless, fully clothed.
 function A.apply(char, look)
 	look = A.sanitize(look)

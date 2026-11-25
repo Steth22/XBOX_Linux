@@ -70,6 +70,7 @@ local function tick(player)
 
 	local heat = nearHeat(hrp.Position)
 	local env = S.envTemp(hrp.Position, wet, heat, room.inv.armor)
+	if ctx.buff and ctx.buff(player, "warmth") then env = 22 end
 	local body = temps[player] or 37
 	if env < 10 then
 		body -= (10 - env) * 0.004 * mult
@@ -94,6 +95,15 @@ local function tick(player)
 	elseif room.hunger > 40 and hum.Health < hum.MaxHealth then
 		hum.Health = math.min(hum.MaxHealth, hum.Health + 0.5 * (1 + 0.15 * (sk.aid or 0)))
 	end
+end
+
+-- everyone slept: jump to the morning and start a new day
+function S.skipNight()
+	Lighting.ClockTime = 6.3
+	local day = (ReplicatedStorage:GetAttribute("Day") or 1) + 1
+	ReplicatedStorage:SetAttribute("Day", day)
+	ReplicatedStorage:SetAttribute("Night", false)
+	if ctx and ctx.newDay then pcall(ctx.newDay, day) end
 end
 
 function S.start(c)

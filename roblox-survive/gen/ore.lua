@@ -14,6 +14,8 @@ local ORE = {
 	iron = { hp = 14, fleck = Color3.fromRGB(196, 132, 92), mat = Enum.Material.Metal },
 	gold = { hp = 18, fleck = Color3.fromRGB(255, 196, 60), mat = Enum.Material.Metal },
 	diamond = { hp = 24, fleck = Color3.fromRGB(130, 230, 255), mat = Enum.Material.Glass },
+	crystal = { hp = 20, fleck = Color3.fromRGB(165, 115, 255), mat = Enum.Material.Glass },
+	obsidian = { hp = 30, fleck = Color3.fromRGB(52, 38, 72), mat = Enum.Material.Glass },
 }
 local function orePart(m, size, cf, color, mat, collide)
 	local p = Instance.new("Part")
@@ -37,11 +39,12 @@ local function oreNode(kind, x, z, y)
 	local s = oreRng:NextNumber(3.6, 5)
 	local base = orePart(m, Vector3.new(s, s * 0.8, s * 1.05), CFrame.new(x, y + s * 0.25, z) * CFrame.Angles(oreRng:NextNumber(-0.2, 0.2), oreRng:NextNumber(0, 6.28), 0), Color3.fromRGB(92, 90, 96), Enum.Material.Slate, true)
 	m.PrimaryPart = base
-	for i = 1, (kind == "diamond" and 5 or 7) do
+	local spiky = kind == "diamond" or kind == "crystal" or kind == "obsidian"
+	for i = 1, (spiky and 5 or 7) do
 		local off = Vector3.new(oreRng:NextNumber(-0.45, 0.45) * s, oreRng:NextNumber(0.05, 0.45) * s, oreRng:NextNumber(-0.5, 0.5) * s)
-		local sz = kind == "diamond" and Vector3.new(0.5, oreRng:NextNumber(1.2, 2), 0.5) or Vector3.new(0.7, 0.55, 0.7) * oreRng:NextNumber(0.8, 1.3)
+		local sz = spiky and Vector3.new(0.5, oreRng:NextNumber(1.2, 2), 0.5) or Vector3.new(0.7, 0.55, 0.7) * oreRng:NextNumber(0.8, 1.3)
 		local p = orePart(m, sz, base.CFrame * CFrame.new(off) * CFrame.Angles(oreRng:NextNumber(-0.6, 0.6), oreRng:NextNumber(0, 6), oreRng:NextNumber(-0.6, 0.6)), def.fleck, def.mat, false)
-		if kind == "diamond" then p.Transparency = 0.15 end
+		if kind == "diamond" or kind == "crystal" then p.Transparency = 0.15 end
 	end
 	if kind ~= "iron" then
 		local l = Instance.new("PointLight")
