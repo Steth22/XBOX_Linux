@@ -35,6 +35,42 @@ local sleeping = {} -- [Player] = bed model
 local beds = {} -- [Player] = bed model they own
 local lastHit = {} -- [Player] = what hurt them last (shown on the death screen)
 local placedOnce = {} -- [Player] = already put at their saved spot this visit
+local lamp = {} -- [Player] = hotbar/bag slot of the lantern hanging in the left hand
+
+-- the lantern hangs from the left hand while the right hand keeps its tool
+local function setLamp(player, on)
+	local char = player.Character
+	if not char then return end
+	local old = char:FindFirstChild("OffhandLamp")
+	if old then old:Destroy() end
+	if not on then return end
+	local hand = char:FindFirstChild("LeftHand") or char:FindFirstChild("Left Arm")
+	local m = Items.model("lantern")
+	if not hand or not m then return end
+	m.Name = "OffhandLamp"
+	local drop = hand.Name == "LeftHand" and 1.15 or 1.9
+	m:PivotTo(hand.CFrame * CFrame.new(0, -drop, -0.15))
+	for _, p in ipairs(m:GetDescendants()) do
+		if p:IsA("BasePart") then
+			p.Anchored = false
+			p.CanCollide = false
+			p.Massless = true
+			if p.Material == Enum.Material.Neon then
+				local l = Instance.new("PointLight")
+				l.Range = 42
+				l.Brightness = 2.6
+				l.Shadows = true
+				l.Color = Color3.fromRGB(255, 210, 150)
+				l.Parent = p
+			end
+		end
+	end
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = hand
+	w.Part1 = m.PrimaryPart
+	w.Parent = m.PrimaryPart
+	m.Parent = char
+end
 
 local function hasBuff(player, name)
 	local b = buffs[player]
@@ -79,6 +115,7 @@ local function snapshot(player)
 			return out
 		end)(),
 		sleeping = sleeping[player] ~= nil,
+		lamp = lamp[player] or 0,
 		dex = room.dex,
 		stash = Inventory.stashView(room.stash), stashLvl = room.stash.lvl,
 		stashCost = room.stash.lvl < Config.STASH_MAX_LVL and Config.stashCost(room.stash.lvl) or nil,
@@ -447,6 +484,17 @@ end
 function select(player, index)
 	local room = Data.room(player)
 	if not room then return end
+	do
+		local i = tonumber(index)
+		local sl = i and room.inv.slots[i]
+		local d = sl and Items.get(sl.id)
+		if d and d.kind == "light" and i >= 1 and i <= Config.HOTBAR then
+			if lamp[player] == i then lamp[player] = nil else lamp[player] = i end
+			setLamp(player, lamp[player] ~= nil)
+			push(player)
+			return
+		end
+	end
 	clearTools(player)
 	index = tonumber(index)
 	if not index or index < 1 or index > Config.HOTBAR or index ~= math.floor(index) then
@@ -514,7 +562,7 @@ function select(player, index)
 				r.inv.slots[index] = false
 				r.inv.armor = id
 				if old then Inventory.add(r.inv, old, 1) end
-				Appearance.armor(char, def.color, def.mat)
+				Appearance.armor(char, def.color, def.mat, id)
 				ctx.fx("anim", char, "place")
 				notify(player, "armorOn")
 				select(player, 0)
@@ -588,6 +636,7 @@ local function onCharacter(player, char)
 	end
 	placedOnce[player] = true
 	selected[player] = 0
+	lamp[player] = nil
 	Survival.reset(player)
 	local room = Data.room(player)
 	if room then
@@ -596,7 +645,7 @@ local function onCharacter(player, char)
 	end
 	if room and room.inv.armor then
 		local ad = Items.get(room.inv.armor)
-		if ad then Appearance.armor(char, ad.color, ad.mat) end
+		if ad then Appearance.armor(char, ad.color, ad.mat, room.inv.armor) end
 	end
 	task.defer(wearNecklace, player)
 	hum.BreakJointsOnDeath = false
@@ -763,15 +812,28 @@ end
 local function lightAndBuffs(player)
 	local room = Data.room(player)
 	if not room then return end
-	local idx = selected[player] or 0
-	local slot = idx > 0 and room.inv.slots[idx]
-	local def = slot and Items.get(slot.id)
-	if def and def.kind == "light" then
-		slot.d = (slot.d or def.dur) - 1
-		if slot.d <= 0 then
-			room.inv.slots[idx] = false
-			notify(player, "lanternDead")
-			select(player, 0)
+	local li = lamp[player]
+	if li then
+		local slot = room.inv.slots[li]
+		if not slot or slot.id ~= "lantern" then
+			-- the lantern was moved: follow it, or put the light out if it left the inventory
+			li = nil
+			for i, sl in ipairs(room.inv.slots) do
+				if sl and sl.id == "lantern" then li = i break end
+			end
+			lamp[player] = li
+			if not li then setLamp(player, false) end
+		end
+		if li then
+			slot = room.inv.slots[li]
+			local def = Items.get("lantern")
+			slot.d = (slot.d or def.dur) - 1
+			if slot.d <= 0 then
+				room.inv.slots[li] = false
+				lamp[player] = nil
+				setLamp(player, false)
+				notify(player, "lanternDead")
+			end
 		end
 	end
 	local b = buffs[player]
@@ -1232,6 +1294,7 @@ function World.start(r)
 		buffs[player] = nil
 		lastHit[player] = nil
 		placedOnce[player] = nil
+		lamp[player] = nil
 		selected[player] = nil
 		cooldown[player] = nil
 		luckCd[player] = nil

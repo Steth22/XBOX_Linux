@@ -305,12 +305,30 @@ end
 SPECS.shadow_blade = recolor(SPECS.iron_sword, Color3.fromRGB(60, 30, 90), Enum.Material.Neon, 4)
 for _, id in ipairs({ "leather_armor", "iron_armor", "diamond_armor" }) do
 	local d = I.defs[id]
-	SPECS[id] = {
-		P(Vector3.new(1.6, 1.4, 0.8), nil, d.color, d.mat),
-		P(Vector3.new(0.7, 0.45, 0.95), CFrame.new(-0.95, 0.5, 0), d.color:Lerp(Color3.new(0, 0, 0), 0.15), d.mat),
-		P(Vector3.new(0.7, 0.45, 0.95), CFrame.new(0.95, 0.5, 0), d.color:Lerp(Color3.new(0, 0, 0), 0.15), d.mat),
-		P(Vector3.new(1.65, 0.18, 0.85), CFrame.new(0, -0.45, 0), Color3.fromRGB(90, 64, 40), Enum.Material.Fabric),
-	}
+	local c, dk, lt = d.color, d.color:Lerp(Color3.new(0, 0, 0), 0.25), d.color:Lerp(Color3.new(1, 1, 1), 0.25)
+	local strap, gold = Color3.fromRGB(70, 48, 32), Color3.fromRGB(214, 176, 90)
+	local edgeMat = id == "diamond_armor" and Enum.Material.Neon or d.mat
+	local edgeC = id == "diamond_armor" and d.color:Lerp(Color3.new(1, 1, 1), 0.5) or dk
+	if id == "leather_armor" then
+		SPECS[id] = { P(Vector3.new(1.6, 1.5, 0.85), nil, c, d.mat),
+			P(Vector3.new(0.18, 1.8, 0.1), CFrame.new(0, 0, -0.46) * A(0, 0, r(35)), strap, Enum.Material.Fabric),
+			P(Vector3.new(0.18, 1.8, 0.1), CFrame.new(0, 0, -0.46) * A(0, 0, r(-35)), strap, Enum.Material.Fabric),
+			P(Vector3.new(0.26, 0.26, 0.12), CFrame.new(0, 0, -0.5), gold, Enum.Material.Metal, BALL),
+			P(Vector3.new(0.8, 0.35, 0.95), CFrame.new(-1.0, 0.55, 0), dk, d.mat),
+			P(Vector3.new(0.8, 0.35, 0.95), CFrame.new(1.0, 0.55, 0), dk, d.mat),
+			P(Vector3.new(1.7, 0.22, 0.9), CFrame.new(0, -0.6, 0), strap, Enum.Material.Fabric) }
+	else
+		SPECS[id] = { P(Vector3.new(1.6, 1.5, 0.9), nil, c, d.mat),
+			P(Vector3.new(1.3, 0.75, 0.16), CFrame.new(0, 0.2, -0.5), lt, d.mat),
+			P(Vector3.new(0.1, 0.75, 0.2), CFrame.new(0, 0.2, -0.56), edgeC, edgeMat),
+			P(Vector3.new(1.4, 0.18, 0.14), CFrame.new(0, -0.3, -0.48), dk, d.mat),
+			P(Vector3.new(1.0, 0.75, 1.0), CFrame.new(-1.0, 0.55, 0), c, d.mat, BALL),
+			P(Vector3.new(1.0, 0.75, 1.0), CFrame.new(1.0, 0.55, 0), c, d.mat, BALL),
+			P(Vector3.new(1.7, 0.22, 0.95), CFrame.new(0, -0.68, 0), strap, Enum.Material.Fabric),
+			P(Vector3.new(0.3, 0.26, 0.1), CFrame.new(0, -0.68, -0.5), gold, Enum.Material.Metal),
+			P(Vector3.new(0.6, 0.6, 0.12), CFrame.new(-0.42, -1.05, -0.4), c, d.mat),
+			P(Vector3.new(0.6, 0.6, 0.12), CFrame.new(0.42, -1.05, -0.4), c, d.mat) }
+	end
 end
 
 local function spearSpec(head, mat)

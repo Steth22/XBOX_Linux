@@ -213,32 +213,155 @@ function GEAR.belt(f, waist)
 	end
 end
 
--- Worn armor: plates welded over the body (nil / false removes it)
-function A.armor(char, color, material)
+-- Worn armor (nil / false removes it). `style` comes from the item id:
+-- leather (straps and pads), plate (iron: shaped plates, pauldrons, greaves), crystal (diamond: plates with glowing edges),
+-- cloak (warm coat / desert cloak / lava cloak: long coat, cape, folded hood), vest (jungle vest with pockets).
+local STYLE_OF = {
+	leather_armor = "leather", iron_armor = "plate", diamond_armor = "crystal",
+	warm_coat = "cloak", desert_cloak = "cloak", lava_cloak = "cloak", jungle_vest = "vest",
+}
+function A.armor(char, color, material, id)
 	local old = char:FindFirstChild("Armor")
 	if old then old:Destroy() end
 	if not color then return end
+	local style = STYLE_OF[id or ""] or (material == Enum.Material.Glass and "crystal") or (material == Enum.Material.Metal and "plate") or "leather"
 	local f = Instance.new("Folder")
 	f.Name = "Armor"
 	f.Parent = char
-	local dark = color:Lerp(Color3.new(0, 0, 0), 0.18)
 	local function get(n) local p = char:FindFirstChild(n); return (p and p:IsA("BasePart")) and p or nil end
-	local ut = get("UpperTorso") or get("Torso")
-	if ut then
-		local s = ut.Size
-		addVis(f, ut, Vector3.new(s.X * 1.0, s.Y * 0.92, s.Z * 1.22), CFrame.new(0, s.Y * 0.02, -s.Z * 0.02), color, nil, material)
-		addVis(f, ut, Vector3.new(s.X * 0.6, s.Y * 0.4, 0.12), CFrame.new(0, s.Y * 0.12, -s.Z * 0.64), dark, nil, material)
+	local dark = color:Lerp(Color3.new(0, 0, 0), 0.25)
+	local light = color:Lerp(Color3.new(1, 1, 1), 0.25)
+	local strap = Color3.fromRGB(70, 48, 32)
+	local gold = Color3.fromRGB(214, 176, 90)
+	local glow = color:Lerp(Color3.new(1, 1, 1), 0.5)
+	local mat = material
+	local trim = (id == "lava_cloak" and Color3.fromRGB(255, 120, 40)) or (id == "warm_coat" and Color3.fromRGB(240, 236, 228)) or (id == "desert_cloak" and Color3.fromRGB(180, 70, 50)) or gold
+	local ut, lt = get("UpperTorso") or get("Torso"), get("LowerTorso")
+	local function each(fn)
+		for _, side in ipairs({ "Left", "Right" }) do fn(side, side == "Left" and -1 or 1) end
 	end
-	for _, side in ipairs({ "Left", "Right" }) do
-		local ua = get(side .. "UpperArm") or get(side .. " Arm")
-		if ua then
-			local s = ua.Size
-			addVis(f, ua, Vector3.new(s.X * 1.45, s.Y * 0.42, s.Z * 1.45), CFrame.new(0, s.Y * 0.3, 0), dark, nil, material)
+
+	if style == "plate" or style == "crystal" then
+		local edge = style == "crystal" and Enum.Material.Neon or Enum.Material.Metal
+		local edgeC = style == "crystal" and glow or dark
+		if ut then
+			local s = ut.Size
+			addVis(f, ut, Vector3.new(s.X * 1.06, s.Y * 0.96, s.Z * 1.28), CFrame.new(0, s.Y * 0.02, 0), color, nil, mat)
+			addVis(f, ut, Vector3.new(s.X * 0.84, s.Y * 0.5, 0.22), CFrame.new(0, s.Y * 0.14, -s.Z * 0.66), light, nil, mat) -- chest plate
+			addVis(f, ut, Vector3.new(0.14, s.Y * 0.5, 0.26), CFrame.new(0, s.Y * 0.14, -s.Z * 0.7), edgeC, nil, edge) -- centre ridge
+			for i = 0, 1 do
+				addVis(f, ut, Vector3.new(s.X * 0.9, s.Y * 0.13, 0.2), CFrame.new(0, -s.Y * (0.2 + i * 0.17), -s.Z * 0.66), dark, nil, mat) -- belly bands
+			end
+			addVis(f, ut, Vector3.new(0.3, s.X * 0.72, s.Z * 1.3), CFrame.new(0, s.Y * 0.5, 0) * CFrame.Angles(0, 0, math.rad(90)), edgeC, CYLS, edge) -- gorget
+			for _, x in ipairs({ -1, 1 }) do
+				addVis(f, ut, Vector3.new(0.2, 0.2, 0.2), CFrame.new(x * s.X * 0.36, s.Y * 0.32, -s.Z * 0.78), gold, BALLS, Enum.Material.Metal)
+			end
 		end
-		local ll = get(side .. "LowerLeg") or get(side .. " Leg")
-		if ll then
-			local s = ll.Size
-			addVis(f, ll, Vector3.new(s.X * 1.2, s.Y * 0.7, s.Z * 1.25), CFrame.new(0, s.Y * 0.05, -s.Z * 0.05), color, nil, material)
+		each(function(side, x)
+			local ua, la = get(side .. "UpperArm") or get(side .. " Arm"), get(side .. "LowerArm")
+			if ua then
+				local s = ua.Size
+				addVis(f, ua, Vector3.new(s.X * 2.0, s.Y * 0.62, s.Z * 1.9), CFrame.new(x * s.X * 0.18, s.Y * 0.3, 0), color, BALLS, mat) -- pauldron
+				addVis(f, ua, Vector3.new(s.X * 1.6, s.Y * 0.18, s.Z * 1.6), CFrame.new(x * s.X * 0.1, s.Y * 0.02, 0), dark, nil, mat)
+				addVis(f, ua, Vector3.new(s.X * 1.5, 0.14, s.Z * 1.5), CFrame.new(x * s.X * 0.18, s.Y * 0.47, 0), edgeC, nil, edge)
+			end
+			if la then
+				local s = la.Size
+				addVis(f, la, Vector3.new(s.X * 1.3, s.Y * 0.72, s.Z * 1.3), CFrame.new(0, -s.Y * 0.05, 0), color, nil, mat) -- vambrace
+				addVis(f, la, Vector3.new(s.X * 1.36, 0.14, s.Z * 1.36), CFrame.new(0, s.Y * 0.3, 0), edgeC, nil, edge)
+			end
+			local ul, ll = get(side .. "UpperLeg"), get(side .. "LowerLeg") or get(side .. " Leg")
+			if ul then
+				local s = ul.Size
+				addVis(f, ul, Vector3.new(s.X * 1.2, s.Y * 0.7, 0.22), CFrame.new(0, s.Y * 0.05, -s.Z * 0.62), color, nil, mat) -- cuisse
+			end
+			if ll then
+				local s = ll.Size
+				addVis(f, ll, Vector3.new(s.X * 1.22, s.Y * 0.72, s.Z * 1.28), CFrame.new(0, -s.Y * 0.06, 0), color, nil, mat) -- greave
+				addVis(f, ll, Vector3.new(s.X * 0.9, s.X * 0.9, s.X * 0.6), CFrame.new(0, s.Y * 0.42, -s.Z * 0.55), light, BALLS, mat) -- knee
+				addVis(f, ll, Vector3.new(0.12, s.Y * 0.6, 0.2), CFrame.new(0, -s.Y * 0.06, -s.Z * 0.66), edgeC, nil, edge)
+			end
+		end)
+		if lt then
+			local s = lt.Size
+			addVis(f, lt, Vector3.new(s.X * 1.14, s.Y * 0.38, s.Z * 1.32), CFrame.new(0, s.Y * 0.18, 0), strap, nil, Enum.Material.Fabric) -- belt
+			addVis(f, lt, Vector3.new(0.5, 0.42, 0.14), CFrame.new(0, s.Y * 0.18, -s.Z * 0.68), gold, nil, Enum.Material.Metal)
+			for _, x in ipairs({ -1, 1 }) do
+				addVis(f, lt, Vector3.new(s.X * 0.42, s.Y * 0.9, 0.16), CFrame.new(x * s.X * 0.26, -s.Y * 0.35, -s.Z * 0.64) * CFrame.Angles(math.rad(-6), 0, 0), color, nil, mat) -- tassets
+			end
+		end
+	elseif style == "leather" then
+		if ut then
+			local s = ut.Size
+			addVis(f, ut, Vector3.new(s.X * 1.04, s.Y * 0.92, s.Z * 1.22), CFrame.new(0, -s.Y * 0.02, 0), color, nil, Enum.Material.Fabric)
+			for _, a in ipairs({ 35, -35 }) do
+				addVis(f, ut, Vector3.new(0.32, s.Y * 1.15, 0.12), CFrame.new(0, 0, -s.Z * 0.64) * CFrame.Angles(0, 0, math.rad(a)), strap, nil, Enum.Material.Fabric)
+			end
+			addVis(f, ut, Vector3.new(0.4, 0.4, 0.14), CFrame.new(0, 0, -s.Z * 0.7), gold, BALLS, Enum.Material.Metal)
+			addVis(f, ut, Vector3.new(s.X * 0.7, s.Y * 0.5, s.Z * 0.6), CFrame.new(0, -s.Y * 0.02, s.Z * 0.82), dark, nil, Enum.Material.Fabric) -- pack
+		end
+		each(function(side, x)
+			local ua, la, ll = get(side .. "UpperArm") or get(side .. " Arm"), get(side .. "LowerArm"), get(side .. "LowerLeg") or get(side .. " Leg")
+			if ua then local s = ua.Size addVis(f, ua, Vector3.new(s.X * 1.5, s.Y * 0.38, s.Z * 1.5), CFrame.new(x * s.X * 0.08, s.Y * 0.32, 0), dark, nil, Enum.Material.Fabric) end
+			if la then
+				local s = la.Size
+				addVis(f, la, Vector3.new(s.X * 1.22, s.Y * 0.6, s.Z * 1.22), CFrame.new(0, -s.Y * 0.08, 0), color, nil, Enum.Material.Fabric)
+				for i = 0, 1 do addVis(f, la, Vector3.new(s.X * 1.26, 0.12, s.Z * 1.26), CFrame.new(0, -s.Y * (0.2 - i * 0.3), 0), strap, nil, Enum.Material.Fabric) end
+			end
+			if ll then
+				local s = ll.Size
+				addVis(f, ll, Vector3.new(s.X * 1.2, s.Y * 0.62, s.Z * 1.24), CFrame.new(0, -s.Y * 0.16, 0), dark, nil, Enum.Material.Fabric) -- boots
+				addVis(f, ll, Vector3.new(s.X * 0.95, s.Y * 0.3, 0.2), CFrame.new(0, s.Y * 0.36, -s.Z * 0.58), color, nil, Enum.Material.Fabric) -- knee pad
+			end
+		end)
+		if lt then
+			local s = lt.Size
+			addVis(f, lt, Vector3.new(s.X * 1.12, s.Y * 0.34, s.Z * 1.3), CFrame.new(0, s.Y * 0.18, 0), strap, nil, Enum.Material.Fabric)
+			addVis(f, lt, Vector3.new(0.7, 0.6, 0.4), CFrame.new(s.X * 0.38, -s.Y * 0.05, -s.Z * 0.5), dark, nil, Enum.Material.Fabric) -- pouch
+		end
+	elseif style == "cloak" then
+		if ut then
+			local s = ut.Size
+			addVis(f, ut, Vector3.new(s.X * 1.08, s.Y * 1.0, s.Z * 1.28), CFrame.new(0, 0, 0), color, nil, Enum.Material.Fabric)
+			addVis(f, ut, Vector3.new(s.X * 1.25, s.Y * 0.28, s.Z * 1.45), CFrame.new(0, s.Y * 0.46, 0), trim, nil, Enum.Material.Fabric) -- collar
+			addVis(f, ut, Vector3.new(s.X * 0.95, s.Y * 0.6, s.Z * 0.7), CFrame.new(0, s.Y * 0.38, s.Z * 0.72), dark, BALLS, Enum.Material.Fabric) -- folded hood
+			addVis(f, ut, Vector3.new(s.X * 1.18, s.Y * 2.6, 0.14), CFrame.new(0, -s.Y * 0.85, s.Z * 0.74) * CFrame.Angles(math.rad(6), 0, 0), color:Lerp(Color3.new(0, 0, 0), 0.12), nil, Enum.Material.Fabric) -- cape
+			addVis(f, ut, Vector3.new(s.X * 1.2, 0.16, 0.18), CFrame.new(0, -s.Y * 2.1, s.Z * 0.86) * CFrame.Angles(math.rad(6), 0, 0), trim, nil, id == "lava_cloak" and Enum.Material.Neon or Enum.Material.Fabric)
+			addVis(f, ut, Vector3.new(0.16, s.Y * 0.95, 0.16), CFrame.new(0, 0, -s.Z * 0.66), trim, nil, id == "lava_cloak" and Enum.Material.Neon or Enum.Material.Fabric) -- front seam
+		end
+		each(function(side, x)
+			local ua, la = get(side .. "UpperArm") or get(side .. " Arm"), get(side .. "LowerArm")
+			if ua then local s = ua.Size addVis(f, ua, Vector3.new(s.X * 1.25, s.Y * 1.0, s.Z * 1.25), CFrame.new(0, 0, 0), color, nil, Enum.Material.Fabric) end
+			if la then
+				local s = la.Size
+				addVis(f, la, Vector3.new(s.X * 1.25, s.Y * 0.9, s.Z * 1.25), CFrame.new(0, 0, 0), color, nil, Enum.Material.Fabric)
+				addVis(f, la, Vector3.new(s.X * 1.4, s.Y * 0.2, s.Z * 1.4), CFrame.new(0, -s.Y * 0.38, 0), trim, nil, Enum.Material.Fabric) -- cuff
+			end
+		end)
+		if lt then
+			local s = lt.Size
+			addVis(f, lt, Vector3.new(s.X * 1.16, s.Y * 1.0, s.Z * 1.34), CFrame.new(0, -s.Y * 0.1, 0), color, nil, Enum.Material.Fabric) -- coat skirt
+			addVis(f, lt, Vector3.new(s.X * 1.2, s.Y * 0.3, s.Z * 1.38), CFrame.new(0, s.Y * 0.2, 0), strap, nil, Enum.Material.Fabric)
+		end
+	else -- vest
+		if ut then
+			local s = ut.Size
+			addVis(f, ut, Vector3.new(s.X * 1.05, s.Y * 0.92, s.Z * 1.24), CFrame.new(0, -s.Y * 0.02, 0), color, nil, Enum.Material.Fabric)
+			for i, o in ipairs({ { -0.25, 0.1 }, { 0.25, 0.1 }, { -0.25, -0.22 }, { 0.25, -0.22 } }) do
+				addVis(f, ut, Vector3.new(s.X * 0.3, s.Y * 0.22, 0.24), CFrame.new(o[1] * s.X, o[2] * s.Y, -s.Z * 0.68), dark, nil, Enum.Material.Fabric) -- pockets
+			end
+			for i = 1, 5 do
+				addVis(f, ut, Vector3.new(s.X * 0.36, s.Y * 0.2, 0.1), CFrame.new(((i % 3) - 1) * s.X * 0.3, (i * 0.17 - 0.5) * s.Y, s.Z * 0.66), color:Lerp(Color3.fromRGB(40, 60, 30), 0.5), BALLS, Enum.Material.Fabric) -- camo
+			end
+		end
+		each(function(side, x)
+			local la, ll = get(side .. "LowerArm"), get(side .. "LowerLeg") or get(side .. " Leg")
+			if la then local s = la.Size addVis(f, la, Vector3.new(s.X * 1.22, s.Y * 0.5, s.Z * 1.22), CFrame.new(0, -s.Y * 0.15, 0), dark, nil, Enum.Material.Fabric) end
+			if ll then local s = ll.Size addVis(f, ll, Vector3.new(s.X * 1.2, s.Y * 0.6, s.Z * 1.24), CFrame.new(0, -s.Y * 0.18, 0), strap, nil, Enum.Material.Fabric) end
+		end)
+		if lt then
+			local s = lt.Size
+			addVis(f, lt, Vector3.new(s.X * 1.12, s.Y * 0.34, s.Z * 1.3), CFrame.new(0, s.Y * 0.18, 0), strap, nil, Enum.Material.Fabric)
 		end
 	end
 end

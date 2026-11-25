@@ -1082,7 +1082,7 @@ function M.start(gui, remotes)
 			Icons.draw(s.night and "moon" or "sun", clockIcon, 22, s.night and Color3.fromRGB(200, 210, 255) or c.gold, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5), c.card)
 		end
 		-- slots: only rebuild what changed
-		local parts = { tostring(s.sel), tostring(s.bag), tostring(s.armor) }
+		local parts = { tostring(s.sel), tostring(s.bag), tostring(s.armor), tostring(s.lamp) }
 		for i, sl in ipairs(s.slots) do parts[#parts + 1] = sl and (sl.id .. ":" .. sl.n .. ":" .. tostring(sl.d)) or "-" end
 		local sig = table.concat(parts, "|")
 		local sk = {}
@@ -1090,7 +1090,7 @@ function M.start(gui, remotes)
 		local msig = sig .. "#" .. s.sp .. "#" .. s.coins .. "#" .. table.concat(sk, ",")
 		if sig ~= lastSig then
 			lastSig = sig
-			for i = 1, Config.HOTBAR do hot[i].set(s.slots[i], s.sel == i) end
+			for i = 1, Config.HOTBAR do hot[i].set(s.slots[i], s.sel == i or s.lamp == i) end
 			if modalKind then refreshModal(true) end
 		elseif msig ~= (lastMsig or "") and (modalKind == "skills" or modalKind == "shop") then
 			refreshModal(true)

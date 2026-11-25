@@ -83,4 +83,21 @@ check("villages module starts", function()
 	local W = require(SSS.Services.World)
 	V.start(W._test.ctx, require(SSS.Services.Mobs))
 end)
+check("armor looks", function()
+	local A = require(RS.Shared.Appearance)
+	local I = require(RS.Shared.Items)
+	local rig = game.Players:CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15)
+	rig.Parent = workspace
+	A.apply(rig, A.default())
+	for _, id in ipairs({ "leather_armor", "iron_armor", "diamond_armor", "warm_coat", "desert_cloak", "lava_cloak", "jungle_vest" }) do
+		local d = I.get(id)
+		A.armor(rig, d.color, d.mat, id)
+		local n = #rig.Armor:GetChildren()
+		assert(n >= 8, id .. " parts " .. n)
+		assert(I.model(id), "model " .. id)
+	end
+	A.armor(rig, nil)
+	assert(not rig:FindFirstChild("Armor"))
+	rig:Destroy()
+end)
 return results
