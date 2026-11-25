@@ -287,7 +287,10 @@ end
 
 local MOB_SOUND = { wolf = "wolf", zombie = "zombie", guardian = "guardian", rabbit = "rabbit", deer = "deer", boar = "boar", bear = "bear", spider = "spider", alpha = "wolf",
 	hare = "rabbit", snowwolf = "wolf", polarbear = "bear", yeti = "guardian", camel = "camel", goat = "deer", scorpion = "spider", scorpionking = "spider",
-	bat = "spider", crawler = "spider", ghoul = "zombie", golem = "guardian" }
+	bat = "spider", crawler = "spider", ghoul = "zombie", golem = "guardian",
+	fox = "wolf", ram = "deer", mammoth = "bear", hyena = "wolf", puma = "bear", turtle = "rabbit", crab = "spider", crabking = "spider",
+	monkey = "rabbit", tiger = "bear", snake = "spider", gorilla = "guardian", lavalizard = "spider", ashwolf = "wolf", magma = "guardian",
+	bandit = "zombie", banditlord = "zombie" }
 
 local handlers = {}
 function handlers.anim(char, kind) E.anim(char, kind) end
@@ -657,6 +660,43 @@ function E.start(remotes)
 				Lighting.FogColor = mix(mix(f.color, Color3.fromRGB(8, 8, 14), night), Color3.new(0, 0, 0), cave)
 			end
 		end
+	end)
+	-- village people: swing arms and legs while they walk (they have no animation scripts)
+	local people = {}
+	RunService.Heartbeat:Connect(function(dt)
+		local v = workspace:FindFirstChild("Villages")
+		local cam = workspace.CurrentCamera
+		if not v or not cam then return end
+		local camPos = cam.CFrame.Position
+		for _, village in ipairs(v:GetChildren()) do
+			local npcs = village:FindFirstChild("NPCs")
+			for _, rig in ipairs(npcs and npcs:GetChildren() or {}) do
+				local hrp = rig:FindFirstChild("HumanoidRootPart")
+				if hrp and (hrp.Position - camPos).Magnitude < 150 then
+					local w = people[rig]
+					if not w then
+						w = { last = hrp.Position, phase = 0, speed = 0, j = {} }
+						for _, n in ipairs({ "LeftHip", "RightHip", "LeftShoulder", "RightShoulder" }) do
+							local m = rig:FindFirstChild(n, true)
+							if m and m:IsA("Motor6D") then w.j[n] = m end
+						end
+						people[rig] = w
+					end
+					local p = hrp.Position
+					local sp = (Vector3.new(p.X, 0, p.Z) - Vector3.new(w.last.X, 0, w.last.Z)).Magnitude / math.max(dt, 1e-3)
+					w.last = p
+					w.speed += (sp - w.speed) * math.min(1, dt * 8)
+					local amt = math.clamp(w.speed / 12, 0, 1)
+					w.phase += dt * (3 + w.speed * 0.6)
+					local sw = math.sin(w.phase) * 0.8 * amt
+					if w.j.LeftHip then w.j.LeftHip.Transform = CFrame.Angles(sw, 0, 0) end
+					if w.j.RightHip then w.j.RightHip.Transform = CFrame.Angles(-sw, 0, 0) end
+					if w.j.LeftShoulder then w.j.LeftShoulder.Transform = CFrame.Angles(-sw * 0.8, 0, 0) end
+					if w.j.RightShoulder and not rig:FindFirstChildOfClass("Tool") then w.j.RightShoulder.Transform = CFrame.Angles(sw * 0.8, 0, 0) end
+				end
+			end
+		end
+		for rig in pairs(people) do if not rig.Parent then people[rig] = nil end end
 	end)
 	-- creatures: swing the limbs with their real speed (runs on every client, smooth at render rate)
 	local walkers = {}

@@ -17,6 +17,8 @@ local Mobs = require(script.Parent.Mobs)
 local Loot = require(script.Parent.Loot)
 local Survival = require(script.Parent.Survival)
 local Debug = require(script.Parent.Debug)
+local Bestiary = require(ReplicatedStorage.Shared.Bestiary)
+local Biomes = require(ReplicatedStorage.Shared.Biomes)
 
 local MessagingService = game:GetService("MessagingService")
 
@@ -31,6 +33,7 @@ local rng = Random.new()
 local buffs = {} -- [Player] = { [name] = expiry clock }
 local sleeping = {} -- [Player] = bed model
 local beds = {} -- [Player] = bed model they own
+local lastHit = {} -- [Player] = what hurt them last (shown on the death screen)
 
 local function hasBuff(player, name)
 	local b = buffs[player]
@@ -75,6 +78,7 @@ local function snapshot(player)
 			return out
 		end)(),
 		sleeping = sleeping[player] ~= nil,
+		dex = room.dex,
 		stash = Inventory.stashView(room.stash), stashLvl = room.stash.lvl,
 		stashCost = room.stash.lvl < Config.STASH_MAX_LVL and Config.stashCost(room.stash.lvl) or nil,
 	}
@@ -130,9 +134,10 @@ function ctx.reward(player, xp, coins)
 	end
 	push(player)
 end
-function ctx.hurt(player, amount)
+function ctx.hurt(player, amount, cause)
 	local _, hum = hrpOf(player)
 	if not hum or hum.Health <= 0 then return end
+	if type(cause) == "string" then lastHit[player] = cause end
 	local room = Data.room(player)
 	local armor = room and room.inv.armor and Items.get(room.inv.armor)
 	if armor then amount *= (1 - armor.reduce) end
@@ -164,6 +169,40 @@ function ctx.power(player)
 	-- mostly the player's level, gear and skills only nudge it
 	return math.max(1, level * 0.75 + skills * 0.35 + best / 10 + (hp - 100) / 40)
 end
+-- creature index: discoveries, kills and region necklaces
+local function wearNecklace(player)
+	local room = Data.room(player)
+	local char = player.Character
+	if not room or not char then return end
+	local neck = room.dex and room.dex.neck
+	Appearance.necklace(char, neck and Biomes.medal[neck] or nil)
+end
+function ctx.seen(player, kind)
+	local room = Data.room(player)
+	if not room or not room.dex or not Bestiary.kinds[kind] or room.dex.seen[kind] then return end
+	room.dex.seen[kind] = true
+	notify(player, "discovered", kind)
+	push(player)
+end
+function ctx.killed(player, kind)
+	local room = Data.room(player)
+	if not room or not room.dex or not Bestiary.kinds[kind] then return end
+	room.dex.seen[kind] = true
+	room.dex.kills[kind] = (room.dex.kills[kind] or 0) + 1
+	for _, region in ipairs(Bestiary.completed(room.dex.kills)) do
+		if not room.dex.medals[region] then
+			room.dex.medals[region] = true
+			notify(player, "medalGot", region)
+			if player.Character then ctx.fx("levelUp", player.Character) end
+			ctx.reward(player, 250, 400)
+			if not room.dex.neck then
+				room.dex.neck = region
+				wearNecklace(player)
+			end
+		end
+	end
+end
+
 function ctx.addSp(player, n)
 	local room = Data.room(player)
 	if not room then return end
@@ -543,12 +582,15 @@ local function onCharacter(player, char)
 		local ad = Items.get(room.inv.armor)
 		if ad then Appearance.armor(char, ad.color, ad.mat) end
 	end
+	task.defer(wearNecklace, player)
 	hum.BreakJointsOnDeath = false
 	hum.MaxHealth = 100
 	hum.Health = 100
 	applyStats(player)
 	hum.Health = hum.MaxHealth
 	hum.Died:Connect(function()
+		notify(player, "deathBy", lastHit[player] or "unknown")
+		lastHit[player] = nil
 		-- ragdoll: joints become ball sockets so the body collapses onto the ground
 		pcall(function()
 			for _, m in ipairs(char:GetDescendants()) do
@@ -950,6 +992,12 @@ function actions.leave(player)
 end
 
 function actions.state(player) push(player) end
+function actions.wearMedal(player, room, region)
+	if type(region) ~= "string" or not room.dex.medals[region] then return end
+	room.dex.neck = region
+	wearNecklace(player)
+	push(player)
+end
 function actions.wake(player) if ctx.wake then ctx.wake(player) end end
 
 local reports = 0
@@ -1102,9 +1150,11 @@ function World.start(r)
 		if not ok then warn("start", name, err) Debug.log("start." .. name, err) end
 	end
 	Debug.log("world", "started")
+	local okV, errV = pcall(function() require(script.Parent.Villages).start(ctx, Mobs) end)
+	if not okV then Debug.log("start.villages", errV) end
 
 	-- camp: trader + fire
-	for _, campName in ipairs({ "Camp", "Outposts" }) do
+	for _, campName in ipairs({ "Camp", "Outposts", "Villages", "BanditCamps" }) do
 		local camp = workspace:FindFirstChild(campName)
 		if not camp then continue end
 		for _, d in ipairs(camp:GetDescendants()) do
@@ -1149,6 +1199,7 @@ function World.start(r)
 		if beds[player] and beds[player].Parent then beds[player]:Destroy() end
 		beds[player] = nil
 		buffs[player] = nil
+		lastHit[player] = nil
 		selected[player] = nil
 		cooldown[player] = nil
 		luckCd[player] = nil

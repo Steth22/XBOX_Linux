@@ -51,6 +51,18 @@ L.ar = {
 	buff_speed = "سرعة", buff_strength = "قوة", buff_regen = "تجدد", buff_stone = "حصانة", buff_vision = "رؤية ليلية", buff_warmth = "دفء",
 	mob_bat = "خفاش", mob_crawler = "زاحف الكهوف", mob_ghoul = "غول", mob_golem = "عملاق الصخر", caveIn = "دخلت كهفًا",
 	o_mushroom = "فطر", bedPlaced = "وُضع السرير، نَم عليه ليلًا",
+	mob_fox = "ثعلب", mob_ram = "كبش بري", mob_mammoth = "ماموث", mob_hyena = "ضبع", mob_puma = "أسد الجبال",
+	mob_turtle = "سلحفاة", mob_crab = "سلطعون", mob_crabking = "ملك السلطعونات", mob_monkey = "قرد", mob_tiger = "نمر",
+	mob_snake = "أفعى", mob_gorilla = "الغوريلا العملاقة", mob_lavalizard = "سحلية الحمم", mob_ashwolf = "ذئب الرماد",
+	mob_magma = "عملاق الحمم", mob_bandit = "قاطع طريق", mob_banditlord = "زعيم القطاع",
+	biome_beach = "الشاطئ", biome_jungle = "الأدغال", biome_volcano = "جبال البراكين", biome_caves = "الكهوف", biome_bandits = "قطاع الطرق",
+	index = "سجل الكائنات", unknown = "لم تكتشفه بعد", kills = "قتلت %d", found = "اكتشفت %d من %d",
+	ty_peaceful = "مسالم", ty_predator = "مفترس", ty_night = "ليلي", ty_cave = "كهفي", ty_boss = "زعيم", ty_outlaw = "خارج عن القانون",
+	medal = "قلادة %s", medals = "القلادات", medalGot = "حصلت على قلادة %s!", medalNeed = "اقتل كل كائنات المنطقة لتنالها",
+	discovered = "اكتشاف جديد: %s", wear = "ارتدِ", wearing = "ترتديها",
+	youDied = "لقد متّ", killedBy = "قتلك %s", respawnIn = "تعود بعد %d", itemsLeft = "أغراضك بقيت مكان موتك",
+	cause_hunger = "الجوع", cause_cold = "البرد", cause_heat = "الحر", cause_lava = "الحمم", cause_unknown = "مجهول",
+	lava = "الحمم تحرقك!", village = "قرية", o_villager = "قروي", villageSafe = "أنت في حماية القرية",
 }
 
 L.en = {
@@ -104,6 +116,18 @@ L.en = {
 	buff_speed = "Speed", buff_strength = "Strength", buff_regen = "Regen", buff_stone = "Stoneskin", buff_vision = "Night vision", buff_warmth = "Warmth",
 	mob_bat = "Bat", mob_crawler = "Cave Crawler", mob_ghoul = "Ghoul", mob_golem = "Rock Giant", caveIn = "You entered a cave",
 	o_mushroom = "Mushroom", bedPlaced = "Bed placed, sleep on it at night",
+	mob_fox = "Fox", mob_ram = "Wild Ram", mob_mammoth = "Mammoth", mob_hyena = "Hyena", mob_puma = "Mountain Lion",
+	mob_turtle = "Turtle", mob_crab = "Crab", mob_crabking = "Crab King", mob_monkey = "Monkey", mob_tiger = "Tiger",
+	mob_snake = "Snake", mob_gorilla = "Giant Gorilla", mob_lavalizard = "Lava Lizard", mob_ashwolf = "Ash Wolf",
+	mob_magma = "Magma Giant", mob_bandit = "Bandit", mob_banditlord = "Bandit Lord",
+	biome_beach = "Beach", biome_jungle = "Jungle", biome_volcano = "Volcanoes", biome_caves = "Caves", biome_bandits = "Bandits",
+	index = "Creature Index", unknown = "Not discovered yet", kills = "Killed %d", found = "Discovered %d of %d",
+	ty_peaceful = "Peaceful", ty_predator = "Predator", ty_night = "Night", ty_cave = "Cave", ty_boss = "Boss", ty_outlaw = "Outlaw",
+	medal = "%s Necklace", medals = "Necklaces", medalGot = "You earned the %s Necklace!", medalNeed = "Kill every creature of the region to earn it",
+	discovered = "New discovery: %s", wear = "Wear", wearing = "Wearing",
+	youDied = "You died", killedBy = "Killed by %s", respawnIn = "Back in %d", itemsLeft = "Your items stayed where you fell",
+	cause_hunger = "Hunger", cause_cold = "Cold", cause_heat = "Heat", cause_lava = "Lava", cause_unknown = "Unknown",
+	lava = "The lava is burning you!", village = "Village", o_villager = "Villager", villageSafe = "The village guards protect you",
 }
 
 function L.t(lang, key)

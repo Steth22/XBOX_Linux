@@ -8,13 +8,27 @@ for m, col in pairs({
 	[Enum.Material.Sand] = Color3.fromRGB(222, 196, 140), [Enum.Material.Sandstone] = Color3.fromRGB(196, 150, 100),
 	[Enum.Material.Snow] = Color3.fromRGB(238, 242, 248), [Enum.Material.Glacier] = Color3.fromRGB(170, 215, 235),
 	[Enum.Material.Rock] = Color3.fromRGB(118, 116, 114), [Enum.Material.Slate] = Color3.fromRGB(96, 98, 104),
+	[Enum.Material.Basalt] = Color3.fromRGB(52, 48, 50), [Enum.Material.CrackedLava] = Color3.fromRGB(255, 96, 30),
+	[Enum.Material.Asphalt] = Color3.fromRGB(70, 62, 60),
 }) do Terrain:SetMaterialColor(m, col) end
 Terrain.WaterTransparency = 0.7
 Terrain.WaterColor = Color3.fromRGB(60, 120, 150)
 Terrain.WaterWaveSize = 0.2
 
 local function materials(biome, h, wx, wz)
-	if biome == "snow" then
+	if biome == "beach" then
+		if h < WATER + 0.5 then return Enum.Material.Sand, Enum.Material.Sand, Enum.Material.Sandstone end
+		return Enum.Material.Sand, Enum.Material.Sandstone, Enum.Material.Rock
+	elseif biome == "jungle" then
+		if h < WATER + 1.2 then return Enum.Material.Mud, Enum.Material.Mud, Enum.Material.Rock end
+		local patch = math.noise(wx / 30, wz / 30, 64)
+		return (patch > -0.1) and Enum.Material.LeafyGrass or Enum.Material.Grass, Enum.Material.Mud, Enum.Material.Rock
+	elseif biome == "volcano" then
+		if inCrater(wx, wz) then return Enum.Material.CrackedLava, Enum.Material.Basalt, Enum.Material.Basalt end
+		local n = math.noise(wx / 26, wz / 26, 83)
+		if n > 0.45 then return Enum.Material.CrackedLava, Enum.Material.Basalt, Enum.Material.Basalt end -- small lava cracks
+		return (n > 0.05) and Enum.Material.Asphalt or Enum.Material.Basalt, Enum.Material.Basalt, Enum.Material.Rock
+	elseif biome == "snow" then
 		return Enum.Material.Snow, Enum.Material.Ground, Enum.Material.Rock
 	elseif biome == "desert" then
 		if h < WATER + 1.5 then return Enum.Material.Grass, Enum.Material.Sand, Enum.Material.Sandstone end
@@ -42,8 +56,7 @@ for cx = XFROM, XTO - 1, CH do
 			cols[ix] = {}
 			for iz = cz, z1 do
 				local wx, wz = ix * RES + RES / 2, iz * RES + RES / 2
-				local h, b, w = heightB(wx, wz)
-				local biome = (w > 0.5) and b or "forest"
+				local h, biome = heightB(wx, wz)
 				cols[ix][iz] = { h = h, biome = biome, wx = wx, wz = wz }
 				if h > maxH then maxH = h end
 			end

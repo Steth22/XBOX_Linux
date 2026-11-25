@@ -41,7 +41,7 @@ local function defaultRoom()
 	end
 	local skills = {}
 	for _, k in ipairs(Config.SKILLS) do skills[k] = 0 end
-	return { coins = Config.START_COINS, xp = 0, sp = 0, inv = inv, hunger = 100, thirst = 100, skills = skills, stash = Inventory.newStash(), t = os.time() }
+	return { coins = Config.START_COINS, xp = 0, sp = 0, inv = inv, hunger = 100, thirst = 100, skills = skills, stash = Inventory.newStash(), dex = { seen = {}, kills = {}, medals = {}, neck = false }, t = os.time() }
 end
 
 ---------------------------------------------------------------- profile
@@ -130,6 +130,18 @@ function Data.loadRoom(player, code)
 		r.stash = Inventory.fixStash(res.stash)
 		r.hunger = math.clamp(tonumber(res.hunger) or 100, 10, 100)
 		r.thirst = math.clamp(tonumber(res.thirst) or 100, 10, 100)
+		if type(res.dex) == "table" then
+			local Best = require(game:GetService("ReplicatedStorage").Shared.Bestiary)
+			local d = res.dex
+			for k in pairs(Best.kinds) do
+				if type(d.seen) == "table" and d.seen[k] then r.dex.seen[k] = true end
+				if type(d.kills) == "table" and tonumber(d.kills[k]) then r.dex.kills[k] = math.max(0, math.floor(tonumber(d.kills[k]))) end
+			end
+			for _, reg in ipairs(Best.regions) do
+				if type(d.medals) == "table" and d.medals[reg.key] then r.dex.medals[reg.key] = true end
+			end
+			if type(d.neck) == "string" and r.dex.medals[d.neck] then r.dex.neck = d.neck end
+		end
 		if type(res.skills) == "table" then
 			for _, k in ipairs(Config.SKILLS) do
 				r.skills[k] = math.clamp(math.floor(tonumber(res.skills[k]) or 0), 0, Config.SKILL_CAP[k] or 999)
@@ -160,7 +172,7 @@ function Data.saveRoom(player)
 	if not r or not code then return end
 	Data.touchRoomList(player, code, r.coins, r.xp)
 	if r._noSave then return end
-	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, t = os.time() }
+	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, dex = r.dex, t = os.time() }
 	try(function()
 		roomStore:SetAsync("r_" .. code .. "_" .. player.UserId, copy)
 	end)

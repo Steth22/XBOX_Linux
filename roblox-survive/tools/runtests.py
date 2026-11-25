@@ -5,7 +5,7 @@ from deploy import build
 HERE = os.path.dirname(os.path.abspath(__file__))
 src = build(save=False)
 src = src[:src.rindex("return {")]
-names = ["tests.lua", "t_more.lua", "t_caves.lua"]
+names = ["tests.lua", "t_more.lua", "t_caves.lua", "t_world.lua"]
 parts = [src, "local all = {}"]
 for n in names:
     body = open(os.path.join(HERE, "..", "tests", n), encoding="utf-8").read()

@@ -10,7 +10,7 @@ local ctx, folder, traps
 local mobs = {} -- [model] = state
 local rng = Random.new()
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
-local MAP_HALF = 740
+local MAP_HALF = Biomes.HALF - 40
 
 local DEFS = {
 	rabbit = { hp = 20, speed = 13.5, flee = true, size = 0.55, hip = 0.45, xp = 4, coins = 1, color = Color3.fromRGB(200, 186, 170), drops = { { "meat_raw", 1, 1, 1 }, { "hide", 1, 1, 0.04 } } },
@@ -29,6 +29,24 @@ local DEFS = {
 	scorpion = { hp = 95, speed = 12, aggro = 45, dmg = 13, reach = 5, size = 1, xp = 20, coins = 7, color = Color3.fromRGB(150, 96, 52), drops = { { "rifle_ammo", 2, 4, 0.12 }, { "gold", 1, 1, 0.1 } } },
 	scorpionking = { hp = 1900, speed = 11, aggro = 85, dmg = 36, reach = 10, boss = true, tier = 2, size = 2.6, xp = 450, coins = 200, color = Color3.fromRGB(120, 70, 36), drops = { { "scimitar", 1, 1, 0.5 }, { "hide_desert", 1, 3, 0.8 }, { "rifle", 1, 1, 0.25 }, { "gold", 3, 6, 1 } } },
 	yeti = { hp = 2600, speed = 10, aggro = 90, dmg = 42, reach = 10, boss = true, tier = 3, xp = 600, coins = 260, color = Color3.fromRGB(236, 240, 248), drops = { { "ice_spear", 1, 1, 0.4 }, { "hide_snow", 1, 3, 0.8 }, { "warm_coat", 1, 1, 0.5 }, { "diamond", 2, 4, 1 } } },
+	-- new region creatures
+	fox = { hp = 50, speed = 14, aggro = 35, dmg = 7, reach = 4, size = 0.7, hip = 0.9, xp = 14, coins = 5, color = Color3.fromRGB(205, 110, 50), drops = { { "meat_raw", 1, 1, 1 }, { "hide", 1, 1, 0.05 } } },
+	ram = { hp = 100, speed = 13, neutral = true, aggro = 0, dmg = 14, reach = 5, size = 1.0, hip = 1.5, xp = 20, coins = 7, color = Color3.fromRGB(150, 130, 110), drops = { { "meat_raw", 1, 2, 1 }, { "hide", 1, 1, 0.07 } } },
+	mammoth = { hp = 520, speed = 10, neutral = true, aggro = 0, dmg = 30, reach = 8, size = 2.3, hip = 3.2, xp = 90, coins = 30, color = Color3.fromRGB(110, 78, 56), drops = { { "meat_raw", 4, 6, 1 }, { "hide_snow", 1, 2, 0.3 } } },
+	hyena = { hp = 80, speed = 14.5, aggro = 50, dmg = 11, reach = 4.5, size = 0.95, hip = 1.4, xp = 22, coins = 8, color = Color3.fromRGB(176, 146, 96), drops = { { "meat_raw", 1, 1, 1 }, { "hide_desert", 1, 1, 0.07 } } },
+	puma = { hp = 160, speed = 15, aggro = 45, dmg = 18, reach = 5.5, size = 1.15, hip = 1.5, xp = 40, coins = 14, color = Color3.fromRGB(196, 156, 104), drops = { { "meat_raw", 1, 2, 1 }, { "hide", 1, 1, 0.15 } } },
+	turtle = { hp = 70, speed = 6, flee = true, size = 1.0, hip = 0.5, xp = 10, coins = 4, color = Color3.fromRGB(110, 140, 80), drops = { { "meat_raw", 1, 2, 1 } } },
+	crab = { hp = 60, speed = 11, aggro = 30, dmg = 9, reach = 4, size = 0.7, xp = 14, coins = 5, noTail = true, color = Color3.fromRGB(214, 84, 52), drops = { { "meat_raw", 1, 1, 0.8 } } },
+	crabking = { hp = 2000, speed = 9, aggro = 70, dmg = 34, reach = 10, boss = true, tier = 2, size = 3.0, noTail = true, xp = 450, coins = 200, color = Color3.fromRGB(200, 60, 40), drops = { { "harpoon", 1, 1, 0.4 }, { "gold", 3, 6, 1 }, { "diamond", 1, 2, 0.5 } } },
+	monkey = { hp = 35, speed = 15, flee = true, size = 0.6, hip = 1.0, xp = 8, coins = 3, color = Color3.fromRGB(110, 80, 55), drops = { { "coconut", 1, 1, 0.5 }, { "meat_raw", 1, 1, 0.6 } } },
+	tiger = { hp = 230, speed = 15.5, aggro = 50, dmg = 24, reach = 6, size = 1.5, hip = 1.7, xp = 60, coins = 20, color = Color3.fromRGB(230, 130, 40), drops = { { "meat_raw", 2, 3, 1 }, { "hide", 1, 1, 0.2 } } },
+	snake = { hp = 70, speed = 10, aggro = 30, dmg = 15, reach = 4.5, xp = 18, coins = 6, color = Color3.fromRGB(70, 110, 50), drops = { { "meat_raw", 1, 1, 0.5 } } },
+	gorilla = { hp = 2800, speed = 11, aggro = 80, dmg = 44, reach = 9, boss = true, tier = 3, xp = 620, coins = 260, color = Color3.fromRGB(52, 48, 46), drops = { { "machete", 1, 1, 0.5 }, { "jungle_vest", 1, 1, 0.4 }, { "gold", 3, 5, 1 }, { "diamond", 1, 2, 0.6 } } },
+	lavalizard = { hp = 150, speed = 12.5, aggro = 45, dmg = 20, reach = 5, size = 1.2, hip = 0.7, xp = 38, coins = 14, color = Color3.fromRGB(80, 36, 28), glow = Color3.fromRGB(255, 120, 30), drops = { { "obsidian", 1, 1, 0.08 }, { "iron", 1, 2, 0.3 } } },
+	ashwolf = { hp = 130, speed = 14.5, aggro = 55, dmg = 16, reach = 5, size = 1.0, hip = 1.3, xp = 34, coins = 12, color = Color3.fromRGB(72, 68, 68), glow = Color3.fromRGB(255, 130, 50), drops = { { "meat_raw", 1, 2, 1 }, { "hide", 1, 1, 0.1 } } },
+	magma = { tier = 4, hp = 3600, speed = 8.5, aggro = 70, dmg = 50, reach = 11, boss = true, xp = 800, coins = 320, color = Color3.fromRGB(64, 34, 28), glow = Color3.fromRGB(255, 110, 30), drops = { { "magma_blade", 1, 1, 0.35 }, { "lava_cloak", 1, 1, 0.5 }, { "obsidian", 3, 6, 1 }, { "diamond", 2, 3, 1 } } },
+	bandit = { hp = 120, speed = 13, aggro = 55, dmg = 14, reach = 5, xp = 30, coins = 25, color = Color3.fromRGB(196, 150, 110), cloth = Color3.fromRGB(70, 56, 48), drops = { { "bandage", 1, 1, 0.3 }, { "ammo", 4, 8, 0.2 }, { "gold", 1, 1, 0.2 }, { "iron_sword", 1, 1, 0.03 } } },
+	banditlord = { hp = 1600, speed = 12, aggro = 70, dmg = 30, reach = 6, boss = true, tier = 2, xp = 380, coins = 220, color = Color3.fromRGB(176, 130, 96), cloth = Color3.fromRGB(110, 30, 30), drops = { { "pistol", 1, 1, 0.4 }, { "rifle", 1, 1, 0.15 }, { "gold", 3, 5, 1 }, { "potion_strength", 1, 1, 0.3 } } },
 	-- cave dwellers (spawned only inside caves, `cave = true`)
 	bat = { hp = 30, speed = 15, aggro = 40, dmg = 6, reach = 4.5, cave = true, hip = 4.5, xp = 10, coins = 4, color = Color3.fromRGB(46, 40, 48), drops = { { "crystal", 1, 1, 0.12 } } },
 	crawler = { hp = 110, speed = 12, aggro = 45, dmg = 14, reach = 5, cave = true, size = 1.35, xp = 26, coins = 9, color = Color3.fromRGB(196, 190, 176), drops = { { "crystal", 1, 2, 0.3 }, { "mushroom", 1, 2, 0.3 } } },
@@ -174,7 +192,48 @@ local function quadruped(kind, def, at)
 			vis(m, hrp, Vector3.new(0.1, 0.6, 0.1) * s, CFrame.new(x * 0.55 * s, 1.95 * s, -1.75 * s) * CFrame.Angles(math.rad(-30), 0, math.rad(-x * 50)), Color3.fromRGB(220, 200, 170))
 		end
 		vis(m, hrp, Vector3.new(0.4, 0.4, 0.3) * s, CFrame.new(0, 0.4 * s, 1.5 * s), Color3.fromRGB(245, 240, 235))
-	elseif kind == "wolf" or kind == "snowwolf" then
+	elseif kind == "fox" then
+		for _, x in ipairs({ -1, 1 }) do vis(m, hrp, Vector3.new(0.3, 0.55, 0.2) * s, CFrame.new(x * 0.32 * s, 1.35 * s, -1.65 * s), dark) end
+		vis(m, hrp, Vector3.new(0.7, 0.7, 1.8) * s, CFrame.new(0, 0.2 * s, 2.1 * s) * CFrame.Angles(math.rad(20), 0, 0), col, BALL, Enum.Material.Fabric)
+		vis(m, hrp, Vector3.new(0.5, 0.5, 0.6) * s, CFrame.new(0, -0.1 * s, 2.9 * s), Color3.fromRGB(240, 236, 228), BALL)
+	elseif kind == "ram" then
+		vis(m, hrp, Vector3.new(1.9, 1.6, 3.0) * s, CFrame.new(0, 0.1 * s, 0), Color3.fromRGB(230, 224, 210), nil, Enum.Material.Fabric)
+		for _, x in ipairs({ -1, 1 }) do
+			vis(m, hrp, Vector3.new(0.5, 0.9, 0.9) * s, CFrame.new(x * 0.62 * s, 0.95 * s, -1.75 * s), Color3.fromRGB(120, 100, 80), BALL)
+			vis(m, hrp, Vector3.new(0.35, 0.35, 0.8) * s, CFrame.new(x * 0.7 * s, 0.6 * s, -2.2 * s) * CFrame.Angles(math.rad(-30), 0, 0), Color3.fromRGB(120, 100, 80))
+		end
+	elseif kind == "mammoth" then
+		vis(m, hrp, Vector3.new(1.9, 1.7, 3.0) * s, CFrame.new(0, 0.2 * s, 0), col:Lerp(Color3.new(0, 0, 0), 0.1), nil, Enum.Material.Fabric)
+		vis(m, hrp, Vector3.new(0.45, 1.8, 0.45) * s, CFrame.new(0, -0.2 * s, -2.75 * s) * CFrame.Angles(math.rad(-12), 0, 0), col, nil, Enum.Material.Fabric)
+		for _, x in ipairs({ -1, 1 }) do
+			vis(m, hrp, Vector3.new(0.22, 0.22, 1.6) * s, CFrame.new(x * 0.4 * s, -0.1 * s, -2.7 * s) * CFrame.Angles(math.rad(30), math.rad(x * 12), 0), Color3.fromRGB(240, 232, 210))
+			vis(m, hrp, Vector3.new(0.5, 0.9, 0.12) * s, CFrame.new(x * 0.65 * s, 0.6 * s, -1.6 * s), col, nil, Enum.Material.Fabric)
+		end
+	elseif kind == "hyena" then
+		vis(m, hrp, Vector3.new(1.5, 1.1, 1.3) * s, CFrame.new(0, 0.35 * s, -0.8 * s), col:Lerp(Color3.new(0, 0, 0), 0.1), nil, Enum.Material.Fabric)
+		for i = 1, 6 do vis(m, hrp, Vector3.new(0.35, 0.35, 0.35) * s, CFrame.new((i % 2 == 0 and 0.75 or -0.75) * s, 0.2 * s, (-1 + i * 0.32) * s), Color3.fromRGB(70, 56, 40), BALL) end
+		for _, x in ipairs({ -1, 1 }) do vis(m, hrp, Vector3.new(0.35, 0.4, 0.2) * s, CFrame.new(x * 0.35 * s, 1.3 * s, -1.65 * s), dark, BALL) end
+	elseif kind == "puma" or kind == "tiger" then
+		vis(m, hrp, Vector3.new(0.3, 0.3, 2.2) * s, CFrame.new(0, 0.2 * s, 2.3 * s) * CFrame.Angles(math.rad(15), 0, 0), col)
+		for _, x in ipairs({ -1, 1 }) do vis(m, hrp, Vector3.new(0.3, 0.3, 0.2) * s, CFrame.new(x * 0.35 * s, 1.25 * s, -1.65 * s), dark, BALL) end
+		if kind == "tiger" then
+			for i = -2, 3 do vis(m, hrp, Vector3.new(1.65, 1.45, 0.18) * s, CFrame.new(0, 0, i * 0.45 * s), Color3.fromRGB(30, 26, 24)) end
+			vis(m, hrp, Vector3.new(1.2, 0.5, 2.2) * s, CFrame.new(0, -0.5 * s, 0), Color3.fromRGB(240, 232, 220))
+		end
+	elseif kind == "turtle" then
+		vis(m, hrp, Vector3.new(2.6, 1.5, 3.4) * s, CFrame.new(0, 0.35 * s, 0.1 * s), Color3.fromRGB(110, 86, 50), BALL)
+		vis(m, hrp, Vector3.new(2.7, 0.3, 3.5) * s, CFrame.new(0, -0.1 * s, 0.1 * s), Color3.fromRGB(80, 64, 40))
+	elseif kind == "monkey" then
+		for _, x in ipairs({ -1, 1 }) do vis(m, hrp, Vector3.new(0.2, 0.45, 0.45) * s, CFrame.new(x * 0.62 * s, 0.6 * s, -1.75 * s), Color3.fromRGB(210, 170, 130), BALL) end
+		vis(m, hrp, Vector3.new(0.25, 0.25, 2.6) * s, CFrame.new(0, 1.0 * s, 2.0 * s) * CFrame.Angles(math.rad(-50), 0, 0), col)
+		vis(m, hrp, Vector3.new(0.7, 0.5, 0.2) * s, CFrame.new(0, 0.42 * s, -2.9 * s), Color3.fromRGB(210, 170, 130))
+	elseif kind == "lavalizard" then
+		for i = 1, 4 do vis(m, hrp, Vector3.new(1.2 - i * 0.22, 0.7 - i * 0.1, 1.0) * s, CFrame.new(0, -0.1 * s, (1.4 + i * 0.9) * s), col) end
+		for i = 1, 7 do vis(m, hrp, Vector3.new(0.3, 0.3, 0.3) * s, CFrame.new((i % 2 == 0 and 0.55 or -0.55) * s, 0.65 * s, (-1.2 + i * 0.4) * s), def.glow, BALL, Enum.Material.Neon) end
+	elseif kind == "wolf" or kind == "snowwolf" or kind == "ashwolf" then
+		if kind == "ashwolf" then
+			for i = 1, 5 do vis(m, hrp, Vector3.new(0.25, 0.25, 0.25) * s, CFrame.new((i % 2 == 0 and 0.5 or -0.5) * s, 0.6 * s, (-1 + i * 0.45) * s), def.glow, BALL, Enum.Material.Neon) end
+		end
 		vis(m, hrp, Vector3.new(0.3, 0.5, 0.2) * s, CFrame.new(-0.35 * s, 1.35 * s, -1.65 * s), dark)
 		vis(m, hrp, Vector3.new(0.3, 0.5, 0.2) * s, CFrame.new(0.35 * s, 1.35 * s, -1.65 * s), dark)
 		vis(m, hrp, Vector3.new(0.3, 0.3, 1.4) * s, CFrame.new(0, 0.3 * s, 1.9 * s) * CFrame.Angles(math.rad(25), 0, 0), col)
@@ -228,6 +287,10 @@ local function scorpion(kind, def, at)
 		end
 	end
 	-- curled tail with a stinger
+	if def.noTail then
+		vis(m, hrp, Vector3.new(2.4, 0.5, 2.0) * s, CFrame.new(0, 0.45 * s, 0.2 * s), col:Lerp(Color3.new(1, 1, 1), 0.1))
+		return m, hrp, hum
+	end
 	for i = 1, 4 do
 		vis(m, hrp, Vector3.new(0.55, 0.55, 0.7) * s * (1 - i * 0.08), CFrame.new(0, (0.2 + i * 0.45) * s, (1.4 + i * 0.35 - (i > 2 and (i - 2) * 0.5 or 0)) * s), col)
 	end
@@ -249,9 +312,42 @@ local function bat(def, at)
 	return m, hrp, hum
 end
 
-local function yeti(def, at)
-	local m, hrp, hum = base("yeti", Vector3.new(4.5, 5.5, 3), 4.6, at)
-	local fur, dark = def.color, Color3.fromRGB(170, 180, 200)
+local function snake(def, at)
+	local m, hrp, hum = base("snake", Vector3.new(1, 0.8, 2), 0.1, at)
+	local col = def.color
+	vis(m, hrp, Vector3.new(1.1, 0.8, 1.3), CFrame.new(0, 0.1, -0.9), col:Lerp(Color3.new(0, 0, 0), 0.15), BALL)
+	for i = 0, 8 do
+		local x = math.sin(i * 0.9) * 0.7
+		vis(m, hrp, Vector3.new(0.85 - i * 0.06, 0.6 - i * 0.03, 1.1), CFrame.new(x, -0.05, i * 0.85), i % 2 == 0 and col or Color3.fromRGB(200, 180, 70), BALL)
+	end
+	return m, hrp, hum
+end
+
+local function human(kind, def, at)
+	local m, hrp, hum = base(kind, Vector3.new(2, 2, 1), 2, at)
+	local skin, cloth = def.color, def.cloth
+	local big = kind == "banditlord"
+	vis(m, hrp, Vector3.new(2, 2, 1), CFrame.new(), cloth, nil, Enum.Material.Fabric)
+	vis(m, hrp, Vector3.new(1.3, 1.3, 1.3), CFrame.new(0, 1.65, 0), skin, BALL)
+	vis(m, hrp, Vector3.new(1.42, 0.5, 1.42), CFrame.new(0, 1.55, 0), Color3.fromRGB(40, 32, 30), BALL, Enum.Material.Fabric) -- mask
+	vis(m, hrp, Vector3.new(1.5, 1.0, 1.5), CFrame.new(0, 2.05, 0.1), big and Color3.fromRGB(110, 30, 30) or Color3.fromRGB(60, 50, 44), BALL, Enum.Material.Fabric) -- hood
+	vis(m, hrp, Vector3.new(2.1, 0.3, 1.1), CFrame.new(0, -0.75, 0), Color3.fromRGB(50, 36, 26), nil, Enum.Material.Fabric)
+	if big then vis(m, hrp, Vector3.new(2.3, 3.2, 0.15), CFrame.new(0, -0.4, 0.62), Color3.fromRGB(130, 30, 30), nil, Enum.Material.Fabric) end
+	for _, x in ipairs({ -1.25, 1.25 }) do
+		limb(m, hrp, Vector3.new(0.75, 2, 0.75), CFrame.new(x, 0.9, 0), cloth, x < 0 and math.pi or 0, Enum.Material.Fabric)
+	end
+	for _, x in ipairs({ -0.5, 0.5 }) do
+		limb(m, hrp, Vector3.new(0.85, 2, 0.85), CFrame.new(x, -1, 0), Color3.fromRGB(56, 48, 40), x < 0 and 0 or math.pi, Enum.Material.Fabric)
+	end
+	-- a blade in the right hand
+	vis(m, hrp, Vector3.new(0.2, 0.3, 3.2), CFrame.new(1.4, -0.6, -1.4) * CFrame.Angles(math.rad(-20), 0, 0), Color3.fromRGB(190, 194, 200), nil, Enum.Material.Metal)
+	if big then m:ScaleTo(1.4) end
+	return m, hrp, hum
+end
+
+local function yeti(def, at, kind)
+	local m, hrp, hum = base(kind or "yeti", Vector3.new(4.5, 5.5, 3), 4.6, at)
+	local fur, dark = def.color, kind == "gorilla" and Color3.fromRGB(90, 90, 96) or Color3.fromRGB(170, 180, 200)
 	vis(m, hrp, Vector3.new(4.5, 5.5, 3), CFrame.new(), fur, nil, Enum.Material.Fabric)
 	vis(m, hrp, Vector3.new(3.0, 3.0, 3.0), CFrame.new(0, 3.9, -0.3), fur, BALL, Enum.Material.Fabric)
 	vis(m, hrp, Vector3.new(4.7, 1.2, 3.2), CFrame.new(0, 1.8, 0), dark, nil, Enum.Material.Fabric)
@@ -364,11 +460,13 @@ function Mobs.spawn(kind, at, level, cave)
 	level = math.clamp(math.floor(level or 1), 1, 99)
 	local m, hrp, hum
 	if kind == "zombie" or kind == "ghoul" then m, hrp, hum = zombie(def, at, kind)
-	elseif kind == "guardian" or kind == "golem" then m, hrp, hum = guardian(def, at, kind)
+	elseif kind == "guardian" or kind == "golem" or kind == "magma" then m, hrp, hum = guardian(def, at, kind)
 	elseif kind == "spider" or kind == "crawler" then m, hrp, hum = spider(def, at, kind)
 	elseif kind == "bat" then m, hrp, hum = bat(def, at)
-	elseif kind == "scorpion" or kind == "scorpionking" then m, hrp, hum = scorpion(kind, def, at)
-	elseif kind == "yeti" then m, hrp, hum = yeti(def, at)
+	elseif kind == "scorpion" or kind == "scorpionking" or kind == "crab" or kind == "crabking" then m, hrp, hum = scorpion(kind, def, at)
+	elseif kind == "yeti" or kind == "gorilla" then m, hrp, hum = yeti(def, at, kind)
+	elseif kind == "snake" then m, hrp, hum = snake(def, at)
+	elseif kind == "bandit" or kind == "banditlord" then m, hrp, hum = human(kind, def, at)
 	else m, hrp, hum = quadruped(kind, def, at) end
 	local L = level - 1
 	local maxHp = math.floor(def.hp * (1 + 0.10 * L))
@@ -385,7 +483,7 @@ function Mobs.spawn(kind, at, level, cave)
 		dmg = (def.dmg or 0) * (1 + 0.05 * L), xp = math.floor(def.xp * (1 + 0.15 * L)), coins = math.floor(def.coins * (1 + 0.1 * L)), hrp = hrp, hum = hum, nextWander = 0, nextAttack = 0, scaredUntil = 0, rootedUntil = 0, target = nil, born = os.clock() }
 	if cave then
 		local st = mobs[m]
-		st.cave, st.caveId, st.home = true, cave.id, at
+		st.cave, st.caveId, st.home = not cave.surface, cave.id, at
 		st.lift = st.hrp.Position.Y - at.Y
 	end
 	return m
@@ -400,6 +498,7 @@ local function kill(m, s, player)
 	m:SetAttribute("HP", 0)
 	if player and player.Parent then
 		local def = s.def
+		if ctx.killed then pcall(ctx.killed, player, s.kind) end
 		ctx.reward(player, s.xp, s.coins)
 		local sp = 0
 		if def.boss then
@@ -503,8 +602,8 @@ local function wander(s, now)
 	if now < s.nextWander then return end
 	s.nextWander = now + rng:NextNumber(3, 7)
 	local p = s.hrp.Position
-	if s.cave and s.home then p = s.home end
-	local spread = s.cave and 14 or 30
+	if s.home then p = s.home end
+	local spread = s.home and 14 or 30
 	local tx = math.clamp(p.X + rng:NextNumber(-spread, spread), -MAP_HALF, MAP_HALF)
 	local tz = math.clamp(p.Z + rng:NextNumber(-spread, spread), -MAP_HALF, MAP_HALF)
 	s.dest = Vector3.new(tx, p.Y, tz)
@@ -570,14 +669,25 @@ function stepOne(m, s)
 					if d <= def.reach + (def.boss and 2 or 0) and now >= s.nextAttack then
 						s.nextAttack = now + (def.boss and 1.8 or 1.2)
 						ctx.fx("mobAttack", pos, s.kind)
-						ctx.hurt(s.target, s.dmg)
+						ctx.hurt(s.target, s.dmg, s.kind)
 					end
 				else
 					wander(s, now)
 				end
 			end
+			-- creatures with a home (caves, bandit camps) stay near it
+			if s.home and (pos - s.home).Magnitude > 75 then
+				s.target = nil
+				s.dest = s.home
+				s.pace = 1
+			end
 			-- despawn
-			local near = nearestPlayer(pos, 280)
+			local near = nearestPlayer(pos, s.caveId and 160 or 280)
+			if s.caveId and not near then
+				mobs[m] = nil
+				m:Destroy()
+				return
+			end
 			if (not near and not def.boss) or (def.night and not night and now - s.born > 5) then
 				mobs[m] = nil
 				m:Destroy()
@@ -599,7 +709,7 @@ local function levelAt(pos)
 		end
 	end
 	local d = math.max(math.abs(pos.X), math.abs(pos.Z))
-	local regionBonus = math.max(0, d - 300) / 65 -- the outer regions are tougher (up to about +7)
+	local regionBonus = math.max(0, d - 560) / 110 -- the outer regions are tougher (up to about +9)
 	if n == 0 then return math.max(1, math.floor(1 + regionBonus)) end
 	return math.max(1, math.floor(sum / n * rng:NextNumber(0.8, 1.05) + regionBonus + 0.5))
 end
@@ -616,13 +726,16 @@ end
 
 -- what lives where (caps are per nearby player)
 local BIOME_MOBS = {
-	forest = { day = { rabbit = 3, deer = 2, boar = 2, wolf = 2, bear = 1 }, night = { zombie = 4, spider = 3, wolf = 2 } },
-	hills = { day = { deer = 3, boar = 3, wolf = 2, bear = 1 }, night = { zombie = 3, spider = 3, wolf = 2 } },
-	snow = { day = { hare = 4, snowwolf = 3, polarbear = 1 }, night = { snowwolf = 4, zombie = 2, polarbear = 1 } },
-	desert = { day = { camel = 3, scorpion = 3 }, night = { scorpion = 4, spider = 3 } },
-	mountains = { day = { goat = 4, wolf = 2, bear = 1 }, night = { wolf = 3, zombie = 2 } },
+	forest = { day = { rabbit = 3, deer = 2, boar = 2, wolf = 2, bear = 1, fox = 2 }, night = { zombie = 4, spider = 3, wolf = 2 } },
+	hills = { day = { deer = 3, boar = 3, ram = 2, wolf = 2, bear = 1, bandit = 1 }, night = { zombie = 3, spider = 3, wolf = 2 } },
+	snow = { day = { hare = 4, snowwolf = 3, polarbear = 1, mammoth = 1 }, night = { snowwolf = 4, zombie = 2, polarbear = 1 } },
+	desert = { day = { camel = 3, scorpion = 3, hyena = 2, bandit = 1 }, night = { scorpion = 4, spider = 3, hyena = 3 } },
+	mountains = { day = { goat = 4, wolf = 2, bear = 1, puma = 1 }, night = { wolf = 3, zombie = 2, puma = 1 } },
+	beach = { day = { turtle = 3, crab = 3 }, night = { crab = 4, zombie = 3 } },
+	jungle = { day = { monkey = 3, snake = 3, tiger = 1, bandit = 1 }, night = { spider = 4, snake = 3, tiger = 2 } },
+	volcano = { day = { lavalizard = 3, ashwolf = 2 }, night = { ashwolf = 3, lavalizard = 3, zombie = 2 } },
 }
-local BOSS = { forest = "alpha", hills = "alpha", snow = "yeti", desert = "scorpionking", mountains = "guardian" }
+local BOSS = { forest = "alpha", hills = "alpha", snow = "yeti", desert = "scorpionking", mountains = "guardian", beach = "crabking", jungle = "gorilla", volcano = "magma" }
 local bossTimer = {}
 
 local function countNear(kind, pos, radius)
@@ -638,6 +751,11 @@ local function populate()
 	for _, pl in ipairs(Players:GetPlayers()) do
 		local r = alive(pl)
 		if r then
+			if ctx.seen then
+				for _, st in pairs(mobs) do
+					if not st.dead and (st.hrp.Position - r.Position).Magnitude < 45 then pcall(ctx.seen, pl, st.kind) end
+				end
+			end
 			-- one spawn attempt per player per tick, in the biome of the chosen spot
 			local a = rng:NextNumber(0, math.pi * 2)
 			local dist = rng:NextNumber(70, 140)
@@ -649,7 +767,7 @@ local function populate()
 			for kind, cap in pairs(list) do
 				if countNear(kind, r.Position, 220) < cap then table.insert(options, kind) end
 			end
-			if #options > 0 then
+			if #options > 0 and not Mobs.safe(Vector3.new(x, 0, z), 40) then
 				local g = groundAt(x, z)
 				if g then
 					local kind = options[rng:NextInteger(1, #options)]
@@ -682,10 +800,15 @@ local CAVE_MOBS = {
 	wide = { bat = 4, crawler = 3, ghoul = 3 },
 }
 local caveBoss = {}
+CAVE_MOBS.bandit = { bandit = 4 }
 local function cavePopulate()
-	local caves = workspace:FindFirstChild("Caves")
-	if not caves then return end
-	for _, cave in ipairs(caves:GetChildren()) do
+	local list = {}
+	for _, n in ipairs({ "Caves", "BanditCamps" }) do
+		local f = workspace:FindFirstChild(n)
+		if f then for _, c in ipairs(f:GetChildren()) do table.insert(list, c) end end
+	end
+	for _, cave in ipairs(list) do
+		local surface = cave:GetAttribute("Type") == "bandit"
 		local spotsF = cave:FindFirstChild("Spots")
 		local list = CAVE_MOBS[cave:GetAttribute("Type") or ""]
 		if spotsF and list then
@@ -718,19 +841,20 @@ local function cavePopulate()
 					if #cand > 0 then
 						local sp = cand[rng:NextInteger(1, #cand)]
 						local kind = options[rng:NextInteger(1, #options)]
-						Mobs.spawn(kind, sp.Position, levelAt(sp.Position) + 2, { id = cave })
+						Mobs.spawn(kind, sp.Position, levelAt(sp.Position) + 2, { id = cave, surface = surface })
 					end
 				end
 				-- the rock giant sleeps in the wide caves
-				if cave:GetAttribute("Type") == "wide" and r then
+				local bossKind = (cave:GetAttribute("Type") == "wide" and "golem") or (surface and "banditlord") or nil
+				if bossKind and r then
 					caveBoss[cave] = caveBoss[cave] or (os.clock() - 9999)
 					local bossAlive = false
-					for _, st in pairs(mobs) do if st.caveId == cave and st.kind == "golem" and not st.dead then bossAlive = true end end
+					for _, st in pairs(mobs) do if st.caveId == cave and st.kind == bossKind and not st.dead then bossAlive = true end end
 					local lair = cave:GetAttribute("Center")
 					if not bossAlive and lair and os.clock() - caveBoss[cave] > 600 and (r.Position - lair).Magnitude < 70 then
 						caveBoss[cave] = os.clock()
-						Mobs.spawn("golem", lair, levelAt(lair) + 4, { id = cave })
-						ctx.broadcast("bossSpawn", "golem")
+						Mobs.spawn(bossKind, lair, levelAt(lair) + 4, { id = cave, surface = surface })
+						ctx.broadcast("bossSpawn", bossKind)
 					end
 				end
 			end
@@ -738,11 +862,60 @@ local function cavePopulate()
 	end
 end
 
+-- villages and the camp keep predators out
+local safeZones = nil
+function Mobs.safe(pos, pad)
+	if not safeZones then
+		safeZones = { { Vector3.new(0, 0, 0), 70 } }
+		local v = workspace:FindFirstChild("Villages")
+		for _, m in ipairs(v and v:GetChildren() or {}) do
+			local c, r = m:GetAttribute("Center"), m:GetAttribute("Radius")
+			if c and r then table.insert(safeZones, { c, r }) end
+		end
+	end
+	for _, z in ipairs(safeZones) do
+		if (Vector3.new(pos.X - z[1].X, 0, pos.Z - z[1].Z)).Magnitude < z[2] + (pad or 0) then return true end
+	end
+	return false
+end
+
+-- living creatures that attack people (guards go after these)
+function Mobs.hostileNear(pos, radius)
+	local out = {}
+	for m, st in pairs(mobs) do
+		if not st.dead and not st.def.flee and not st.def.neutral and (st.hrp.Position - pos).Magnitude < radius then
+			table.insert(out, { model = m, pos = st.hrp.Position, kind = st.kind })
+		end
+	end
+	return out
+end
+
+-- a still copy of every creature for the index (clients show them in 3D)
+local function buildTemplates()
+	local f = ReplicatedStorage:FindFirstChild("MobTemplates") or Instance.new("Folder")
+	f.Name = "MobTemplates"
+	f:ClearAllChildren()
+	for kind in pairs(DEFS) do
+		local ok, m = pcall(Mobs.spawn, kind, Vector3.new(0, -800, 0), 1)
+		if ok and m then
+			mobs[m] = nil
+			for _, d in ipairs(m:GetDescendants()) do
+				if d:IsA("AlignPosition") or d:IsA("AlignOrientation") or d:IsA("BillboardGui") then d:Destroy()
+				elseif d:IsA("BasePart") then d.Anchored = true end
+			end
+			m:PivotTo(CFrame.new())
+			m.Parent = f
+		end
+	end
+	f.Parent = ReplicatedStorage
+end
+
 function Mobs.start(c)
 	ctx = c
 	folder = Instance.new("Folder")
 	folder.Name = "Mobs"
 	folder.Parent = workspace
+	pcall(buildTemplates)
 	traps = workspace:FindFirstChild("Traps") or Instance.new("Folder")
 	traps.Name = "Traps"
 	traps.Parent = workspace

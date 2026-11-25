@@ -75,6 +75,16 @@ function D.shield(f, c)
 	box(f, 0.5, 0.58, 0.52, 0.52, c, 0.12, 45)
 	box(f, 0.5, 0.42, 0.08, 0.5, c:Lerp(Color3.new(1, 1, 1), 0.4), 1)
 end
+function D.book(f, c)
+	box(f, 0.3, 0.5, 0.36, 0.8, c, 0.12, -6) box(f, 0.7, 0.5, 0.36, 0.8, c, 0.12, 6)
+	local mid = box(f, 0.5, 0.52, 0.06, 0.82, c:Lerp(Color3.new(0, 0, 0), 0.4), 1)
+	for i = 0, 2 do box(f, 0.3, 0.3 + i * 0.18, 0.22, 0.05, c:Lerp(Color3.new(0, 0, 0), 0.35), 1, -6) box(f, 0.7, 0.3 + i * 0.18, 0.22, 0.05, c:Lerp(Color3.new(0, 0, 0), 0.35), 1, 6) end
+end
+function D.medal(f, c)
+	ring(f, 0.5, 0.3, 0.5, Color3.fromRGB(220, 190, 110), 2)
+	box(f, 0.5, 0.68, 0.46, 0.46, c, 0.15, 45)
+	box(f, 0.5, 0.68, 0.22, 0.22, c:Lerp(Color3.new(1, 1, 1), 0.45), 0.15, 45)
+end
 function D.menu(f, c) for i = 0, 2 do box(f, 0.5, 0.25 + i * 0.25, 0.8, 0.13, c, 1) end end
 function D.close(f, c) box(f, 0.5, 0.5, 0.9, 0.13, c, 1, 45) box(f, 0.5, 0.5, 0.9, 0.13, c, 1, -45) end
 function D.plus(f, c) box(f, 0.5, 0.5, 0.8, 0.16, c, 1) box(f, 0.5, 0.5, 0.16, 0.8, c, 1) end

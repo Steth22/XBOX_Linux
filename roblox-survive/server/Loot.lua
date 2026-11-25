@@ -166,7 +166,7 @@ local function setupCrate(crate)
 		end
 		if #over > 0 then Loot.drop(crate:GetPivot().Position + Vector3.new(0, 0, 3), over, player.UserId) end
 		local cp = crate:GetPivot().Position
-		local far = 1 + math.max(0, math.max(math.abs(cp.X), math.abs(cp.Z)) - 300) / 300
+		local far = 1 + math.max(0, math.max(math.abs(cp.X), math.abs(cp.Z)) - 560) / 560
 		local coins = math.floor(rng:NextInteger(tbl.coins[1], tbl.coins[2]) * far)
 		ctx.reward(player, 8, coins)
 		ctx.notify(player, "coinsGot", coins)

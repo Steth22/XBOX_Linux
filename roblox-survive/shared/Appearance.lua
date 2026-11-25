@@ -262,6 +262,22 @@ function A.hood(char)
 	end
 end
 
+-- a region necklace (nil removes it)
+function A.necklace(char, color)
+	local old = char:FindFirstChild("Necklace")
+	if old then old:Destroy() end
+	if not color then return end
+	local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+	if not torso then return end
+	local f = Instance.new("Folder")
+	f.Name = "Necklace"
+	f.Parent = char
+	local s = torso.Size
+	addVis(f, torso, Vector3.new(0.14, s.Z * 1.12, s.Z * 1.12), CFrame.new(0, s.Y * 0.46, 0) * UP, Color3.fromRGB(220, 190, 110), CYLS, Enum.Material.Metal)
+	addVis(f, torso, Vector3.new(0.5, 0.62, 0.18), CFrame.new(0, s.Y * 0.2, -s.Z * 0.56) * CFrame.Angles(0, 0, math.rad(45)), color, nil, Enum.Material.Neon)
+	addVis(f, torso, Vector3.new(0.66, 0.78, 0.12), CFrame.new(0, s.Y * 0.2, -s.Z * 0.53) * CFrame.Angles(0, 0, math.rad(45)), Color3.fromRGB(220, 190, 110), nil, Enum.Material.Metal)
+end
+
 -- Applies the look to a character (R15 preferred, R6 fallback). Faceless, fully clothed.
 function A.apply(char, look)
 	look = A.sanitize(look)

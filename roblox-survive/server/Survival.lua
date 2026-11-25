@@ -83,10 +83,25 @@ local function tick(player)
 	temps[player] = body
 
 	local dmg = 0
-	if room.hunger <= 0 then dmg += 1 end
-	if body < 35 or body > 39.5 then dmg += 1 end
+	local cause = nil
+	if room.hunger <= 0 then dmg += 1 cause = "hunger" end
+	if body < 35 or body > 39.5 then dmg += 1 cause = body < 35 and "cold" or "heat" end
+	-- lava burns
+	local okL, under = pcall(function()
+		local p = hrp.Position - Vector3.new(0, 3.5, 0)
+		local base = Vector3.new(math.floor(p.X / 4) * 4, math.floor(p.Y / 4) * 4, math.floor(p.Z / 4) * 4)
+		local mats = workspace.Terrain:ReadVoxels(Region3.new(base, base + Vector3.new(4, 4, 4)), 4)
+		return mats[1][1][1]
+	end)
+	if okL and under == Enum.Material.CrackedLava then
+		ctx.hurt(player, 12, "lava")
+		if not warned[player] or os.clock() - warned[player] > 6 then
+			warned[player] = os.clock()
+			ctx.notify(player, "lava")
+		end
+	end
 	if dmg > 0 then
-		ctx.hurt(player, dmg, true)
+		ctx.hurt(player, dmg, cause)
 		local key = room.hunger <= 0 and "starving" or "freezing"
 		if not warned[player] or os.clock() - warned[player] > 20 then
 			warned[player] = os.clock()

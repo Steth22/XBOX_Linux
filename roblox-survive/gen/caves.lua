@@ -60,6 +60,13 @@ for _, m in ipairs(cavesF:GetChildren()) do
 	local e = m:GetAttribute("Entry")
 	if e then table.insert(zones, { e.X, e.Z, 110 }) end
 end
+for _, f in ipairs({ { "Villages", 130 }, { "BanditCamps", 70 } }) do
+	local folder = workspace:FindFirstChild(f[1])
+	for _, m in ipairs(folder and folder:GetChildren() or {}) do
+		local c = m:GetAttribute("Center")
+		if c then table.insert(zones, { c.X, c.Z, f[2] }) end
+	end
+end
 local function clear(x, z, r)
 	if math.abs(x) > HALF - 90 or math.abs(z) > HALF - 90 then return false end
 	for _, zn in ipairs(zones) do
@@ -309,9 +316,11 @@ local function build(kind, region)
 	return false
 end
 
-build("long", "mountains"); build("long", "snow"); build("long", "hills")
-build("wide", "mountains"); build("wide", "snow")
-build("normal", "forest"); build("normal", "desert"); build("normal", "hills")
+for _, c in ipairs({
+	{ "long", "mountains" }, { "long", "snow" }, { "long", "hills" }, { "long", "volcano" }, { "long", "mountains" },
+	{ "wide", "mountains" }, { "wide", "snow" }, { "wide", "volcano" }, { "wide", "hills" },
+	{ "normal", "forest" }, { "normal", "forest" }, { "normal", "desert" }, { "normal", "jungle" }, { "normal", "hills" }, { "normal", "snow" },
+}) do build(c[1], c[2]) end
 
 -- the old caves: give them a type and spawn spots (their hall is ringed by crystals)
 for _, m in ipairs(cavesF:GetChildren()) do
@@ -347,11 +356,11 @@ end
 
 -- hidden surface spots for the secret trader (far from the camp, out of the way)
 local surface = 0
-for _, region in ipairs({ "forest", "hills", "snow", "desert", "mountains", "forest", "hills", "desert" }) do
+for _, region in ipairs({ "forest", "hills", "snow", "desert", "mountains", "jungle", "volcano", "beach", "forest", "jungle", "desert", "hills" }) do
 	for _ = 1, 800 do
 		local x, z = crng:NextNumber(-HALF + 110, HALF - 110), crng:NextNumber(-HALF + 110, HALF - 110)
 		local d = math.max(math.abs(x), math.abs(z))
-		if regionAt(x, z) == region and d > 220 and clear(x, z, 20) then
+		if regionAt(x, z) == region and d > 350 and clear(x, z, 20) then
 			local h = ground(x, z)
 			local flat = true
 			for _, o in ipairs({ { 6, 0 }, { -6, 0 }, { 0, 6 }, { 0, -6 } }) do

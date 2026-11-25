@@ -66,6 +66,14 @@ I.defs.dynamite = { ar = "ديناميت", en = "Dynamite", kind = "place", stac
 I.defs.warm_coat = { ar = "معطف دافئ", en = "Warm Coat", kind = "armor", stack = 1, reduce = 0.2, warm = 16, buy = 420, color = Color3.fromRGB(150, 110, 80), mat = Enum.Material.Fabric }
 I.defs.desert_cloak = { ar = "عباءة الصحراء", en = "Desert Cloak", kind = "armor", stack = 1, reduce = 0.2, cool = 16, buy = 420, color = Color3.fromRGB(226, 206, 160), mat = Enum.Material.Fabric }
 
+-- region gear
+I.defs.coconut = { ar = "جوز هند", en = "Coconut", kind = "food", stack = 20, hunger = 22, heal = 5, buy = 12 }
+I.defs.harpoon = { ar = "حربة", en = "Harpoon", kind = "tool", class = "spear", stack = 1, dmg = 52, reach = 10, dur = 480, buy = 900 }
+I.defs.machete = { ar = "منجل الأدغال", en = "Machete", kind = "tool", class = "sword", stack = 1, dmg = 46, tree = 5, dur = 420, buy = 760 }
+I.defs.magma_blade = { ar = "سيف الحمم", en = "Magma Blade", kind = "tool", class = "sword", stack = 1, dmg = 70, dur = 600, buy = 2200 }
+I.defs.lava_cloak = { ar = "عباءة الحمم", en = "Lava Cloak", kind = "armor", stack = 1, reduce = 0.25, cool = 24, buy = 900, color = Color3.fromRGB(90, 40, 30), mat = Enum.Material.Fabric }
+I.defs.jungle_vest = { ar = "سترة الأدغال", en = "Jungle Vest", kind = "armor", stack = 1, reduce = 0.22, cool = 12, buy = 520, color = Color3.fromRGB(70, 100, 60), mat = Enum.Material.Fabric }
+
 -- light: burns only while held, `dur` = seconds of light left
 I.defs.lantern = { ar = "مصباح", en = "Lantern", kind = "light", stack = 1, dur = 720, buy = 1000 }
 -- secret market goods (never below 300)
@@ -109,6 +117,27 @@ I.shops = {
 		{ key = "weapons", ids = { "war_hammer", "crossbow", "bolt", "dynamite" } },
 		{ key = "armor", ids = { "iron_armor", "diamond_armor" } },
 		{ key = "supplies", ids = { "bandage", "lantern" } },
+	},
+	beach = {
+		{ key = "weapons", ids = { "harpoon", "spear", "crossbow", "bolt" } },
+		{ key = "supplies", ids = { "coconut", "bandage", "campfire", "lantern" } },
+	},
+	jungle = {
+		{ key = "weapons", ids = { "machete", "bow", "arrow" } },
+		{ key = "armor", ids = { "jungle_vest", "iron_armor" } },
+		{ key = "supplies", ids = { "bandage", "berries", "trap", "lantern" } },
+	},
+	volcano = {
+		{ key = "weapons", ids = { "magma_blade", "war_hammer", "dynamite" } },
+		{ key = "armor", ids = { "lava_cloak", "diamond_armor" } },
+		{ key = "tools", ids = { "diamond_pickaxe", "diamond_axe" } },
+		{ key = "supplies", ids = { "bandage", "lantern" } },
+	},
+	-- village traders: everyday goods
+	village = {
+		{ key = "supplies", ids = { "berries", "coconut", "bandage", "campfire", "trap", "lantern" } },
+		{ key = "tools", ids = { "wood_axe", "stone_axe", "wood_pickaxe", "stone_pickaxe" } },
+		{ key = "weapons", ids = { "wood_sword", "stone_sword", "bow", "arrow" } },
 	},
 	-- the secret trader: open day and night, moves around the map
 	black = {
@@ -318,6 +347,19 @@ for _, id in ipairs({ "warm_coat", "desert_cloak" }) do
 	local d = I.defs[id]
 	SPECS[id] = { P(Vector3.new(1.7, 1.6, 0.9), nil, d.color, d.mat),
 		P(Vector3.new(1.8, 0.35, 1.0), CFrame.new(0, 0.7, 0), d.color:Lerp(Color3.new(1, 1, 1), 0.25), d.mat),
+		P(Vector3.new(0.12, 1.4, 0.95), CFrame.new(0, -0.05, 0), d.color:Lerp(Color3.new(0, 0, 0), 0.3), d.mat) }
+end
+
+SPECS.machete = recolor(SPECS.scimitar, Color3.fromRGB(150, 160, 150), Enum.Material.Metal, 3)
+SPECS.magma_blade = recolor(SPECS.iron_sword, Color3.fromRGB(255, 110, 30), Enum.Material.Neon, 4)
+SPECS.harpoon = spearSpec(Color3.fromRGB(120, 130, 140), Enum.Material.Metal)
+table.insert(SPECS.harpoon, P(Vector3.new(0.9, 0.12, 0.3), CFrame.new(0, 0, 4.5) * A(0, r(35), 0), Color3.fromRGB(120, 130, 140), Enum.Material.Metal))
+SPECS.coconut = { P(Vector3.new(1.1, 1.1, 1.1), nil, Color3.fromRGB(110, 74, 44), Enum.Material.Fabric, BALL),
+	P(Vector3.new(0.25, 0.25, 0.25), CFrame.new(0.2, 0.42, -0.25), Color3.fromRGB(60, 40, 24), nil, BALL) }
+for _, id in ipairs({ "lava_cloak", "jungle_vest" }) do
+	local d = I.defs[id]
+	SPECS[id] = { P(Vector3.new(1.7, 1.6, 0.9), nil, d.color, d.mat),
+		P(Vector3.new(1.8, 0.35, 1.0), CFrame.new(0, 0.7, 0), d.color:Lerp(Color3.new(1, 1, 1), 0.2), d.mat),
 		P(Vector3.new(0.12, 1.4, 0.95), CFrame.new(0, -0.05, 0), d.color:Lerp(Color3.new(0, 0, 0), 0.3), d.mat) }
 end
 

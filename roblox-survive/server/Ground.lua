@@ -9,7 +9,7 @@ local rayWorks = nil
 local function voxelHeight(x, z)
 	local vx, vz = math.floor(x / 4) * 4, math.floor(z / 4) * 4
 	local ok, mats, occ = pcall(function()
-		return workspace.Terrain:ReadVoxels(Region3.new(Vector3.new(vx, -16, vz), Vector3.new(vx + 4, 228, vz + 4)), 4)
+		return workspace.Terrain:ReadVoxels(Region3.new(Vector3.new(vx, -16, vz), Vector3.new(vx + 4, 300, vz + 4)), 4)
 	end)
 	if not ok or not mats or not mats[1] then return nil end
 	local col, ocol = mats[1], occ[1]
@@ -25,7 +25,7 @@ end
 -- returns height (or nil), isWater
 function Ground.height(x, z)
 	if rayWorks ~= false then
-		local res = workspace:Raycast(Vector3.new(x, 120, z), Vector3.new(0, -200, 0), terrainOnly)
+		local res = workspace:Raycast(Vector3.new(x, 300, z), Vector3.new(0, -380, 0), terrainOnly)
 		if res then
 			if rayWorks == nil then
 				rayWorks = true

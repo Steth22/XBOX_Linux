@@ -21,7 +21,7 @@ function TerrainFix.run(half, onDone)
 		local done = 0
 		for i, c in ipairs(chunks) do
 			local ok, err = pcall(function()
-				local region = Region3.new(Vector3.new(c.X, -64, c.Y), Vector3.new(c.X + CH, 216, c.Y + CH)):ExpandToGrid(4)
+				local region = Region3.new(Vector3.new(c.X, -64, c.Y), Vector3.new(c.X + CH, 300, c.Y + CH)):ExpandToGrid(4)
 				local m, o = T:ReadVoxels(region, 4)
 				T:FillRegion(region, 4, Enum.Material.Air)
 				T:WriteVoxels(region, 4, m, o)
@@ -30,6 +30,7 @@ function TerrainFix.run(half, onDone)
 			if i % 4 == 0 then task.wait() end
 		end
 		Debug.log("terrainfix", string.format("rebuilt %d/%d chunks in %.1fs", done, #chunks, os.clock() - t0))
+		workspace:SetAttribute("TerrainReady", true)
 		if onDone then onDone() end
 	end)
 end
