@@ -13,7 +13,7 @@ local Lobby = {}
 local lastCall = {} -- [Player] = { [action] = clock }
 local COOLDOWN = {
 	create = 4, join = 3, quick = 4, renameRoom = 2, solo = 4, joinFriend = 3, friends = 5, board = 5, setLook = 1, setLang = 0.5,
-	roomSettings = 1, deleteRoom = 2, buyRooms = 2,
+	roomSettings = 1, deleteRoom = 2, buyRooms = 2, buyPass = 2,
 }
 
 local function throttled(player, action)
@@ -48,19 +48,18 @@ local function enterRoom(player, rec)
 	return { ok = false, err = "busy" }
 end
 
-local passCache = {}
-local function roomLimit(player)
-	local extra = 0
-	if Config.EXTRA_ROOMS_PASS ~= 0 then
-		if passCache[player] == nil then
-			local ok, owns = pcall(function()
-				return MarketplaceService:UserOwnsGamePassAsync(player.UserId, Config.EXTRA_ROOMS_PASS)
-			end)
-			if ok then passCache[player] = owns end
-		end
-		if passCache[player] then extra = Config.EXTRA_ROOMS end
+local passCache = {} -- [Player] = { [passId] = owns }
+local function ownsPass(player, id)
+	if id == 0 then return false end
+	passCache[player] = passCache[player] or {}
+	if passCache[player][id] == nil then
+		local ok, owns = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(player.UserId, id) end)
+		if ok then passCache[player][id] = owns end
 	end
-	return Config.BASE_ROOMS + extra
+	return passCache[player][id] == true
+end
+local function roomLimit(player)
+	return Config.BASE_ROOMS + (ownsPass(player, Config.EXTRA_ROOMS_PASS) and Config.EXTRA_ROOMS or 0)
 end
 
 -- drops expired / deleted rooms from the owned list, returns details
@@ -71,7 +70,7 @@ local function ownedRooms(player, profile)
 		if rec then
 			table.insert(keep, code)
 			local left = math.max(0, Config.ROOM_TTL - (os.time() - (rec.last or 0)))
-			table.insert(out, { code = code, name = type(rec.name) == "string" and rec.name or nil, pvp = rec.pvp == true, maxPlayers = rec.maxPlayers or 8, access = Rooms.access(rec), hours = math.ceil(left / 3600) })
+			table.insert(out, { code = code, name = type(rec.name) == "string" and rec.name or nil, pvp = rec.pvp == true, admin = rec.admin == true, maxPlayers = rec.maxPlayers or 8, access = Rooms.access(rec), hours = math.ceil(left / 3600) })
 		elseif why == "error" then
 			table.insert(keep, code)
 		end
@@ -94,6 +93,7 @@ function actions.info(player, profile)
 		owned = ownedRooms(player, profile),
 		limit = roomLimit(player),
 		hasPass = Config.EXTRA_ROOMS_PASS ~= 0,
+		store = { rooms = ownsPass(player, Config.EXTRA_ROOMS_PASS), admin = Config.ADMINS[player.UserId] == true or ownsPass(player, Config.ADMIN_PASS) },
 		isStudio = game:GetService("RunService"):IsStudio(),
 	}
 end
@@ -270,6 +270,14 @@ function actions.deleteRoom(player, profile, code)
 	return { ok = true, owned = ownedRooms(player, profile), rooms = roomList(profile) }
 end
 
+function actions.buyPass(player, profile, which)
+	local id = which == "admin" and Config.ADMIN_PASS or which == "rooms" and Config.EXTRA_ROOMS_PASS or 0
+	if id == 0 then return { ok = false, err = "passMissing" } end
+	if ownsPass(player, id) then return { ok = false, err = "owned" } end
+	pcall(function() MarketplaceService:PromptGamePassPurchase(player, id) end)
+	return { ok = true }
+end
+
 function actions.buyRooms(player)
 	if Config.EXTRA_ROOMS_PASS == 0 then return { ok = false, err = "passMissing" } end
 	pcall(function() MarketplaceService:PromptGamePassPurchase(player, Config.EXTRA_ROOMS_PASS) end)
@@ -390,9 +398,10 @@ end
 function Lobby.start(remotes)
 	Lobby.remotes = remotes
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, bought)
-		if bought and passId == Config.EXTRA_ROOMS_PASS then
-			passCache[player] = true
-			remotes.Notify:FireClient(player, "bought")
+		if bought and (passId == Config.EXTRA_ROOMS_PASS or passId == Config.ADMIN_PASS) then
+			passCache[player] = passCache[player] or {}
+			passCache[player][passId] = true
+			remotes.Notify:FireClient(player, "bought", passId == Config.ADMIN_PASS and "admin" or "rooms")
 		end
 	end)
 	-- answers to join requests come back from the room servers

@@ -1368,6 +1368,22 @@ function M.start(gui, remotes)
 		end
 	end
 
+	-- switching admin on can't be undone: warn first
+	local function adminWarnModal()
+		local content = openModal("adminWarn", T("adminWarnTitle"), UDim2.fromOffset(520, 340))
+		Icons.draw("lock", content, 46, c.danger, UDim2.new(0.5, 0, 0, 30), Vector2.new(0.5, 0.5))
+		UI.text({ Text = T("adminWarn"), Size = UDim2.new(1, -20, 0, 130), Position = UDim2.fromOffset(10, 62), TextWrapped = true, TextSize = 19, TextColor3 = c.text, ZIndex = 53, Parent = content })
+		UI.button({ Text = T("activate"), Size = UDim2.new(0.5, -8, 0, 54), Position = UDim2.new(lang == "ar" and 0.5 or 0, lang == "ar" and 8 or 0, 1, -54), BackgroundColor3 = c.danger, TextColor3 = c.text, TextSize = 20, ZIndex = 54, Parent = content }, function()
+			act("adminActivate")
+			task.delay(0.7, function()
+				if state and state.adminOn then act("map") adminModal() elseif closeModal then closeModal() end
+			end)
+		end)
+		UI.button({ Text = T("cancel"), Size = UDim2.new(0.5, -8, 0, 54), Position = UDim2.new(lang == "ar" and 0 or 0.5, lang == "ar" and 0 or 8, 1, -54), BackgroundColor3 = c.card2, TextColor3 = c.text, TextSize = 20, ZIndex = 54, Parent = content }, function()
+			if closeModal then closeModal() end
+		end)
+	end
+
 	local function menuModal()
 		local content = openModal("menu", T("menu"), UDim2.fromOffset(520, 600))
 		local owner = state and state.isOwner
@@ -1386,14 +1402,22 @@ function M.start(gui, remotes)
 			Icons.draw("lock", lb, 22, locked and c.bg or c.text, UDim2.new(0, 14, 0.5, 0), Vector2.new(0, 0.5))
 		end
 		local shift = 0
-		if state and state.admin then
+		if state and state.canAdmin then
 			shift = 54
 			UI.button({ Text = T("adminTools"), Size = UDim2.new(1, 0, 0, 46), Position = UDim2.fromOffset(0, 62), BackgroundColor3 = c.gold, TextColor3 = c.bg, TextSize = 19, ZIndex = 54, Parent = content }, function()
-				act("map")
-				adminModal()
+				if state.adminOn then
+					act("map")
+					adminModal()
+				else
+					adminWarnModal()
+				end
 			end)
 		end
 		UI.text({ Text = T("code") .. ":  " .. tostring(state and state.code or "...") .. ((state and state.locked) and ("   |   " .. T("roomLocked")) or ""), Size = UDim2.new(1, 0, 0, 36), Position = UDim2.fromOffset(0, 64 + shift), TextSize = 22, TextColor3 = c.gold, ZIndex = 53, Parent = content })
+		-- everyone can see whether admin was switched on in this room
+		local adm = state and state.adminOn and state.code ~= "TEST00"
+		UI.text({ Text = adm and Locale.f(lang, "adminUsed", state.adminBy or "?") or T("adminNotUsed"), Size = UDim2.new(1, 0, 0, 24), Position = UDim2.fromOffset(0, 96 + shift), TextSize = 15, TextColor3 = adm and c.danger or c.dim, ZIndex = 53, Parent = content })
+		shift += 22
 		local list = Players:GetPlayers()
 		UI.text({ Text = T("inRoom") .. "  " .. #list .. " / " .. Config.MAX_PLAYERS, Size = UDim2.new(1, 0, 0, 26), Position = UDim2.fromOffset(0, 104 + shift), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = c.dim, ZIndex = 53, Parent = content })
 		local scroll = UI.scroll({ Size = UDim2.new(1, 0, 1, -138 - shift), Position = UDim2.fromOffset(0, 136 + shift), ZIndex = 53, Parent = content })
@@ -1401,18 +1425,27 @@ function M.start(gui, remotes)
 		for i, pl in ipairs(list) do
 			local row = UI.frame({ Size = UDim2.new(1, -8, 0, 58), BackgroundColor3 = c.card, LayoutOrder = (pl.UserId == state.ownerId) and 0 or i, ZIndex = 54, Parent = scroll })
 			UI.corner(row, 10)
-			local tag = (pl.UserId == state.ownerId) and ("  (" .. T("owner") .. ")") or ((pl == player) and ("  (" .. T("you") .. ")") or "")
-			UI.text({ Text = pl.DisplayName .. tag, Size = UDim2.new(0.55, 0, 1, 0), Position = UDim2.new(lang == "ar" and 0.45 or 0, lang == "ar" and -12 or 12, 0, 0), TextXAlignment = UI.align(lang), TextSize = 19, TextColor3 = (pl.UserId == state.ownerId) and c.gold or c.text, ZIndex = 55, Parent = row })
-			if owner and pl ~= player then
+			local plMod = state.mods and state.mods[tostring(pl.UserId)] == true
+			local tag = (pl.UserId == state.ownerId) and ("  (" .. T("owner") .. ")") or (plMod and ("  (" .. T("moderator") .. ")") or ((pl == player) and ("  (" .. T("you") .. ")") or ""))
+			UI.text({ Text = pl.DisplayName .. tag, Size = UDim2.new(owner and 0.4 or 0.55, 0, 1, 0), Position = UDim2.new(lang == "ar" and (owner and 0.6 or 0.45) or 0, lang == "ar" and -12 or 12, 0, 0), TextXAlignment = UI.align(lang), TextTruncate = Enum.TextTruncate.AtEnd, TextSize = owner and 16 or 19, TextColor3 = (pl.UserId == state.ownerId) and c.gold or (plMod and c.blue or c.text), ZIndex = 55, Parent = row })
+			-- the owner manages everyone; a moderator may remove players who are neither the owner nor moderators
+			local canRemove = pl ~= player and pl.UserId ~= state.ownerId and (owner or (state.isMod and not plMod))
+			if canRemove then
 				local bx = lang == "ar" and 0 or 1
-				local holder = UI.frame({ Size = UDim2.fromOffset(212, 42), AnchorPoint = Vector2.new(bx, 0.5), Position = UDim2.new(bx, lang == "ar" and 8 or -8, 0.5, 0), BackgroundTransparency = 1, ZIndex = 55, Parent = row })
-				UI.list(holder, 8, Enum.FillDirection.Horizontal)
-				UI.button({ Text = T("kick"), Size = UDim2.fromOffset(100, 42), TextSize = 17, BackgroundColor3 = c.card2, TextColor3 = c.text, ZIndex = 56, Parent = holder }, function()
+				local holder = UI.frame({ Size = UDim2.fromOffset(owner and 290 or 196, 42), AnchorPoint = Vector2.new(bx, 0.5), Position = UDim2.new(bx, lang == "ar" and 8 or -8, 0.5, 0), BackgroundTransparency = 1, ZIndex = 55, Parent = row })
+				UI.list(holder, 6, Enum.FillDirection.Horizontal)
+				if owner then
+					UI.button({ Text = plMod and T("unmod") or T("makeMod"), Size = UDim2.fromOffset(94, 42), TextSize = 14, BackgroundColor3 = plMod and c.blue or c.card2, TextColor3 = c.text, LayoutOrder = 0, ZIndex = 56, Parent = holder }, function()
+						act("mod", pl.UserId, not plMod)
+						task.delay(0.6, function() if modalKind == "menu" then menuModal() end end)
+					end)
+				end
+				UI.button({ Text = T("kick"), Size = UDim2.fromOffset(92, 42), TextSize = 17, BackgroundColor3 = c.card2, TextColor3 = c.text, LayoutOrder = 1, ZIndex = 56, Parent = holder }, function()
 					act("kick", pl.UserId)
 				end)
 				local armed = false
 				local banB
-				banB = UI.button({ Text = T("ban"), Size = UDim2.fromOffset(100, 42), TextSize = 17, BackgroundColor3 = c.danger, TextColor3 = c.text, ZIndex = 56, Parent = holder }, function()
+				banB = UI.button({ Text = T("ban"), Size = UDim2.fromOffset(92, 42), TextSize = 17, LayoutOrder = 2, BackgroundColor3 = c.danger, TextColor3 = c.text, ZIndex = 56, Parent = holder }, function()
 					if not armed then
 						armed = true
 						banB.Text = T("confirmBan")
@@ -1933,7 +1966,7 @@ function M.start(gui, remotes)
 	end
 	act("state")
 	task.delay(5, function() if state then UI.toast(root, T("tip")) end end)
-	return { bagModal = bagModal, shopModal = shopModal, menuModal = menuModal, skillsModal = skillsModal }
+	return { bagModal = bagModal, shopModal = shopModal, menuModal = menuModal, skillsModal = skillsModal, adminWarnModal = adminWarnModal }
 end
 
 return M

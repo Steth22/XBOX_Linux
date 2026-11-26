@@ -134,7 +134,19 @@ local function setLamp(player, on)
 end
 
 local admin = {} -- [Player] = { god, speed, hp, dmg, jump }
-local function isAdmin(player) return Config.ADMINS[player.UserId] == true end
+local adminPass = {} -- [Player] = owns the Admin game pass (checked when they join)
+-- may this player switch admin on here? the developer anywhere, a pass owner in rooms they own
+local function canAdmin(player)
+	if Config.ADMINS[player.UserId] then return true end
+	return adminPass[player] == true and serverRec ~= nil and serverRec.owner == player.UserId
+end
+-- admin is switched on per room, once, for good (everyone in the room sees it)
+local function isAdmin(player)
+	return canAdmin(player) and (serverRec == nil or serverRec.admin == true)
+end
+local function isMod(player)
+	return serverRec ~= nil and type(serverRec.mods) == "table" and serverRec.mods[tostring(player.UserId)] == true
+end
 local function adminOf(player) return isAdmin(player) and admin[player] or nil end
 
 local function hasBuff(player, name)
@@ -187,6 +199,11 @@ local function snapshot(player)
 		locked = serverRec ~= nil and serverRec.locked == true,
 		pvp = serverRec ~= nil and serverRec.pvp == true,
 		admin = isAdmin(player) and (admin[player] or {}) or nil,
+		canAdmin = canAdmin(player),
+		adminOn = serverRec == nil or serverRec.admin == true,
+		adminBy = serverRec and serverRec.adminBy or nil,
+		isMod = isMod(player),
+		mods = serverRec and type(serverRec.mods) == "table" and serverRec.mods or {},
 		ownerId = serverRec and serverRec.owner or 0,
 		stash = Inventory.stashView(room.stash), stashLvl = room.stash.lvl,
 		stashCost = room.stash.lvl < Config.STASH_MAX_LVL and Config.stashCost(room.stash.lvl) or nil,
@@ -1306,21 +1323,27 @@ function actions.admin(player, room, cmd, arg)
 	push(player)
 end
 
--- room owner tools: kick, ban, lock
+-- room owner tools: kick, ban, lock, moderators (moderators may kick and ban too)
 local function ownerOnly(player)
 	return serverRec ~= nil and serverCode ~= nil and serverRec.owner == player.UserId
+end
+-- may player throw target (a user id) out of the room?
+local function mayRemove(player, uid)
+	if not serverRec or not serverCode or not uid or uid == player.UserId or uid == serverRec.owner then return false end
+	if ownerOnly(player) then return true end
+	return isMod(player) and not (type(serverRec.mods) == "table" and serverRec.mods[tostring(uid)])
 end
 function actions.kick(player, room, uid)
 	uid = tonumber(uid)
 	local target = uid and Players:GetPlayerByUserId(uid)
-	if not ownerOnly(player) or not target or target == player then return end
+	if not target or not mayRemove(player, uid) then return end
 	Data.saveRoom(target)
 	leaving[target.UserId] = "kick"
 	Rooms.toLobby(target, "kicked")
 end
 function actions.ban(player, room, uid)
 	uid = tonumber(uid)
-	if not ownerOnly(player) or not uid or uid == player.UserId then return end
+	if not mayRemove(player, uid) then return end
 	serverRec.banned = serverRec.banned or {}
 	serverRec.banned[tostring(uid)] = true
 	Rooms.update(serverCode, function(rec)
@@ -1333,6 +1356,31 @@ function actions.ban(player, room, uid)
 		leaving[target.UserId] = "ban"
 		Rooms.toLobby(target, "banned")
 	end
+end
+function actions.mod(player, room, uid, on)
+	uid = tonumber(uid)
+	local target = uid and Players:GetPlayerByUserId(uid)
+	if not ownerOnly(player) or not target or target == player then return end
+	on = on == true
+	serverRec.mods = type(serverRec.mods) == "table" and serverRec.mods or {}
+	serverRec.mods[tostring(uid)] = on or nil
+	Rooms.update(serverCode, function(rec)
+		rec.mods = type(rec.mods) == "table" and rec.mods or {}
+		rec.mods[tostring(uid)] = on or nil
+	end)
+	ctx.feed(on and "modOn" or "modOff", target.DisplayName)
+	for _, pl in ipairs(Players:GetPlayers()) do push(pl) end
+end
+-- switching admin on in this room: can't be undone, and everyone is told
+function actions.adminActivate(player, room)
+	if not canAdmin(player) or not serverRec or serverRec.admin then return end
+	serverRec.admin = true
+	serverRec.adminBy = player.DisplayName
+	if serverCode and serverCode ~= "TEST00" then
+		Rooms.update(serverCode, function(rec) rec.admin = true rec.adminBy = player.DisplayName end)
+	end
+	ctx.feed("adminOn", player.DisplayName)
+	for _, pl in ipairs(Players:GetPlayers()) do push(pl) end
 end
 function actions.lock(player, room, on)
 	if not ownerOnly(player) then return end
@@ -1480,6 +1528,10 @@ local function onJoin(player)
 			end)
 		end)
 	end
+	if Config.ADMIN_PASS ~= 0 and serverRec and serverRec.owner == player.UserId then
+		local okP, owns = pcall(function() return game:GetService("MarketplaceService"):UserOwnsGamePassAsync(player.UserId, Config.ADMIN_PASS) end)
+		adminPass[player] = okP and owns == true
+	end
 	local loaded = Data.loadRoom(player, serverCode)
 	ctx.feed(loaded and loaded._new and "newPlayer" or "join", player.DisplayName)
 	Rooms.setPresence(player.UserId, serverCode)
@@ -1588,6 +1640,8 @@ function World.start(r)
 		if beds[player] and beds[player].Parent then beds[player]:Destroy() end
 		beds[player] = nil
 		buffs[player] = nil
+		adminPass[player] = nil
+		admin[player] = nil
 		lastHit[player] = nil
 		local why = leaving[player.UserId]
 		leaving[player.UserId] = nil

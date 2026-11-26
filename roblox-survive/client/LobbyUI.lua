@@ -14,7 +14,7 @@ local c = UI.c
 local M = {}
 
 local ERR = { expired = "expired", notFound = "notFound", full = "full", busy = "busy", wait = "wait",
-	roomLimit = "roomLimit", nameBad = "nameBad", friendsOnly = "friendsOnly", ownerOffline = "ownerOffline", requestSent = "requestSent", passMissing = "passMissing" }
+	roomLimit = "roomLimit", nameBad = "nameBad", friendsOnly = "friendsOnly", ownerOffline = "ownerOffline", requestSent = "requestSent", passMissing = "passMissing", owned = "owned" }
 
 local function newRig()
 	local ok, m = pcall(function()
@@ -425,7 +425,7 @@ function M.start(gui, remotes)
 			ownedSet[r.code] = true
 			n += 1
 			r.defaultName = Locale.f(lang, "roomN", i)
-			local sub = string.format("%s  |  %s  |  %s %d  |  %s", Locale.f(lang, "codeIs", r.code), T("acc_" .. r.access), T("maxPlayers"), r.maxPlayers, Locale.f(lang, "hoursLeft", r.hours))
+			local sub = string.format("%s  |  %s  |  %s %d  |  %s", Locale.f(lang, "codeIs", r.code), T("acc_" .. r.access), T("maxPlayers"), r.maxPlayers, Locale.f(lang, "hoursLeft", r.hours)) .. (r.admin and ("  |  " .. T("adminOnTag")) or "")
 			local row = joinRow(list, (r.name or r.defaultName) .. "   (" .. T("myRoom") .. ")", sub, function() travel("join", r.code) end)
 			local bx = lang == "ar" and 0 or 1
 			local gear = UI.button({ Text = "", Size = UDim2.fromOffset(44, 44), AnchorPoint = Vector2.new(bx, 0.5), Position = UDim2.new(bx, lang == "ar" and 132 or -132, 0.5, 0), BackgroundColor3 = c.card2, ZIndex = 55, Parent = row }, function()
@@ -517,6 +517,35 @@ function M.start(gui, remotes)
 		end)
 	end
 
+	-- the store: game passes (bought with Robux through the Roblox prompt)
+	local function storeModal()
+		local content = openModal(T("store"), UDim2.fromOffset(640, 440))
+		local list = UI.scroll({ Size = UDim2.fromScale(1, 1), ZIndex = 53, Parent = content })
+		UI.list(list, 12)
+		local owns = info.store or {}
+		for i, it in ipairs({ { "admin", "settings", 250, c.gold }, { "rooms", "home", 30, c.accent } }) do
+			local key, icon, price, col = it[1], it[2], it[3], it[4]
+			local row = UI.frame({ Size = UDim2.new(1, -8, 0, 150), BackgroundColor3 = c.card, LayoutOrder = i, ZIndex = 54, Parent = list })
+			UI.corner(row, 14)
+			UI.stroke(row, col, 1.5)
+			local ar = lang == "ar"
+			local ic = UI.frame({ Size = UDim2.fromOffset(84, 84), AnchorPoint = Vector2.new(ar and 1 or 0, 0.5), Position = UDim2.new(ar and 1 or 0, ar and -16 or 16, 0.5, 0), BackgroundColor3 = c.card2, ZIndex = 55, Parent = row })
+			UI.corner(ic, 14)
+			Icons.draw(icon, ic, 52, col, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+			UI.text({ Text = T("pass_" .. key), Size = UDim2.new(1, -330, 0, 34), Position = UDim2.new(0, ar and 214 or 116, 0, 16), TextXAlignment = UI.align(lang), TextSize = 24, TextColor3 = col, ZIndex = 55, Parent = row })
+			UI.text({ Text = T("pass_" .. key .. "_d"), Size = UDim2.new(1, -330, 0, 86), Position = UDim2.new(0, ar and 214 or 116, 0, 52), TextXAlignment = UI.align(lang), TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, TextSize = 16, TextColor3 = c.dim, ZIndex = 55, Parent = row })
+			local bx = ar and 0 or 1
+			if owns[key] then
+				UI.text({ Text = T("owned"), Size = UDim2.fromOffset(180, 52), AnchorPoint = Vector2.new(bx, 0.5), Position = UDim2.new(bx, ar and 16 or -16, 0.5, 0), TextSize = 20, TextColor3 = c.accent, ZIndex = 55, Parent = row })
+			else
+				UI.button({ Text = price .. " " .. T("robux"), Size = UDim2.fromOffset(180, 52), AnchorPoint = Vector2.new(bx, 0.5), Position = UDim2.new(bx, ar and 16 or -16, 0.5, 0), TextSize = 20, BackgroundColor3 = col, TextColor3 = c.bg, ZIndex = 55, Parent = row }, function()
+					local res = call("buyPass", key)
+					if not res.ok then toast(T(ERR[res.err] or res.err or "busy")) end
+				end)
+			end
+		end
+	end
+
 	local function settingsModal()
 		local content = openModal(T("settings"), UDim2.fromOffset(520, 300))
 		UI.text({ Text = T("language"), Size = UDim2.new(1, 0, 0, 36), TextXAlignment = UI.align(lang), TextSize = 22, TextColor3 = c.dim, ZIndex = 53, Parent = content })
@@ -555,6 +584,7 @@ function M.start(gui, remotes)
 		local items = {
 			{ "play", T("play"), function() playPage() end, true },
 			{ "ranking", T("ranking"), boardModal }, { "rooms", T("rooms"), roomsModal },
+			{ "coin", T("store"), storeModal },
 			{ "look", T("look"), lookModal }, { "settings", T("settings"), settingsModal },
 		}
 		for i, it in ipairs(items) do
@@ -606,13 +636,20 @@ function M.start(gui, remotes)
 			info.look = Appearance.sanitize(res.look)
 			info.owned = res.owned or {}
 			info.limit = res.limit or 1
+			info.store = res.store or {}
 		end
 		placeRig()
 		render()
 	end)
-	remotes.Notify.OnClientEvent:Connect(function(key)
+	remotes.Notify.OnClientEvent:Connect(function(key, what)
 		busy = false
 		toast(T(key))
+		if key == "bought" and what then
+			info.store = info.store or {}
+			info.store[what] = true
+			if what == "rooms" then info.limit = math.max(info.limit, 3) end
+			if closeModal and what then storeModal() end
+		end
 	end)
 	task.spawn(function()
 		local ok, data = pcall(function() return game:GetService("TeleportService"):GetLocalPlayerTeleportData() end)
@@ -622,7 +659,7 @@ function M.start(gui, remotes)
 		end
 	end)
 	render()
-	return { playPage = playPage, boardModal = boardModal, roomsModal = roomsModal, lookModal = lookModal, settingsModal = settingsModal }
+	return { playPage = playPage, boardModal = boardModal, roomsModal = roomsModal, lookModal = lookModal, settingsModal = settingsModal, storeModal = storeModal }
 end
 
 return M

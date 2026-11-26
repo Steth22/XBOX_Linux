@@ -20,6 +20,7 @@ C.BAG_LIFETIME = 900
 C.BASE_ROOMS = 1 -- rooms a player may own
 C.EXTRA_ROOMS = 2 -- extra rooms from the game pass
 C.EXTRA_ROOMS_PASS = 2101924888 -- "+2 Rooms" game pass (30 Robux)
+C.ADMIN_PASS = 2099748271 -- "Admin" game pass (250 Robux): admin tools in rooms you own
 C.ROOM_ACCESS = { "public", "friends", "request" }
 C.SKILL_DROP_CHANCE = 0.01
 C.STASH_BASE = 10 -- storage slots at level 1

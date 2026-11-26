@@ -80,6 +80,14 @@ check("WorldUI build", function()
 	for _, h in ipairs(remotes.Notify.OnClientEvent.handlers) do h("openShop") h("bossSpawn") h("coinsGot", 12) end
 	state.bag = false; for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end api.bagModal() api.shopModal()
 	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
+	-- owner with the admin pass, admin not on yet, a moderator in the list
+	state.isOwner = true; state.canAdmin = true; state.adminOn = false; state.ownerId = 1; state.mods = { ["2"] = true }
+	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
+	api.menuModal() api.adminWarnModal()
+	state.adminOn = true; state.adminBy = "Owner"; state.isOwner = false; state.isMod = true
+	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
+	api.menuModal()
+	for _, h in ipairs(remotes.Notify.OnClientEvent.handlers) do h("feed", { k = "adminOn", a = "Owner" }) h("feed", { k = "modOn", a = "Friend" }) end
 end)
 check("LobbyUI build", function()
 	local src = SSS.Parent.StarterPlayer.StarterPlayerScripts.Client.LobbyUI
@@ -97,7 +105,8 @@ check("LobbyUI build", function()
 	local api = require(copy).start(gui, remotes)
 	task.wait(1.5)
 	api.playPage() api.playPage("friends") api.playPage("room") api.playPage("code", "ABC234")
-	api.boardModal() task.wait(1.2) api.roomsModal() api.lookModal() task.wait(1) api.settingsModal()
+	api.boardModal() task.wait(1.2) api.roomsModal() api.lookModal() task.wait(1) api.settingsModal() api.storeModal()
+	ret.store = { admin = true }; ret.owned[1].admin = true; api.storeModal() api.roomsModal()
 	task.wait(0.5)
 	local count = 0
 	for _ in ipairs(gui:GetDescendants()) do count += 1 end
