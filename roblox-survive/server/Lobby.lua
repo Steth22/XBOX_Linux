@@ -106,6 +106,7 @@ end
 
 function actions.setLang(player, profile, lang)
 	profile.lang = (lang == "en") and "en" or "ar"
+	player:SetAttribute("Lang", profile.lang)
 	return { ok = true }
 end
 

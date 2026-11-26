@@ -1,7 +1,7 @@
 local L = {}
 
 L.ar = {
-	title = "البقاء",
+	title = "الصمود",
 	play = "العب", ranking = "الترتيب", rooms = "غرفي", look = "المظهر", settings = "الإعدادات",
 	solo = "فردي", quick = "سريع", friend = "صديق", roomCode = "غرفة بكود",
 	create = "إنشاء", join = "دخول", enter = "ادخل", codeHint = "أدخل الكود", code = "الكود",
@@ -89,7 +89,7 @@ L.ar = {
 }
 
 L.en = {
-	title = "SURVIVE",
+	title = "SOMOOD",
 	play = "Play", ranking = "Ranking", rooms = "My Rooms", look = "Look", settings = "Settings",
 	solo = "Solo", quick = "Quick", friend = "Friend", roomCode = "Room Code",
 	create = "Create", join = "Join", enter = "Enter", codeHint = "Enter code", code = "Code",

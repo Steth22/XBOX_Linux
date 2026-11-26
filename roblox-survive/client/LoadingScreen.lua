@@ -1,7 +1,43 @@
 -- The loading screen: used when the game starts, while teleporting, and while a room's world loads.
 local S = {}
 
-function S.build()
+-- everything on the screen in one language: the player's ("ar" or "en")
+local TEXT = {
+	ar = {
+		title = "الصمود",
+		loading = "جارٍ التحميل...", ready = "تجهيز اللعبة...", world = "تحميل العالم...", ground = "بناء الأرض...",
+		around = "تحميل ما حولك...", finish = "اللمسات الأخيرة...", menu = "تجهيز القائمة...", travel = "جارٍ الانتقال...",
+		tips = {
+			"اطبخ اللحم في الفرن، فاللحم النيئ لا يُشبع.",
+			"نم على سرير ليصبح مكان رسبنك.",
+			"تجار الأقزام في الكهوف يدفعون أكثر مقابل الخامات.",
+			"لكل زعيم نقطة ضعف، فاكتشفها بعد أول انتصار عليه.",
+			"اشترِ التوكن من التاجر السري لتفتح القوى.",
+			"كلما زاد اللاعبون في الغرفة زادت نقاط الخبرة والعملات.",
+			"احمل مصباحًا في يدك الثانية قبل النزول إلى الكهوف.",
+			"احتمِ تحت سقف حين يقترب الإعصار.",
+		},
+	},
+	en = {
+		title = "SOMOOD",
+		loading = "Loading...", ready = "Getting ready...", world = "Loading the world...", ground = "Building the ground...",
+		around = "Loading around you...", finish = "Finishing up...", menu = "Preparing the menu...", travel = "Travelling...",
+		tips = {
+			"Cook meat in a furnace: raw meat barely fills you.",
+			"Sleep in a bed to make it your respawn point.",
+			"The dwarf traders in the caves pay more for ore.",
+			"Every boss has a weak point. Beat it once to find out what it is.",
+			"Buy tokens from the secret trader to unlock powers.",
+			"More players in the room means more XP and coins for everyone.",
+			"Hold a lantern in your off hand before going into the caves.",
+			"Get under a roof when a tornado comes close.",
+		},
+	},
+}
+
+function S.build(lang)
+	lang = (lang == "en") and "en" or "ar"
+	local L = TEXT[lang]
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Loading"
 	gui.IgnoreGuiInset = true
@@ -46,7 +82,7 @@ function S.build()
 		l.Parent = bg
 		return l
 	end
-	local title = text("البقاء  |  SURVIVE", 64, Color3.fromRGB(242, 193, 78), -70)
+	local title = text(L.title, 64, Color3.fromRGB(242, 193, 78), -70)
 	local st = Instance.new("UIStroke")
 	st.Color = Color3.fromRGB(70, 40, 10)
 	st.Thickness = 3
@@ -75,15 +111,8 @@ function S.build()
 	fg.Color = ColorSequence.new(Color3.fromRGB(255, 220, 120), Color3.fromRGB(230, 150, 50))
 	fg.Parent = fill
 	local tip = text("", 16, Color3.fromRGB(150, 160, 150), 110)
-	local TIPS = {
-		"اطبخ اللحم في الفرن قبل أن تأكله  •  Cook meat in a furnace before eating it",
-		"نم على سرير ليصير نقطة رسبن  •  Sleep in a bed to make it your respawn point",
-		"تاجر الأقزام في الكهوف يدفع أكثر للخامات  •  Dwarves pay more for ore",
-		"لكل زعيم نقطة ضعف  •  Every boss has a weak point",
-		"التوكن يفتح القوى  •  Tokens unlock powers",
-		"العب مع أصدقائك لتحصل على Boost  •  Play with friends for a boost",
-	}
-	tip.Text = TIPS[math.random(1, #TIPS)]
+	local tipIndex = math.random(1, #L.tips)
+	tip.Text = L.tips[tipIndex]
 	local shown = 0
 	local target = 0
 	local alive = true
@@ -105,9 +134,23 @@ function S.build()
 		end
 	end)
 	local api = { gui = gui }
+	local lastKey = nil
+	-- msg is a key ("world", "ground"...) or plain text
 	function api.set(frac, msg)
 		target = math.max(target, frac)
-		if msg then status.Text = msg end
+		if msg then
+			lastKey = msg
+			status.Text = L[msg] or msg
+		end
+	end
+	-- the player's language became known after the screen was shown
+	function api.setLang(newLang)
+		newLang = (newLang == "en") and "en" or "ar"
+		if newLang == lang then return end
+		lang, L = newLang, TEXT[newLang]
+		title.Text = L.title
+		tip.Text = L.tips[math.min(tipIndex, #L.tips)]
+		if lastKey and L[lastKey] then status.Text = L[lastKey] end
 	end
 	function api.close()
 		target = 1

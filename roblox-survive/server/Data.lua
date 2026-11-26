@@ -103,6 +103,7 @@ function Data.loadProfile(player)
 	end
 	if player.Parent then
 		profiles[player] = p
+		player:SetAttribute("Lang", p.lang) -- the loading screen speaks the player's language
 		if p.lifeXp > 0 or p._migrated then boardDirty[player] = true end
 	end
 	-- write the repaired value straight away so a second server can't add it again
