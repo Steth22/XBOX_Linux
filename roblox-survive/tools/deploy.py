@@ -41,6 +41,7 @@ FILES = [
  ("StarterPlayer/StarterPlayerScripts/Client/Effects","ModuleScript","client/Effects.lua"),
  ("StarterPlayer/StarterPlayerScripts/Client/LobbyUI","ModuleScript","client/LobbyUI.lua"),
  ("StarterPlayer/StarterPlayerScripts/Client/WorldUI","ModuleScript","client/WorldUI.lua"),
+ ("StarterPlayer/StarterPlayerScripts/Client/Photo","ModuleScript","client/Photo.lua"),
 ]
 
 def longstr(src):

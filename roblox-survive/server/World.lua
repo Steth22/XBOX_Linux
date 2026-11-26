@@ -1403,6 +1403,15 @@ function ADMIN.setPower(player, room, ad, v)
 	pw.off[v[1]] = nil
 	Powers.apply(player)
 end
+-- photo mode: exact time of day (and stop the clock), creatures stand still
+function ADMIN.clock(player, room, ad, v)
+	local h = tonumber(v)
+	if not h then return end
+	Lighting.ClockTime = h % 24
+	ReplicatedStorage:SetAttribute("Night", Lighting.ClockTime < 6 or Lighting.ClockTime > 18.5)
+end
+function ADMIN.freezeTime(player, room, ad, on) ReplicatedStorage:SetAttribute("TimeFrozen", on == true or nil) end
+function ADMIN.holdMobs(player, room, ad, on) Mobs.held = on == true end
 function ADMIN.time(player, room, ad, v)
 	if v == "skip" then Survival.skipNight() return end
 	Lighting.ClockTime = v == "night" and 21 or 8

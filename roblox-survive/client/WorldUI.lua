@@ -1511,6 +1511,14 @@ function M.start(gui, remotes)
 		local cam = workspace.CurrentCamera
 		local me = char and char:FindFirstChild("HumanoidRootPart")
 		local from = (me and me.Position) or (cam and cam.CFrame.Position) or Vector3.zero
+		-- photo mode: no markers on screen
+		local photoMod = script.Parent:FindFirstChild("Photo")
+		if photoMod and require(photoMod).active() then
+			deathMarker.bb.Enabled = false
+			for _, mk in pairs(playerMarkers) do mk.bb.Enabled = false end
+			dwarfMarker.bb.Enabled = false
+			return
+		end
 		-- your items
 		if state and state.death then
 			local p = Vector3.new(state.death[1], (state.death[3] or from.Y) + 4, state.death[2])
@@ -1828,6 +1836,10 @@ function M.start(gui, remotes)
 			btn(w, T("ad_day"), nil, function() act("admin", "time", "day") end)
 			btn(w, T("ad_night"), nil, function() act("admin", "time", "night") end)
 			btn(w, T("ad_skip"), nil, function() act("admin", "time", "skip") end)
+			btn(w, T("ad_photo"), c.blue, function()
+				if closeModal then closeModal() end
+				require(script.Parent:WaitForChild("Photo")).start({ T = T, act = act, Effects = Effects, UI = UI, gui = gui })
+			end)
 			for _, wx in ipairs({ "clear", "wind", "rain", "storm", "tornado" }) do
 				btn(w, T("wx_" .. wx), wx == "tornado" and c.danger or nil, function() act("admin", "weather", wx) end)
 			end

@@ -153,6 +153,31 @@ RunService.PreSimulation:Connect(function()
 end)
 local rad = math.rad
 
+-- photo mode poses: held until cleared (offsets on the joints, like the animations)
+local POSES = {
+	sword = { arm = { 160, 0, -8 }, larm = { 40, 0, 20 }, waist = { 0, -12, 0 } },
+	slash = { arm = { 20, 70, -50 }, larm = { 30, 0, 25 }, waist = { 0, 35, 0 } },
+	victory = { arm = { 170, 0, -20 }, larm = { 170, 0, 20 }, waist = { -8, 0, 0 } },
+	point = { arm = { 90, 0, 0 }, larm = { 0, 0, 10 }, waist = { 0, -20, 0 } },
+	guard = { arm = { 70, 30, -20 }, larm = { 80, -30, 20 }, waist = { 8, 0, 0 } },
+	lantern = { arm = { 0, 0, 0 }, larm = { 85, 0, 10 }, waist = { 0, 10, 0 } },
+}
+E.POSE_LIST = { "none", "sword", "slash", "guard", "victory", "point", "lantern" }
+function E.pose(char, name)
+	local arm, base = motor(char, { "RightUpperArm", "RightShoulder" }, "Torso", "Right Shoulder")
+	local larm, lbase = motor(char, { "LeftUpperArm", "LeftShoulder" }, "Torso", "Left Shoulder")
+	local waist, wbase = motor(char, { "UpperTorso", "Waist" }, "HumanoidRootPart", "RootJoint")
+	local p = POSES[name] or {}
+	local function set(j, b, a)
+		if not j then return end
+		a = a or { 0, 0, 0 }
+		TweenService:Create(j, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { Value = b * CFrame.Angles(math.rad(a[1]), math.rad(a[2]), math.rad(a[3])) }):Play()
+	end
+	set(arm, base, p.arm)
+	set(larm, lbase, p.larm)
+	set(waist, wbase, p.waist)
+end
+
 local lastLocal = {}
 function E.anim(char, kind, isLocal)
 	if not char or not char.Parent then return end
@@ -1054,6 +1079,7 @@ function E.start(remotes)
 			end
 			cave += ((caveT and 1 or 0) - cave) * math.min(1, dt * 1.6)
 			nv += ((E.vision and 1 or 0) - nv) * math.min(1, dt * 2)
+			if E.photo then continue end -- photo mode sets the light itself
 			local t = Lighting.ClockTime
 			local night = nightFactor(t)
 			local dark = math.max(night, cave)

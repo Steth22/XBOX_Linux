@@ -1239,6 +1239,7 @@ local function step()
 end
 
 function stepOne(m, s)
+	if Mobs.held then return end -- photo mode: everyone holds still
 	local now = os.clock()
 	local night = ReplicatedStorage:GetAttribute("Night") == true
 	do

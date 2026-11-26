@@ -146,7 +146,8 @@ function S.start(c)
 		while true do
 			task.wait(1)
 			local before = Lighting.ClockTime
-			Lighting.ClockTime = (Lighting.ClockTime + perSecond) % 24
+			-- photo mode can stop the clock
+			if not ReplicatedStorage:GetAttribute("TimeFrozen") then Lighting.ClockTime = (Lighting.ClockTime + perSecond) % 24 end
 			if before < 6 and Lighting.ClockTime >= 6 then
 				local day = (ReplicatedStorage:GetAttribute("Day") or 1) + 1
 				ReplicatedStorage:SetAttribute("Day", day)
