@@ -109,11 +109,11 @@ function D.moon(f, c, bg) box(f, 0.5, 0.5, 0.8, 0.8, c, "round") local cut = box
 function D.home(f, c) D.rooms(f, c) end
 function D.xp(f, c) D.skill(f, c) end
 
--- Vector icon sheet (art/icons, rendered from SVG): white glyphs tinted with the icon colour.
+-- Vector icon sheet (art/icons, rendered from SVG): full-colour icons; the plain UI glyphs (menu, close, plus, gear, dot) are white and tinted.
 -- Until the image is approved and loaded, the frame drawings above are used, then swapped automatically.
-local SHEET = "rbxassetid://140099586823869"
+local SHEET = "rbxassetid://136820448039676"
 local CELL = 128
-local MAP = { play = { 0, 0 }, ranking = { 128, 0 }, home = { 256, 0 }, person = { 384, 0 }, settings = { 512, 0 }, quick = { 640, 0 }, friend = { 768, 0 }, key = { 896, 0 }, coin = { 0, 128 }, skill = { 128, 128 }, heart = { 256, 128 }, food = { 384, 128 }, temp = { 512, 128 }, shield = { 640, 128 }, bag = { 768, 128 }, backpack = { 896, 128 }, flame = { 0, 256 }, snow = { 128, 256 }, book = { 256, 256 }, medal = { 384, 256 }, dot = { 512, 256 }, map = { 640, 256 }, cave = { 768, 256 }, village = { 896, 256 }, menu = { 0, 384 }, close = { 128, 384 }, plus = { 256, 384 }, lock = { 384, 384 }, trash = { 512, 384 }, sun = { 640, 384 }, moon = { 768, 384 }, drop = { 896, 384 } }
+local MAP = { play = { 0, 0, false }, ranking = { 128, 0, false }, home = { 256, 0, false }, person = { 384, 0, false }, settings = { 512, 0, false }, quick = { 640, 0, false }, friend = { 768, 0, false }, key = { 896, 0, false }, coin = { 0, 128, false }, skill = { 128, 128, false }, heart = { 256, 128, false }, food = { 384, 128, false }, temp = { 512, 128, false }, shield = { 640, 128, false }, bag = { 768, 128, false }, backpack = { 896, 128, false }, flame = { 0, 256, false }, snow = { 128, 256, false }, book = { 256, 256, false }, medal = { 384, 256, false }, map = { 512, 256, false }, cave = { 640, 256, false }, village = { 768, 256, false }, lock = { 896, 256, false }, trash = { 0, 384, false }, sun = { 128, 384, false }, moon = { 256, 384, false }, drop = { 384, 384, false }, dot = { 512, 384, true }, menu = { 640, 384, true }, close = { 768, 384, true }, plus = { 896, 384, true }, gear = { 0, 512, true } }
 Icons.ready = false
 local waiting = setmetatable({}, { __mode = "k" }) -- icon frame -> { name, color }
 
@@ -126,7 +126,7 @@ local function image(f, name, color)
 	img.Image = SHEET
 	img.ImageRectOffset = Vector2.new(at[1] + 8, at[2] + 8)
 	img.ImageRectSize = Vector2.new(CELL - 16, CELL - 16)
-	img.ImageColor3 = color
+	img.ImageColor3 = at[3] and color or Color3.new(1, 1, 1)
 	img.ScaleType = Enum.ScaleType.Fit
 	img.ZIndex = f.ZIndex
 	img.Parent = f
