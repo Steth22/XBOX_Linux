@@ -1391,6 +1391,18 @@ function ADMIN.coins(player, room, ad, v) room.coins = math.max(0, room.coins + 
 function ADMIN.xp(player, room, ad, v) ctx.reward(player, math.clamp(tonumber(v) or 0, 0, 1e7), 0) end
 function ADMIN.sp(player, room, ad, v) room.sp = math.max(0, room.sp + (tonumber(v) or 0)) end
 function ADMIN.weather(player, room, ad, v) Weather.force(tostring(v)) end
+function ADMIN.setSkill(player, room, ad, v)
+	if type(v) ~= "table" or not table.find(Config.SKILLS, v[1]) then return end
+	room.skills[v[1]] = math.clamp(math.floor(tonumber(v[2]) or 0), 0, Config.SKILL_CAP[v[1]] or 100)
+	applyStats(player)
+end
+function ADMIN.setPower(player, room, ad, v)
+	if type(v) ~= "table" or not table.find(Powers.KINDS, v[1]) then return end
+	local pw = Powers.of(room)
+	pw[v[1]] = math.clamp(math.floor(tonumber(v[2]) or 0), 0, Powers.MAX)
+	pw.off[v[1]] = nil
+	Powers.apply(player)
+end
 function ADMIN.time(player, room, ad, v)
 	if v == "skip" then Survival.skipNight() return end
 	Lighting.ClockTime = v == "night" and 21 or 8

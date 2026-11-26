@@ -1758,9 +1758,9 @@ function M.start(gui, remotes)
 		local ad = (state and state.admin) or {}
 		local tabs = UI.frame({ Size = UDim2.new(1, 0, 0, 42), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
 		UI.list(tabs, 6, Enum.FillDirection.Horizontal)
-		for _, t in ipairs({ { "main", "ad_toggles" }, { "spawn", "ad_spawn" }, { "give", "ad_give" }, { "tp", "ad_tp" } }) do
+		for _, t in ipairs({ { "main", "ad_toggles" }, { "skills", "ad_powers" }, { "spawn", "ad_spawn" }, { "give", "ad_give" }, { "tp", "ad_tp" } }) do
 			local on = adminTab == t[1]
-			UI.button({ Text = T(t[2]), Size = UDim2.fromOffset(176, 40), TextSize = 16, BackgroundColor3 = on and c.gold or c.card, TextColor3 = on and c.bg or c.text, ZIndex = 54, Parent = tabs }, function()
+			UI.button({ Text = T(t[2]), Size = UDim2.fromOffset(139, 40), TextSize = 16, BackgroundColor3 = on and c.gold or c.card, TextColor3 = on and c.bg or c.text, ZIndex = 54, Parent = tabs }, function()
 				adminTab = t[1]
 				adminModal()
 			end)
@@ -1865,6 +1865,25 @@ function M.start(gui, remotes)
 				ItemView.new(b, id, UDim2.fromOffset(46, 46), UDim2.new(0, 4, 0.5, -23), 56)
 				UI.text({ Text = Items.name(id, lang), Size = UDim2.new(1, -56, 1, 0), Position = UDim2.fromOffset(52, 0), TextSize = 13, TextWrapped = true, ZIndex = 57, Parent = b })
 			end
+		elseif adminTab == "skills" then
+			-- set any skill or power straight to a level
+			section(T("skills"))
+			local g = grid(UDim2.fromOffset(350, 40))
+			for _, k in ipairs(Config.SKILLS) do
+				local cap = Config.SKILL_CAP[k] or 100
+				local values = {}
+				for v = 0, cap do table.insert(values, v) end
+				stepper(g, T("sk_" .. k), values, state.skills and state.skills[k] or 0, function(v) act("admin", "setSkill", { k, v }) end)
+			end
+			section(T("powersTab"))
+			local g2 = grid(UDim2.fromOffset(350, 40))
+			local pw = state.powers or {}
+			for _, k in ipairs({ "fire", "ice", "blast" }) do
+				stepper(g2, T("pw_" .. k), { 0, 1, 2, 3, 4, 5 }, pw[k] or 0, function(v) act("admin", "setPower", { k, v }) end)
+			end
+			local w = row()
+			btn(w, "+5 " .. T("tokenWord"), c.gold, function() act("admin", "give", { id = "token", n = 5 }) end)
+			btn(w, "+10 " .. T("sp"), nil, function() act("admin", "sp", 10) end)
 		elseif adminTab == "tp" then
 			section(T("ad_players"))
 			local pg = grid(UDim2.fromOffset(350, 40))
