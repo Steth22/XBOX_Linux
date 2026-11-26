@@ -80,12 +80,22 @@ local STYLE = {
 }
 local function pick(list) return list[vr:NextInteger(1, #list)] end
 
--- variant: 1 cottage, 2 two storeys, 3 long house, 4 cottage with a porch
-local function house(m, x, z, rot, st, variant)
-	local W, D, H = 16, 14, 10
-	if variant == 2 then W, D, H = 17, 14, 18 elseif variant == 3 then W, D, H = 24, 12, 10 end
-	W += vr:NextNumber(-1, 1.5)
-	D += vr:NextNumber(-1, 1)
+-- variant: 1 cottage, 2 two storeys, 3 long house, 4 cottage with a porch, 5 small hut, 6 big hall
+-- every house gets its own size inside the range of its kind
+local SIZES = {
+	{ W = { 14, 18 }, D = { 12, 15 }, H = { 9, 11 } },
+	{ W = { 16, 20 }, D = { 13, 16 }, H = { 18, 19 } },
+	{ W = { 22, 28 }, D = { 11, 13 }, H = { 9, 10.5 } },
+	{ W = { 14, 17 }, D = { 12, 14 }, H = { 9.5, 11 } },
+	{ W = { 10, 12 }, D = { 9, 11 }, H = { 8.5, 9.5 } },
+	{ W = { 20, 24 }, D = { 17, 20 }, H = { 12, 14 } },
+}
+local function houseSize(variant)
+	local z = SIZES[variant]
+	return vr:NextNumber(z.W[1], z.W[2]), vr:NextNumber(z.D[1], z.D[2]), vr:NextNumber(z.H[1], z.H[2])
+end
+local function house(m, x, z, rot, st, variant, W, D, H)
+	if not W then W, D, H = houseSize(variant) end
 	local porch = variant == 4 and 5 or 0
 	local wall, roof = pick(st.walls), pick(st.roofs)
 	local rotCF = CFrame.Angles(0, rot, 0)
@@ -113,6 +123,7 @@ local function house(m, x, z, rot, st, variant)
 		return part(m, name, size, base * cf, color, mat, shape, collide ~= false)
 	end
 	local stone, beam = Color3.fromRGB(120, 118, 114), Color3.fromRGB(86, 62, 42)
+	local upstairsBed = false
 	if stilt then
 		for _, sx in ipairs({ -1, 0, 1 }) do for _, sz in ipairs({ -1, 1 }) do
 			local hgt = floorY - gMin + 2
@@ -123,7 +134,7 @@ local function house(m, x, z, rot, st, variant)
 		end
 	else
 		p("Foundation", Vector3.new(W + 0.8, 1.4, D + 0.8), CFrame.new(0, -0.5, 0), stone, Enum.Material.Cobblestone)
-		p("Doorstep", Vector3.new(4.4, 0.8, 1.6), CFrame.new(0, -0.6, D / 2 + 1.1), stone, Enum.Material.Cobblestone)
+		p("Doorstep", Vector3.new(5.8, 0.8, 1.6), CFrame.new(0, -0.6, D / 2 + 1.1), stone, Enum.Material.Cobblestone)
 	end
 	p("Floor", Vector3.new(W, 0.4, D), CFrame.new(0, 0.2, 0), Color3.fromRGB(110, 80, 54), Enum.Material.WoodPlanks)
 	-- walls: back, sides, front with a door; window glass with frames
@@ -139,14 +150,14 @@ local function house(m, x, z, rot, st, variant)
 	for _, sx in ipairs({ -1, 1 }) do
 		p("Wall", Vector3.new(T2, H, D), CFrame.new(sx * W / 2, H / 2, 0), wall, st.mat)
 		windowAt(CFrame.new(sx * (W / 2 + 0.05), math.min(H, 10) * 0.55, 0) * CFrame.Angles(0, math.rad(90), 0), 3, 2.6)
-		p("Wall", Vector3.new(W / 2 - 2.2, H, T2), CFrame.new(sx * (W / 4 + 1.1), H / 2, D / 2), wall, st.mat)
-		windowAt(CFrame.new(sx * (W / 4 + 1.1), math.min(H, 10) * 0.55, D / 2 + 0.05), 2.8, 2.4)
+		p("Wall", Vector3.new(W / 2 - 2.8, H, T2), CFrame.new(sx * (W / 4 + 1.4), H / 2, D / 2), wall, st.mat)
+		if W / 2 - 2.8 >= 3 then windowAt(CFrame.new(sx * (W / 4 + 1.4), math.min(H, 10) * 0.55, D / 2 + 0.05), math.min(2.6, W / 2 - 3.6), 2.4) end
 	end
 	windowAt(CFrame.new(0, math.min(H, 10) * 0.55, -D / 2 - 0.05), 3.4, 2.4)
-	p("Wall", Vector3.new(4.4, H - 7, T2), CFrame.new(0, H - (H - 7) / 2, D / 2), wall, st.mat)
-	-- the door stands half open
-	local hinge = base * CFrame.new(-2.1, 3.5, D / 2)
-	part(m, "Door", Vector3.new(4, 7, 0.3), hinge * CFrame.Angles(0, math.rad(-70), 0) * CFrame.new(2, 0, 0), Color3.fromRGB(96, 62, 40), Enum.Material.WoodPlanks, nil, true)
+	p("Wall", Vector3.new(5.6, H - 7.4, T2), CFrame.new(0, H - (H - 7.4) / 2, D / 2), wall, st.mat)
+	-- a wide door, standing open
+	local hinge = base * CFrame.new(-2.75, 3.7, D / 2)
+	part(m, "Door", Vector3.new(5.2, 7.4, 0.3), hinge * CFrame.Angles(0, math.rad(-80), 0) * CFrame.new(2.6, 0, 0), Color3.fromRGB(96, 62, 40), Enum.Material.WoodPlanks, nil, true)
 	-- corner beams
 	for _, sx in ipairs({ -1, 1 }) do for _, sz in ipairs({ -1, 1 }) do
 		p("Beam", Vector3.new(1, H, 1), CFrame.new(sx * W / 2, H / 2, sz * D / 2), beam, Enum.Material.Wood)
@@ -154,7 +165,17 @@ local function house(m, x, z, rot, st, variant)
 	if variant == 2 then
 		-- second storey: a beam band, an inner floor and more windows
 		p("Band", Vector3.new(W + 0.4, 0.8, D + 0.4), CFrame.new(0, 9, 0), beam, Enum.Material.Wood, nil, false)
-		p("UpperFloor", Vector3.new(W - 1, 0.4, D - 5), CFrame.new(0, 9, -2.4), Color3.fromRGB(110, 80, 54), Enum.Material.WoodPlanks)
+		-- upper floor over the back half, reached by a staircase along the right wall; the bedroom is upstairs
+		local upD = D / 2 - 0.4
+		p("UpperFloor", Vector3.new(W - 1, 0.4, upD), CFrame.new(0, 9, -D / 2 + upD / 2 + 0.4), Color3.fromRGB(110, 80, 54), Enum.Material.WoodPlanks)
+		p("Rail", Vector3.new(W - 4.2, 1.6, 0.25), CFrame.new(-1.6, 10, -D / 2 + upD + 0.4), beam, Enum.Material.Wood)
+		local steps = 10
+		local zTop, zBottom = -D / 2 + upD + 0.2, D / 2 - 1.2
+		for i = 1, steps do
+			local f = i / steps
+			p("Stair", Vector3.new(2.4, 0.5, (zBottom - zTop) / steps + 0.15), CFrame.new(W / 2 - 1.7, 0.4 + f * 8.8, zBottom - f * (zBottom - zTop)), Color3.fromRGB(120, 86, 56), Enum.Material.WoodPlanks)
+		end
+		upstairsBed = true
 		for _, sx in ipairs({ -1, 1 }) do
 			windowAt(CFrame.new(sx * (W / 4 + 1.1), 13.5, D / 2 + 0.05), 2.8, 2.4)
 			windowAt(CFrame.new(sx * (W / 2 + 0.05), 13.5, 0) * CFrame.Angles(0, math.rad(90), 0), 3, 2.4)
@@ -201,9 +222,18 @@ local function house(m, x, z, rot, st, variant)
 		end
 		p("PorchRoof", Vector3.new(W - 1, 0.5, porch + 1), CFrame.new(0, 7.9, D / 2 + porch / 2) * CFrame.Angles(math.rad(12), 0, 0), roof, st.roofMat)
 	end
-	-- inside: a bed, a table, a chest, a warm light
-	p("Bed", Vector3.new(3.4, 1.2, 6), CFrame.new(-W / 2 + 2.6, 0.9, -D / 2 + 3.6), Color3.fromRGB(150, 50, 60), Enum.Material.Fabric)
-	p("Pillow", Vector3.new(2.4, 0.5, 1.2), CFrame.new(-W / 2 + 2.6, 1.7, -D / 2 + 1.4), Color3.fromRGB(235, 230, 220), Enum.Material.Fabric, nil, false)
+	-- inside: beds (upstairs in the two-storey house, two in the long house), a table, a chest, a warm light
+	local by = upstairsBed and 9.2 or 0
+	local bedXs = (variant == 3 and { -W / 2 + 2.6, -W / 2 + 6.6 }) or (variant == 6 and { -W / 2 + 2.6, -W / 2 + 6.6, -W / 2 + 10.6 }) or { -W / 2 + 2.6 }
+	if variant == 6 then
+		-- the hall: two wooden pillars and a long table
+		for _, px in ipairs({ -W / 6, W / 6 }) do p("Pillar", Vector3.new(1, H, 1), CFrame.new(px, H / 2, D / 8), beam, Enum.Material.Wood) end
+		p("LongTable", Vector3.new(W * 0.45, 0.3, 2.4), CFrame.new(W * 0.12, 2.6, D / 4), beam, Enum.Material.WoodPlanks)
+	end
+	for _, bx in ipairs(bedXs) do
+		p("Bed", Vector3.new(3.4, 1.2, 6), CFrame.new(bx, by + 0.9, -D / 2 + 3.6), Color3.fromRGB(150, 50, 60), Enum.Material.Fabric)
+		p("Pillow", Vector3.new(2.4, 0.5, 1.2), CFrame.new(bx, by + 1.7, -D / 2 + 1.4), Color3.fromRGB(235, 230, 220), Enum.Material.Fabric, nil, false)
+	end
 	p("Table", Vector3.new(3.6, 0.3, 2.6), CFrame.new(W / 2 - 3.2, 2.6, -D / 2 + 3), beam, Enum.Material.WoodPlanks)
 	for _, o in ipairs({ { -1.4, -1 }, { 1.4, -1 }, { -1.4, 1 }, { 1.4, 1 } }) do
 		p("Leg", Vector3.new(0.3, 2.4, 0.3), CFrame.new(W / 2 - 3.2 + o[1], 1.4, -D / 2 + 3 + o[2]), beam, Enum.Material.Wood, nil, false)
@@ -259,13 +289,16 @@ local function village(region, tx, tz)
 	workspace.Terrain:FillCylinder(CFrame.new(x, g + 14, z), 28, 22, Enum.Material.Air)
 	-- houses in a ring, doors facing the square, every one a little different
 	local nh = 7
-	local variants = { 1, 2, 3, 4, 2, 1, 4 }
+	local pool = { 1, 2, 3, 4, 5, 6, 1, 2, 5 }
+	for i = #pool, 2, -1 do local j = vr:NextInteger(1, i) pool[i], pool[j] = pool[j], pool[i] end
 	for i = 1, nh do
+		local variant = pool[i]
+		local W, D, H = houseSize(variant)
 		local a = i / nh * math.pi * 2 + vr:NextNumber(-0.12, 0.12)
-		local r = vr:NextNumber(38, 46)
+		local r = 28 + math.max(W, D) / 2 + vr:NextNumber(0, 6)
 		local hx, hz = x + math.cos(a) * r, z + math.sin(a) * r
 		local rot = math.atan2(x - hx, z - hz) -- +Z (the door side) towards the centre
-		house(m, hx, hz, rot, st, variants[(i + vr:NextInteger(0, 6)) % 7 + 1])
+		house(m, hx, hz, rot, st, variant, W, D, H)
 	end
 	-- the square: a well and a trader's stall
 	part(m, "Well", Vector3.new(2.2, 6, 6), CFrame.new(x, g + 1.1, z) * UPC, Color3.fromRGB(130, 128, 124), Enum.Material.Cobblestone, CYL, true)

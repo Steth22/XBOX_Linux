@@ -500,6 +500,37 @@ function M.start(gui, remotes)
 		end
 	end
 
+	-- a crate's contents (its own items, not your storage)
+	local crateOpen = nil -- { id, view }
+	local function crateModal()
+		if not crateOpen then return end
+		local id, v = crateOpen.id, crateOpen.view
+		local content = openModal("crate", T("o_crate"), UDim2.fromOffset(520, 460))
+		UI.text({ Text = T("crateTip"), Size = UDim2.new(1, 0, 0, 24), TextSize = 15, TextColor3 = c.dim, ZIndex = 53, Parent = content })
+		local box = UI.frame({ Size = UDim2.new(1, 0, 1, -96), Position = UDim2.fromOffset(0, 30), BackgroundColor3 = c.card, BackgroundTransparency = 0.5, ZIndex = 53, Parent = content })
+		UI.corner(box, 12)
+		UI.pad(box, 8)
+		local g = UI.scroll({ Size = UDim2.fromScale(1, 1), ZIndex = 53, Parent = box })
+		UI.new("UIGridLayout", { CellSize = UDim2.fromOffset(74, 74), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = g })
+		if (v.coins or 0) > 0 then
+			local cb = UI.button({ Text = "", LayoutOrder = 0, BackgroundColor3 = c.card2, ZIndex = 54, Parent = g }, function() act("crateTake", id, 0) end)
+			Icons.draw("coin", cb, 38, c.gold, UDim2.new(0.5, 0, 0.42, 0), Vector2.new(0.5, 0.5))
+			UI.text({ Text = Format.number(v.coins), Size = UDim2.new(1, -6, 0, 18), AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -3), TextSize = 15, TextColor3 = c.gold, ZIndex = 56, Parent = cb })
+		end
+		for i, it in ipairs(v.items or {}) do
+			local w = slotWidget(g, 74, i)
+			w.button.ZIndex = 54
+			w.set({ id = it.id, n = it.n }, false)
+			w.button.Activated:Connect(function() act("crateTake", id, i) end)
+		end
+		if (v.coins or 0) == 0 and #(v.items or {}) == 0 then
+			UI.text({ Text = T("crateEmpty"), Size = UDim2.new(1, 0, 0, 60), TextColor3 = c.dim, ZIndex = 55, Parent = g })
+		end
+		UI.button({ Text = T("takeAll"), Size = UDim2.new(1, 0, 0, 54), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BackgroundColor3 = c.gold, TextColor3 = c.bg, TextSize = 20, ZIndex = 54, Parent = content }, function()
+			act("crateTake", id, "all")
+		end)
+	end
+
 	local shopTab = "buy"
 	local shopCat = "tools"
 	local shopId = "forest"
@@ -853,7 +884,7 @@ function M.start(gui, remotes)
 					me.Rotation = math.deg(math.atan2(look.X, -look.Z))
 				end
 				for _, pl in ipairs(Players:GetPlayers()) do
-					local r = pl ~= player and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart")
+					local r = pl ~= player and not (state and state.pvp) and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart")
 					if r then
 						local dot = others[pl]
 						if not dot then
@@ -877,7 +908,7 @@ function M.start(gui, remotes)
 	---------------------------------------------------------------- minimap (top right, follows you; tap it for the full map)
 	local MINI = 208
 	local VIEW = 420 -- studs shown across the minimap
-	mini = UI.button({ Text = "", Size = UDim2.fromOffset(MINI, MINI), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -464, 0, 10), BackgroundColor3 = Color3.fromRGB(16, 18, 22), BackgroundTransparency = 0.1, ClipsDescendants = true, AutoButtonColor = false, Parent = root }, function()
+	mini = UI.button({ Text = "", Size = UDim2.fromOffset(MINI, MINI), AnchorPoint = Vector2.new(0, 0), Position = UDim2.new(0, 60, 0, 108), BackgroundColor3 = Color3.fromRGB(16, 18, 22), BackgroundTransparency = 0.1, ClipsDescendants = true, AutoButtonColor = false, Parent = root }, function()
 		if modalKind == "map" then closeModal() elseif state then act("map") mapModal() end
 	end)
 	UI.corner(mini, 14)
@@ -940,7 +971,7 @@ function M.start(gui, remotes)
 			deathDot.Visible = false
 		end
 		for _, pl in ipairs(Players:GetPlayers()) do
-			local r = pl ~= player and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart")
+			local r = pl ~= player and not (state and state.pvp) and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart")
 			if r then
 				local dot = miniOthers[pl]
 				if not dot then
@@ -953,7 +984,72 @@ function M.start(gui, remotes)
 			end
 		end
 		for pl, dot in pairs(miniOthers) do
-			if not pl.Parent or not pl.Character then dot:Destroy() miniOthers[pl] = nil end
+			if not pl.Parent or not pl.Character or (state and state.pvp) then dot:Destroy() miniOthers[pl] = nil end
+		end
+	end)
+
+	---------------------------------------------------------------- on-screen markers: your dropped items and the other players (not when fighting is on)
+	local markerRoot = player:WaitForChild("PlayerGui")
+	local function makeMarker(color, iconName)
+		local anchor = Instance.new("Part")
+		anchor.Anchored, anchor.CanCollide, anchor.CanQuery, anchor.CanTouch = true, false, false, false
+		anchor.Transparency = 1
+		anchor.Size = Vector3.new(0.2, 0.2, 0.2)
+		anchor.Parent = workspace.CurrentCamera
+		local bb = Instance.new("BillboardGui")
+		bb.Size = UDim2.fromOffset(180, 46)
+		bb.AlwaysOnTop = true
+		bb.MaxDistance = 1e6
+		bb.LightInfluence = 0
+		bb.ResetOnSpawn = false
+		bb.Adornee = anchor
+		bb.Parent = markerRoot
+		local pill = UI.frame({ Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(14, 16, 20), BackgroundTransparency = 0.3, Parent = bb })
+		UI.corner(pill, 12)
+		UI.stroke(pill, color, 2)
+		if iconName then Icons.draw(iconName, pill, 26, color, UDim2.new(0, 8, 0.5, 0), Vector2.new(0, 0.5)) end
+		local label = UI.text({ Text = "", Size = UDim2.new(1, iconName and -42 or -12, 1, 0), Position = UDim2.fromOffset(iconName and 38 or 6, 0), TextSize = 16, TextColor3 = color, TextStrokeTransparency = 0.4, Parent = pill })
+		return { anchor = anchor, bb = bb, label = label }
+	end
+	local deathMarker = makeMarker(Color3.fromRGB(255, 90, 80), "close")
+	local playerMarkers = {}
+	RunService.Heartbeat:Connect(function()
+		local char = player.Character
+		local cam = workspace.CurrentCamera
+		local me = char and char:FindFirstChild("HumanoidRootPart")
+		local from = (me and me.Position) or (cam and cam.CFrame.Position) or Vector3.zero
+		-- your items
+		if state and state.death then
+			local p = Vector3.new(state.death[1], (state.death[3] or from.Y) + 4, state.death[2])
+			deathMarker.anchor.Position = p
+			deathMarker.bb.Enabled = true
+			deathMarker.label.Text = T("yourItems2") .. "  " .. Locale.f(lang, "meters", math.floor((p - from).Magnitude))
+		else
+			deathMarker.bb.Enabled = false
+		end
+		-- other players
+		local pvp = state and state.pvp
+		for _, pl in ipairs(Players:GetPlayers()) do
+			if pl ~= player then
+				local r = pl.Character and pl.Character:FindFirstChild("HumanoidRootPart")
+				local mk = playerMarkers[pl]
+				if r and not pvp then
+					if not mk then
+						mk = makeMarker(Color3.fromRGB(130, 255, 150), nil)
+						mk.bb.Size = UDim2.fromOffset(170, 34)
+						playerMarkers[pl] = mk
+					end
+					local dist = (r.Position - from).Magnitude
+					mk.anchor.Position = r.Position + Vector3.new(0, 4.5, 0)
+					mk.bb.Enabled = true
+					mk.label.Text = pl.DisplayName .. "  " .. Locale.f(lang, "meters", math.floor(dist))
+				elseif mk then
+					mk.bb.Enabled = false
+				end
+			end
+		end
+		for pl, mk in pairs(playerMarkers) do
+			if not pl.Parent then mk.anchor:Destroy() mk.bb:Destroy() playerMarkers[pl] = nil end
 		end
 	end)
 
@@ -984,6 +1080,184 @@ function M.start(gui, remotes)
 		end
 	end
 
+	---------------------------------------------------------------- admin tools (the server only obeys admin accounts)
+	local adminLocal = { fly = false, noclip = false }
+	local flyBV, flyBG
+	RunService.Stepped:Connect(function()
+		local char = player.Character
+		if not char then return end
+		if adminLocal.noclip then
+			for _, p in ipairs(char:GetDescendants()) do
+				if p:IsA("BasePart") and p.CanCollide then p.CanCollide = false end
+			end
+		end
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if adminLocal.fly and hrp and hum then
+			if not flyBV or flyBV.Parent ~= hrp then
+				flyBV = Instance.new("BodyVelocity")
+				flyBV.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+				flyBV.Parent = hrp
+				flyBG = Instance.new("BodyGyro")
+				flyBG.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+				flyBG.P = 2e4
+				flyBG.Parent = hrp
+			end
+			local cam = workspace.CurrentCamera
+			local md = hum.MoveDirection
+			local look = cam.CFrame.LookVector
+			local flatL = Vector3.new(look.X, 0, look.Z).Unit
+			local flatR = Vector3.new(-flatL.Z, 0, flatL.X)
+			local v = cam.CFrame.LookVector * md:Dot(flatL) + cam.CFrame.RightVector * md:Dot(flatR)
+			if UserInputService:IsKeyDown(Enum.KeyCode.Space) or hum.Jump then v += Vector3.new(0, 1, 0) end
+			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then v -= Vector3.new(0, 1, 0) end
+			local speed = (state and state.admin and state.admin.speed) or 70
+			flyBV.Velocity = v.Magnitude > 0 and v.Unit * math.max(speed, 40) or Vector3.zero
+			flyBG.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + flatL)
+		elseif flyBV then
+			flyBV:Destroy() flyBV = nil
+			if flyBG then flyBG:Destroy() flyBG = nil end
+		end
+	end)
+	local adminTab = "main"
+	local spawnLevel, spawnCount, giveQty = 10, 1, 10
+	local function adminModal()
+		local content = openModal("admin", T("adminTools"), UDim2.fromOffset(760, 620))
+		local ad = (state and state.admin) or {}
+		local tabs = UI.frame({ Size = UDim2.new(1, 0, 0, 42), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		UI.list(tabs, 6, Enum.FillDirection.Horizontal)
+		for _, t in ipairs({ { "main", "ad_toggles" }, { "spawn", "ad_spawn" }, { "give", "ad_give" }, { "tp", "ad_tp" } }) do
+			local on = adminTab == t[1]
+			UI.button({ Text = T(t[2]), Size = UDim2.fromOffset(176, 40), TextSize = 16, BackgroundColor3 = on and c.gold or c.card, TextColor3 = on and c.bg or c.text, ZIndex = 54, Parent = tabs }, function()
+				adminTab = t[1]
+				adminModal()
+			end)
+		end
+		local body = UI.scroll({ Size = UDim2.new(1, 0, 1, -50), Position = UDim2.fromOffset(0, 50), ZIndex = 53, Parent = content })
+		UI.list(body, 8)
+		local order = 0
+		local function section(title)
+			order += 1
+			UI.text({ Text = title, LayoutOrder = order, Size = UDim2.new(1, -8, 0, 26), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = c.dim, ZIndex = 54, Parent = body })
+		end
+		local function row(h)
+			order += 1
+			local r = UI.frame({ LayoutOrder = order, Size = UDim2.new(1, -8, 0, h or 46), BackgroundTransparency = 1, ZIndex = 54, Parent = body })
+			UI.list(r, 6, Enum.FillDirection.Horizontal)
+			return r
+		end
+		local function grid(cell)
+			order += 1
+			local g = UI.frame({ LayoutOrder = order, Size = UDim2.new(1, -8, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, ZIndex = 54, Parent = body })
+			UI.new("UIGridLayout", { CellSize = cell or UDim2.fromOffset(170, 40), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = g })
+			return g
+		end
+		local function btn(parent, text, color, cb, w)
+			return UI.button({ Text = text, Size = UDim2.fromOffset(w or 170, 40), TextSize = 15, BackgroundColor3 = color or c.card, TextColor3 = (color == c.gold or color == c.accent) and c.bg or c.text, ZIndex = 55, Parent = parent }, cb)
+		end
+		local function stepper(parent, label, values, current, onPick)
+			local idx = 1
+			for i, v in ipairs(values) do if v == current then idx = i end end
+			local f = UI.frame({ Size = UDim2.fromOffset(350, 40), BackgroundColor3 = c.card, ZIndex = 55, Parent = parent })
+			UI.corner(f, 10)
+			UI.text({ Text = label, Size = UDim2.new(0.42, 0, 1, 0), Position = UDim2.fromOffset(8, 0), TextXAlignment = UI.align(lang), TextSize = 15, ZIndex = 56, Parent = f })
+			local val = UI.text({ Text = tostring(values[idx]), Size = UDim2.fromOffset(80, 40), Position = UDim2.new(1, -130, 0, 0), TextSize = 17, TextColor3 = c.gold, ZIndex = 56, Parent = f })
+			local function go(d)
+				idx = math.clamp(idx + d, 1, #values)
+				val.Text = tostring(values[idx])
+				onPick(values[idx])
+			end
+			UI.button({ Text = "-", Size = UDim2.fromOffset(40, 34), Position = UDim2.new(1, -176, 0, 3), TextSize = 22, BackgroundColor3 = c.card2, TextColor3 = c.text, ZIndex = 56, Parent = f }, function() go(-1) end)
+			UI.button({ Text = "+", Size = UDim2.fromOffset(40, 34), Position = UDim2.new(1, -46, 0, 3), TextSize = 22, BackgroundColor3 = c.card2, TextColor3 = c.text, ZIndex = 56, Parent = f }, function() go(1) end)
+		end
+		if adminTab == "main" then
+			section(T("ad_toggles"))
+			local r = row()
+			btn(r, T("ad_god"), ad.god and c.accent or c.card, function() act("admin", "god", not ad.god) task.delay(0.4, adminModal) end, 200)
+			btn(r, T("ad_fly"), adminLocal.fly and c.accent or c.card, function() adminLocal.fly = not adminLocal.fly adminModal() end, 200)
+			btn(r, T("ad_noclip"), adminLocal.noclip and c.accent or c.card, function()
+				adminLocal.noclip = not adminLocal.noclip
+				if not adminLocal.noclip and player.Character then
+					for _, p in ipairs(player.Character:GetDescendants()) do
+						if p:IsA("BasePart") and (p.Name == "HumanoidRootPart" or p.Name:find("Torso") or p.Name == "Head") then p.CanCollide = p.Name ~= "HumanoidRootPart" or false end
+					end
+				end
+				adminModal()
+			end, 200)
+			section(T("ad_stats"))
+			local g = grid(UDim2.fromOffset(350, 40))
+			stepper(g, T("ad_speed"), { 16, 24, 32, 50, 80, 120, 200, 300 }, ad.speed or 16, function(v) act("admin", "speed", v) end)
+			stepper(g, T("ad_hp"), { 100, 250, 500, 1000, 5000, 100000 }, ad.hp or 100, function(v) act("admin", "hp", v) end)
+			stepper(g, T("ad_dmg"), { 1, 2, 5, 10, 50, 100, 1000 }, ad.dmg or 1, function(v) act("admin", "dmg", v) end)
+			stepper(g, T("ad_jump"), { 50, 80, 120, 200, 300 }, ad.jump or 50, function(v) act("admin", "jump", v) end)
+			section(T("ad_world"))
+			local w = grid()
+			btn(w, T("ad_heal"), c.accent, function() act("admin", "heal") end)
+			btn(w, T("ad_day"), nil, function() act("admin", "time", "day") end)
+			btn(w, T("ad_night"), nil, function() act("admin", "time", "night") end)
+			btn(w, T("ad_skip"), nil, function() act("admin", "time", "skip") end)
+			btn(w, T("ad_reveal"), nil, function() act("admin", "reveal") end)
+			btn(w, T("ad_medals"), nil, function() act("admin", "medals") end)
+			btn(w, T("ad_clearMobs"), nil, function() act("admin", "clearMobs") end)
+			btn(w, T("ad_clearBag"), c.danger, function() act("admin", "clearBag") end)
+			section(T("ad_money"))
+			local mrow = grid()
+			btn(mrow, "+1,000 " .. T("coins"), c.gold, function() act("admin", "coins", 1000) end)
+			btn(mrow, "+100,000 " .. T("coins"), c.gold, function() act("admin", "coins", 100000) end)
+			btn(mrow, "+5,000 XP", nil, function() act("admin", "xp", 5000) end)
+			btn(mrow, "+5 " .. T("sp"), nil, function() act("admin", "sp", 5) end)
+		elseif adminTab == "spawn" then
+			local r = grid(UDim2.fromOffset(350, 40))
+			stepper(r, T("ad_level"), { 1, 5, 10, 15, 20, 30, 40, 50, 75, 99 }, spawnLevel, function(v) spawnLevel = v end)
+			stepper(r, T("ad_count"), { 1, 2, 3, 5, 10 }, spawnCount, function(v) spawnCount = v end)
+			for _, reg in ipairs(Bestiary.regions) do
+				section(T("biome_" .. reg.key))
+				local g = grid()
+				for _, k in ipairs(reg.kinds) do
+					btn(g, T("mob_" .. k), Bestiary.kinds[k] == "boss" and c.danger or nil, function() act("admin", "spawn", { kind = k, level = spawnLevel, count = spawnCount }) end)
+				end
+			end
+		elseif adminTab == "give" then
+			local r = row()
+			stepper(r, T("ad_qty"), { 1, 5, 10, 20, 50, 99 }, giveQty, function(v) giveQty = v end)
+			local ids = {}
+			for id in pairs(Items.defs) do table.insert(ids, id) end
+			table.sort(ids, function(a, b) return Items.name(a, lang) < Items.name(b, lang) end)
+			local g = grid(UDim2.fromOffset(170, 54))
+			for _, id in ipairs(ids) do
+				local b = btn(g, "", nil, function() act("admin", "give", { id = id, n = giveQty }) end)
+				b.Size = UDim2.fromOffset(170, 54)
+				ItemView.new(b, id, UDim2.fromOffset(46, 46), UDim2.new(0, 4, 0.5, -23), 56)
+				UI.text({ Text = Items.name(id, lang), Size = UDim2.new(1, -56, 1, 0), Position = UDim2.fromOffset(52, 0), TextSize = 13, TextWrapped = true, ZIndex = 57, Parent = b })
+			end
+		elseif adminTab == "tp" then
+			section(T("ad_players"))
+			local pg = grid(UDim2.fromOffset(350, 40))
+			for _, pl in ipairs(Players:GetPlayers()) do
+				if pl ~= player then
+					local f = UI.frame({ BackgroundColor3 = c.card, ZIndex = 55, Parent = pg })
+					UI.corner(f, 10)
+					UI.text({ Text = pl.DisplayName, Size = UDim2.new(0.45, 0, 1, 0), Position = UDim2.fromOffset(8, 0), TextXAlignment = UI.align(lang), TextSize = 15, ZIndex = 56, Parent = f })
+					UI.button({ Text = T("ad_goto"), Size = UDim2.fromOffset(86, 32), Position = UDim2.new(1, -182, 0, 4), TextSize = 14, ZIndex = 56, Parent = f }, function() act("admin", "tpTo", pl.UserId) end)
+					UI.button({ Text = T("ad_bring"), Size = UDim2.fromOffset(86, 32), Position = UDim2.new(1, -92, 0, 4), TextSize = 14, BackgroundColor3 = c.gold, TextColor3 = c.bg, ZIndex = 56, Parent = f }, function() act("admin", "bring", pl.UserId) end)
+				end
+			end
+			local names = { village = "leg_village", trader = "leg_trader", cave = "leg_cave" }
+			local counts = {}
+			for _, kind in ipairs({ "village", "trader", "cave" }) do
+				section(T(names[kind]))
+				local g = grid()
+				for _, poi in ipairs(mapPoisList) do
+					if poi[1] == kind then
+						counts[kind] = (counts[kind] or 0) + 1
+						local region = T("biome_" .. Biomes.at(poi[2], poi[3]))
+						btn(g, region .. " " .. counts[kind], nil, function() act("admin", "tp", { poi[2], poi[3] }) end)
+					end
+				end
+			end
+		end
+	end
+
 	local function menuModal()
 		local content = openModal("menu", T("menu"), UDim2.fromOffset(520, 600))
 		local owner = state and state.isOwner
@@ -1001,10 +1275,18 @@ function M.start(gui, remotes)
 			end)
 			Icons.draw("lock", lb, 22, locked and c.bg or c.text, UDim2.new(0, 14, 0.5, 0), Vector2.new(0, 0.5))
 		end
-		UI.text({ Text = T("code") .. ":  " .. tostring(state and state.code or "...") .. ((state and state.locked) and ("   |   " .. T("roomLocked")) or ""), Size = UDim2.new(1, 0, 0, 36), Position = UDim2.fromOffset(0, 64), TextSize = 22, TextColor3 = c.gold, ZIndex = 53, Parent = content })
+		local shift = 0
+		if state and state.admin then
+			shift = 54
+			UI.button({ Text = T("adminTools"), Size = UDim2.new(1, 0, 0, 46), Position = UDim2.fromOffset(0, 62), BackgroundColor3 = c.gold, TextColor3 = c.bg, TextSize = 19, ZIndex = 54, Parent = content }, function()
+				act("map")
+				adminModal()
+			end)
+		end
+		UI.text({ Text = T("code") .. ":  " .. tostring(state and state.code or "...") .. ((state and state.locked) and ("   |   " .. T("roomLocked")) or ""), Size = UDim2.new(1, 0, 0, 36), Position = UDim2.fromOffset(0, 64 + shift), TextSize = 22, TextColor3 = c.gold, ZIndex = 53, Parent = content })
 		local list = Players:GetPlayers()
-		UI.text({ Text = T("inRoom") .. "  " .. #list .. " / " .. Config.MAX_PLAYERS, Size = UDim2.new(1, 0, 0, 26), Position = UDim2.fromOffset(0, 104), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = c.dim, ZIndex = 53, Parent = content })
-		local scroll = UI.scroll({ Size = UDim2.new(1, 0, 1, -138), Position = UDim2.fromOffset(0, 136), ZIndex = 53, Parent = content })
+		UI.text({ Text = T("inRoom") .. "  " .. #list .. " / " .. Config.MAX_PLAYERS, Size = UDim2.new(1, 0, 0, 26), Position = UDim2.fromOffset(0, 104 + shift), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = c.dim, ZIndex = 53, Parent = content })
+		local scroll = UI.scroll({ Size = UDim2.new(1, 0, 1, -138 - shift), Position = UDim2.fromOffset(0, 136 + shift), ZIndex = 53, Parent = content })
 		UI.list(scroll, 6)
 		for i, pl in ipairs(list) do
 			local row = UI.frame({ Size = UDim2.new(1, -8, 0, 58), BackgroundColor3 = c.card, LayoutOrder = (pl.UserId == state.ownerId) and 0 or i, ZIndex = 54, Parent = scroll })
@@ -1357,7 +1639,7 @@ function M.start(gui, remotes)
 	end)
 
 	---------------------------------------------------------------- event feed (bottom left, like a game chat)
-	local feedBox = UI.frame({ Size = UDim2.fromOffset(460, 260), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 14, 1, UserInputService.TouchEnabled and -235 or -100), BackgroundTransparency = 1, Parent = root })
+	local feedBox = UI.frame({ Size = UDim2.fromOffset(460, 190), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 14, 1, UserInputService.TouchEnabled and -235 or -100), BackgroundTransparency = 1, Parent = root })
 	local fl = UI.list(feedBox, 4, Enum.FillDirection.Vertical, Enum.HorizontalAlignment.Left)
 	if fl then fl.VerticalAlignment = Enum.VerticalAlignment.Bottom end
 	local feedN = 0
@@ -1454,6 +1736,15 @@ function M.start(gui, remotes)
 			deathScreen(a)
 			return
 		end
+		if key == "openCrate" or key == "crateData" then
+			if key == "crateData" and not (crateOpen and crateOpen.id == a and modalKind == "crate") then return end
+			crateOpen = { id = a, view = b or { items = {}, coins = 0 } }
+			if state then crateModal() end
+			if key == "crateData" and #crateOpen.view.items == 0 and (crateOpen.view.coins or 0) == 0 then
+				task.delay(0.6, function() if modalKind == "crate" and closeModal then closeModal() end end)
+			end
+			return
+		end
 		if key == "openStash" then
 			if state then stashModal() end
 			return
@@ -1485,6 +1776,7 @@ function M.start(gui, remotes)
 		elseif key == "stashUp" then text = Locale.f(lang, "stashUp", a or 10)
 		elseif key == "discovered" then text = Locale.f(lang, "discovered", T("mob_" .. tostring(a))) Effects.ui("pop")
 		elseif key == "medalGot" then text = Locale.f(lang, "medalGot", T("biome_" .. tostring(a))) Effects.ui("skill")
+		elseif key == "adminDone" then text = Locale.f(lang, "adminDone", a or 0)
 		elseif key == "drank" then text = Locale.f(lang, "drank", Items.name(a, lang)) Effects.ui("skill")
 		elseif key == "buffEnd" then text = Locale.f(lang, "buffEnd", T("buff_" .. tostring(a)))
 		elseif key == "sleepCount" then

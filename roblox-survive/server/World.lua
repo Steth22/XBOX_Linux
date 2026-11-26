@@ -123,6 +123,10 @@ local function setLamp(player, on)
 	m.Parent = char
 end
 
+local admin = {} -- [Player] = { god, speed, hp, dmg, jump }
+local function isAdmin(player) return Config.ADMINS[player.UserId] == true end
+local function adminOf(player) return isAdmin(player) and admin[player] or nil end
+
 local function hasBuff(player, name)
 	local b = buffs[player]
 	return b ~= nil and b[name] ~= nil and b[name] > os.clock()
@@ -167,11 +171,12 @@ local function snapshot(player)
 		end)(),
 		sleeping = sleeping[player] ~= nil,
 		lamp = lamp[player] or 0,
-		death = (deathBag[player] and deathBag[player][1].Parent) and { deathBag[player][2], deathBag[player][3] } or nil,
+		death = (deathBag[player] and deathBag[player][1].Parent) and { deathBag[player][2], deathBag[player][3], deathBag[player][4] } or nil,
 		dex = room.dex,
 		isOwner = serverRec ~= nil and serverRec.owner == player.UserId,
 		locked = serverRec ~= nil and serverRec.locked == true,
 		pvp = serverRec ~= nil and serverRec.pvp == true,
+		admin = isAdmin(player) and (admin[player] or {}) or nil,
 		ownerId = serverRec and serverRec.owner or 0,
 		stash = Inventory.stashView(room.stash), stashLvl = room.stash.lvl,
 		stashCost = room.stash.lvl < Config.STASH_MAX_LVL and Config.stashCost(room.stash.lvl) or nil,
@@ -238,6 +243,8 @@ function ctx.hurt(player, amount, cause)
 	local _, hum = hrpOf(player)
 	if not hum or hum.Health <= 0 then return end
 	if type(cause) == "string" then lastHit[player] = cause end
+	local adm = adminOf(player)
+	if adm and adm.god then return end
 	local room = Data.room(player)
 	local armor = room and room.inv.armor and Items.get(room.inv.armor)
 	if armor then amount *= (1 - armor.reduce) end
@@ -372,7 +379,7 @@ local function swing(player, index, def)
 		end
 	end
 	if best then
-		Mobs.damage(best, (def.dmg or 5) * (1 + 0.1 * str) * (hasBuff(player, "strength") and 1.5 or 1), player)
+		Mobs.damage(best, (def.dmg or 5) * (1 + 0.1 * str) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1), player)
 		useDurability(player, index)
 		return
 	end
@@ -428,7 +435,7 @@ local function shoot(player, index, dir)
 	ctx.fx("anim", char, def.ammo == "arrow" and "bow" or "gun")
 	if res then
 		local m = Mobs.modelOf(res.Instance)
-		if m then Mobs.damage(m, def.dmg * (1 + 0.1 * skill(player, "strength")) * (hasBuff(player, "strength") and 1.5 or 1), player) end
+		if m then Mobs.damage(m, def.dmg * (1 + 0.1 * skill(player, "strength")) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1), player) end
 		local victim = Players:GetPlayerFromCharacter(res.Instance:FindFirstAncestorOfClass("Model"))
 		if victim and victim ~= player and serverRec and serverRec.pvp then
 			ctx.hurt(victim, def.dmg * 0.6, "@" .. player.DisplayName)
@@ -677,6 +684,12 @@ function applyStats(player)
 	hum.MaxHealth = hp
 	hum.Health = math.clamp(hp * ratio, 1, hp)
 	hum.WalkSpeed = (16 + 0.6 * math.min(skill(player, "speed"), Config.SKILL_CAP.speed or 10)) * (hasBuff(player, "speed") and 1.3 or 1)
+	local ad = adminOf(player)
+	if ad then
+		if ad.hp then hum.MaxHealth = ad.hp hum.Health = math.min(hum.Health, ad.hp) end
+		if ad.speed then hum.WalkSpeed = ad.speed end
+		if ad.jump then hum.UseJumpPower = true hum.JumpPower = ad.jump end
+	end
 end
 
 local function guardCharacter(char)
@@ -806,7 +819,7 @@ local function onCharacter(player, char)
 			local items = Inventory.takeAll(r.inv)
 			if #items > 0 then
 				local bag = Loot.drop(hrp.Position, items, player.UserId)
-				if bag then deathBag[player] = { bag, math.floor(hrp.Position.X), math.floor(hrp.Position.Z) } end
+				if bag then deathBag[player] = { bag, math.floor(hrp.Position.X), math.floor(hrp.Position.Z), math.floor(hrp.Position.Y) } end
 				notify(player, "died")
 			end
 		end
@@ -1178,6 +1191,87 @@ function actions.leave(player)
 end
 
 function actions.state(player) push(player) end
+function actions.crateTake(player, room, id, what) Loot.take(player, id, what) end
+
+-- admin tools (only for Config.ADMINS; checked here on the server)
+local ADMIN = {}
+local function groundNear(pos)
+	local h = require(script.Parent.Ground).height(pos.X, pos.Z)
+	return Vector3.new(pos.X, (h or pos.Y) + 3, pos.Z)
+end
+function ADMIN.god(player, room, ad, on) ad.god = on == true end
+function ADMIN.speed(player, room, ad, v) ad.speed = math.clamp(tonumber(v) or 16, 8, 300) applyStats(player) end
+function ADMIN.jump(player, room, ad, v) ad.jump = math.clamp(tonumber(v) or 50, 20, 400) applyStats(player) end
+function ADMIN.hp(player, room, ad, v) ad.hp = math.clamp(tonumber(v) or 100, 50, 100000) applyStats(player) local _, h = hrpOf(player) if h then h.Health = h.MaxHealth end end
+function ADMIN.dmg(player, room, ad, v) ad.dmg = math.clamp(tonumber(v) or 1, 1, 1000) end
+function ADMIN.heal(player, room)
+	local _, h = hrpOf(player)
+	if h then h.Health = h.MaxHealth end
+	room.hunger = 100
+	Survival.reset(player)
+end
+function ADMIN.spawn(player, room, ad, v)
+	local hrp = hrpOf(player)
+	if not hrp or type(v) ~= "table" or not table.find(Mobs.kinds(), v.kind) then return end
+	for i = 1, math.clamp(tonumber(v.count) or 1, 1, 10) do
+		local at = (hrp.CFrame * CFrame.new((i - 1) * 4 - 6, 0, -14)).Position
+		local g = require(script.Parent.Ground).height(at.X, at.Z) or at.Y
+		Mobs.spawn(v.kind, Vector3.new(at.X, g, at.Z), math.clamp(tonumber(v.level) or 1, 1, 99))
+	end
+end
+function ADMIN.clearMobs(player)
+	local hrp = hrpOf(player)
+	if hrp then notify(player, "adminDone", Mobs.clear(hrp.Position, 200)) end
+end
+function ADMIN.give(player, room, ad, v)
+	if type(v) ~= "table" or not Items.get(v.id) then return end
+	local rest = Inventory.add(room.inv, v.id, math.clamp(tonumber(v.n) or 1, 1, 999))
+	if rest > 0 then notify(player, "bagFull") end
+end
+function ADMIN.coins(player, room, ad, v) room.coins = math.max(0, room.coins + (tonumber(v) or 0)) end
+function ADMIN.xp(player, room, ad, v) ctx.reward(player, math.clamp(tonumber(v) or 0, 0, 1e7), 0) end
+function ADMIN.sp(player, room, ad, v) room.sp = math.max(0, room.sp + (tonumber(v) or 0)) end
+function ADMIN.time(player, room, ad, v)
+	if v == "skip" then Survival.skipNight() return end
+	Lighting.ClockTime = v == "night" and 21 or 8
+	ReplicatedStorage:SetAttribute("Night", v == "night")
+end
+function ADMIN.tp(player, room, ad, v)
+	local hrp = hrpOf(player)
+	if hrp and type(v) == "table" and tonumber(v[1]) and tonumber(v[2]) then
+		hrp.CFrame = CFrame.new(groundNear(Vector3.new(tonumber(v[1]), hrp.Position.Y, tonumber(v[2]))))
+	end
+end
+function ADMIN.tpTo(player, room, ad, uid)
+	local t = Players:GetPlayerByUserId(tonumber(uid) or 0)
+	local hrp, th = hrpOf(player), t and hrpOf(t)
+	if hrp and th then hrp.CFrame = th.CFrame * CFrame.new(0, 0, 4) end
+end
+function ADMIN.bring(player, room, ad, uid)
+	local t = Players:GetPlayerByUserId(tonumber(uid) or 0)
+	local hrp, th = hrpOf(player), t and hrpOf(t)
+	if hrp and th then th.CFrame = hrp.CFrame * CFrame.new(0, 0, -4) end
+end
+function ADMIN.reveal(player, room)
+	room.explored = string.rep("1", Config.MAP_CELLS * Config.MAP_CELLS)
+	notify(player, "explored", room.explored)
+end
+function ADMIN.medals(player, room)
+	for _, reg in ipairs(Bestiary.regions) do
+		for _, k in ipairs(reg.kinds) do room.dex.seen[k] = true room.dex.kills[k] = math.max(room.dex.kills[k] or 0, 1) end
+		room.dex.medals[reg.key] = true
+	end
+end
+function ADMIN.clearBag(player, room)
+	Inventory.takeAll(room.inv)
+	select(player, 0)
+end
+function actions.admin(player, room, cmd, arg)
+	if not isAdmin(player) or type(cmd) ~= "string" or not ADMIN[cmd] then return end
+	admin[player] = admin[player] or {}
+	ADMIN[cmd](player, room, admin[player], arg)
+	push(player)
+end
 
 -- room owner tools: kick, ban, lock
 local function ownerOnly(player)

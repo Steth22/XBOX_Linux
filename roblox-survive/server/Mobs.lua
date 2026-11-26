@@ -843,10 +843,52 @@ end
 
 function Mobs.folder() return folder end
 
+-- admin: remove creatures near a point (no rewards)
+function Mobs.clear(pos, radius)
+	local n = 0
+	for m, st in pairs(mobs) do
+		if not st.dead and (st.hrp.Position - pos).Magnitude < radius then
+			mobs[m] = nil
+			m:Destroy()
+			n += 1
+		end
+	end
+	return n
+end
+function Mobs.kinds()
+	local out = {}
+	for k in pairs(DEFS) do table.insert(out, k) end
+	table.sort(out)
+	return out
+end
+
 ---------------------------------------------------------------- movement (kinematic, follows the ground)
 local groundParams = RaycastParams.new()
 groundParams.FilterType = Enum.RaycastFilterType.Include
 groundParams.FilterDescendantsInstances = { workspace.Terrain }
+
+-- buildings (parts the map generator made) that creatures can't walk through
+local buildParams = RaycastParams.new()
+buildParams.FilterType = Enum.RaycastFilterType.Include
+local buildList, buildAt = nil, 0
+local function blockedBy(from, dir, len)
+	if not buildList or os.clock() - buildAt > 30 then
+		buildList = {}
+		for _, n in ipairs({ "Villages", "Cabins", "Outposts", "Camp", "BanditCamps", "BlackMarkets" }) do
+			local f = workspace:FindFirstChild(n)
+			if f then table.insert(buildList, f) end
+		end
+		local beds = {}
+		for _, b in ipairs(workspace:GetChildren()) do if b.Name == "Bed" then table.insert(buildList, b) end end
+		buildParams.FilterDescendantsInstances = buildList
+		buildAt = os.clock()
+	end
+	for _, h in ipairs({ 0, 1.6 }) do
+		local res = workspace:Raycast(from + Vector3.new(0, h, 0), dir * len, buildParams)
+		if res and res.Instance.CanCollide then return true end
+	end
+	return false
+end
 
 local function moveStep(s, dt)
 	if not s.dest then return end
@@ -855,7 +897,20 @@ local function moveStep(s, dt)
 	local d = flat.Magnitude
 	if d < 1.5 then s.dest = nil return end
 	local speed = (s.speed or s.def.speed) * (s.pace or 1)
-	local np = p + flat.Unit * math.min(d, speed * dt)
+	local dir = flat.Unit
+	local stepLen = math.min(d, speed * dt)
+	-- walls of houses, camps and outposts block creatures: try to slide along them, else stop
+	if blockedBy(p, dir, stepLen + 1.2 + (s.def.size or 1) * 0.6) then
+		local found = nil
+		for _, ang in ipairs({ 45, -45, 80, -80 }) do
+			local alt = CFrame.Angles(0, math.rad(ang), 0):VectorToWorldSpace(dir)
+			if not blockedBy(p, alt, stepLen + 1.2) then found = alt break end
+		end
+		if not found then s.dest = nil return end
+		dir = found
+	end
+	local np = p + dir * stepLen
+	flat = dir
 	local gh, water
 	if s.cave then
 		local cur = p.Y - s.lift
