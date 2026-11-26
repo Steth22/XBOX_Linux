@@ -153,47 +153,78 @@ RunService.PreSimulation:Connect(function()
 end)
 local rad = math.rad
 
--- photo mode poses: held until cleared (offsets on the joints, like the animations)
+-- Photo-mode poses: the character's own animations are stopped (and its Animate script paused), then
+-- every joint is set to the pose directly, before each physics step and before each frame is drawn,
+-- so nothing can pull the body out of it.
+local POSE_JOINTS = {
+	arm = { "RightUpperArm", "RightShoulder" }, larm = { "LeftUpperArm", "LeftShoulder" },
+	rlow = { "RightLowerArm", "RightElbow" }, llow = { "LeftLowerArm", "LeftElbow" },
+	head = { "Head", "Neck" }, waist = { "UpperTorso", "Waist" },
+	rleg = { "RightUpperLeg", "RightHip" }, lleg = { "LeftUpperLeg", "LeftHip" },
+}
+local held = {} -- [character] = { joints = { [joint] = CFrame }, conns = {} }
+function E.isPosed(char) return held[char] ~= nil end
+function E.photoPose(char, angles)
+	if not char then return false end
+	local h = held[char]
+	if not angles then
+		if h then
+			for _, cn in ipairs(h.conns) do cn:Disconnect() end
+			for j in pairs(h.joints) do if j.Parent then j.Transform = CFrame.identity end end
+			local animate = char:FindFirstChild("Animate")
+			if animate then animate.Disabled = false end
+			held[char] = nil
+		end
+		return true
+	end
+	if not h then
+		h = { joints = {}, conns = {} }
+		held[char] = h
+		local animate = char:FindFirstChild("Animate")
+		if animate then animate.Disabled = true end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		local animator = hum and hum:FindFirstChildOfClass("Animator")
+		if animator then for _, tr in ipairs(animator:GetPlayingAnimationTracks()) do tr:Stop(0.1) end end
+		local function hold()
+			for j, cf in pairs(h.joints) do if j.Parent then j.Transform = cf end end
+		end
+		table.insert(h.conns, RunService.PreSimulation:Connect(hold))
+		table.insert(h.conns, RunService.PreRender:Connect(hold))
+		table.insert(h.conns, RunService.PostSimulation:Connect(hold))
+	end
+	h.joints = {}
+	for key, path in pairs(POSE_JOINTS) do
+		local part = char:FindFirstChild(path[1])
+		local j = part and part:FindFirstChild(path[2])
+		if j and (j:IsA("Motor6D") or j:IsA("AnimationConstraint")) then
+			local a = angles[key]
+			h.joints[j] = a and CFrame.Angles(math.rad(a[1] or 0), math.rad(a[2] or 0), math.rad(a[3] or 0)) or CFrame.identity
+		end
+	end
+	return true
+end
+-- ready-made poses (angles in degrees for each joint)
 local POSES = {
-	sword = { arm = { 160, 0, -8 }, larm = { 40, 0, 20 }, waist = { 0, -12, 0 } },
-	slash = { arm = { 20, 70, -50 }, larm = { 30, 0, 25 }, waist = { 0, 35, 0 } },
-	victory = { arm = { 170, 0, -20 }, larm = { 170, 0, 20 }, waist = { -8, 0, 0 } },
-	point = { arm = { 90, 0, 0 }, larm = { 0, 0, 10 }, waist = { 0, -20, 0 } },
-	guard = { arm = { 70, 30, -20 }, larm = { 80, -30, 20 }, waist = { 8, 0, 0 } },
-	lantern = { arm = { 0, 0, 0 }, larm = { 85, 0, 10 }, waist = { 0, 10, 0 } },
+	none = nil,
+	sword = { arm = { 160, 0, -8 }, larm = { 40, 0, 20 }, waist = { 0, -12, 0 }, rleg = { -15, 0, 0 }, lleg = { 18, 0, 0 } },
+	slash = { arm = { 20, 70, -50 }, larm = { 30, 0, 25 }, waist = { 0, 35, 0 }, rleg = { -20, 0, 0 }, lleg = { 20, 0, 0 } },
+	victory = { arm = { 170, 0, -20 }, larm = { 170, 0, 20 }, waist = { -8, 0, 0 }, head = { -15, 0, 0 } },
+	point = { arm = { 90, 0, 0 }, larm = { 0, 0, 10 }, waist = { 0, -20, 0 }, head = { 0, -15, 0 } },
+	guard = { arm = { 70, 30, -20 }, larm = { 80, -30, 20 }, waist = { 8, 0, 0 }, rleg = { -25, 0, 0 }, lleg = { 25, 0, 0 } },
+	lantern = { arm = { 0, 0, 0 }, larm = { 85, 0, 10 }, waist = { 0, 10, 0 }, head = { 0, 15, 0 } },
+	run = { arm = { -50, 0, 0 }, larm = { 60, 0, 0 }, rlow = { 40, 0, 0 }, llow = { 40, 0, 0 }, rleg = { 50, 0, 0 }, lleg = { -40, 0, 0 }, waist = { 12, 0, 0 } },
 }
-E.POSE_LIST = { "none", "sword", "slash", "guard", "victory", "point", "lantern" }
--- one joint at a time (photo mode's pose editor); angles in degrees
-local JOINTS = {
-	arm = { { "RightUpperArm", "RightShoulder" }, "Torso", "Right Shoulder" },
-	larm = { { "LeftUpperArm", "LeftShoulder" }, "Torso", "Left Shoulder" },
-	rlow = { { "RightLowerArm", "RightElbow" }, "Torso", "Right Shoulder" },
-	llow = { { "LeftLowerArm", "LeftElbow" }, "Torso", "Left Shoulder" },
-	head = { { "Head", "Neck" }, "Torso", "Neck" },
-	waist = { { "UpperTorso", "Waist" }, "HumanoidRootPart", "RootJoint" },
-	rleg = { { "RightUpperLeg", "RightHip" }, "Torso", "Right Hip" },
-	lleg = { { "LeftUpperLeg", "LeftHip" }, "Torso", "Left Hip" },
-}
+E.POSE_LIST = { "none", "sword", "slash", "guard", "victory", "point", "lantern", "run" }
 E.JOINT_LIST = { "arm", "larm", "rlow", "llow", "head", "waist", "rleg", "lleg" }
-function E.setJoint(char, key, rx, ry, rz)
-	local j = JOINTS[key]
-	if not j then return end
-	local v = motor(char, j[1], j[2], j[3])
-	if v then v.Value = CFrame.Angles(math.rad(rx or 0), math.rad(ry or 0), math.rad(rz or 0)) end
+-- a copy of a ready-made pose, to start editing from
+function E.poseAngles(name)
+	local out = {}
+	for k, v in pairs(POSES[name] or {}) do out[k] = { v[1], v[2], v[3] } end
+	return out
 end
 function E.pose(char, name)
-	local arm, base = motor(char, { "RightUpperArm", "RightShoulder" }, "Torso", "Right Shoulder")
-	local larm, lbase = motor(char, { "LeftUpperArm", "LeftShoulder" }, "Torso", "Left Shoulder")
-	local waist, wbase = motor(char, { "UpperTorso", "Waist" }, "HumanoidRootPart", "RootJoint")
-	local p = POSES[name] or {}
-	local function set(j, b, a)
-		if not j then return end
-		a = a or { 0, 0, 0 }
-		TweenService:Create(j, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { Value = b * CFrame.Angles(math.rad(a[1]), math.rad(a[2]), math.rad(a[3])) }):Play()
-	end
-	set(arm, base, p.arm)
-	set(larm, lbase, p.larm)
-	set(waist, wbase, p.waist)
+	if name == "none" or not POSES[name] then return E.photoPose(char, nil) end
+	return E.photoPose(char, E.poseAngles(name))
 end
 
 local lastLocal = {}

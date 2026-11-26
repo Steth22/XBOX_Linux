@@ -126,6 +126,23 @@ function P.start(env)
 	local st = { filter = 2, weather = 1, free = false, fov = 50, dof = false, clock = 17.3, tab = "look", mode = "move", fx = "fire", limb = "arm", placing = false }
 	local joints = {} -- [limb] = { x, y, z }
 	local freezeMe -- defined below
+	-- play the current joints as a held pose (sliders call this many times a second: at most ~12 builds a second)
+	local lastPose, posePending = 0, false
+	local function applyPose(now)
+		local char = player.Character
+		if not char then return end
+		if not now and os.clock() - lastPose < 0.08 then
+			if not posePending then
+				posePending = true
+				task.delay(0.09, function() posePending = false applyPose(true) end)
+			end
+			return
+		end
+		lastPose = os.clock()
+		local any = false
+		for _ in pairs(joints) do any = true break end
+		Effects.photoPose(char, any and joints or nil)
+	end
 
 	-- ---------------------------------------------------------------- the interface
 	local gui = Instance.new("ScreenGui")
@@ -368,7 +385,8 @@ function P.start(env)
 		if not char then return end
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		local animate = char:FindFirstChild("Animate")
-		if animate then animate.Disabled = on end
+		-- a held pose keeps the Animate script paused even when you unfreeze
+		if animate and not (not on and Effects.isPosed(char)) then animate.Disabled = on end
 		local animator = hum and hum:FindFirstChildOfClass("Animator")
 		if animator then
 			for _, tr in ipairs(animator:GetPlayingAnimationTracks()) do tr:AdjustSpeed(on and 0 or 1) end
@@ -431,6 +449,8 @@ function P.start(env)
 			btn(l1, T("ph_follow2"), not st.free, function()
 				st.free = false
 				cam.CameraType = Enum.CameraType.Custom
+				local h = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if h and not st.meFrozen then h.Anchored = false end
 				render()
 			end, 0).Size = UDim2.new(0.5, -3, 1, 0)
 			btn(l1, T("ph_free2"), st.free, function()
@@ -452,11 +472,14 @@ function P.start(env)
 				holdBtn(l2, T("ph_down"), function() st.vert = -1 task.delay(0.06, function() st.vert = 0 end) end, 120)
 			end
 		elseif st.tab == "pose" then
+			-- ready-made poses, then fine-tune each joint; the whole pose plays as one held animation
 			local l1 = line(40)
 			for _, name in ipairs(Effects.POSE_LIST) do
-				local b = btn(l1, T("php_" .. name), false, function()
-					joints = {}
-					if player.Character then Effects.pose(player.Character, name) end
+				local b = btn(l1, T("php_" .. name), st.poseName == name, function()
+					st.poseName = name
+					joints = Effects.poseAngles(name)
+					applyPose(true)
+					render()
 				end, 0)
 				b.Size = UDim2.new(1 / #Effects.POSE_LIST, -5, 1, 0)
 				b.TextSize = 12
@@ -469,11 +492,17 @@ function P.start(env)
 			end
 			local j = joints[st.limb] or { 0, 0, 0 }
 			joints[st.limb] = j
-			local function apply() if player.Character then Effects.setJoint(player.Character, st.limb, j[1], j[2], j[3]) end end
 			local fmt = function(v) return math.floor(v) .. "°" end
-			slider(T("ph_bend"), -180, 180, j[1], fmt, function(v) j[1] = v apply() end)
-			slider(T("ph_twist"), -180, 180, j[2], fmt, function(v) j[2] = v apply() end)
-			slider(T("ph_side"), -180, 180, j[3], fmt, function(v) j[3] = v apply() end)
+			slider(T("ph_bend"), -180, 180, j[1], fmt, function(v) j[1] = v applyPose() end)
+			slider(T("ph_twist"), -180, 180, j[2], fmt, function(v) j[2] = v applyPose() end)
+			slider(T("ph_side"), -180, 180, j[3], fmt, function(v) j[3] = v applyPose() end)
+			local l3 = line(40)
+			btn(l3, T("ph_resetPose"), false, function()
+				joints = {}
+				st.poseName = "none"
+				if player.Character then Effects.photoPose(player.Character, nil) end
+				render()
+			end, 0).Size = UDim2.new(1, 0, 1, 0)
 		elseif st.tab == "objects" then
 			UI.text({ Text = T("ph_tapSelect"), Size = UDim2.new(1, 0, 0, 22), LayoutOrder = 0, TextSize = 14, TextColor3 = c.dim, ZIndex = 12, Parent = panel })
 			local l1 = line(44)
@@ -590,8 +619,7 @@ function P.start(env)
 		local h = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 		if h then h.Anchored = false end
 		if player.Character then
-			Effects.pose(player.Character, "none")
-			for _, k in ipairs(Effects.JOINT_LIST) do Effects.setJoint(player.Character, k, 0, 0, 0) end
+			Effects.photoPose(player.Character, nil)
 		end
 		Effects.photo = false
 		Effects.freezeMobs = false
