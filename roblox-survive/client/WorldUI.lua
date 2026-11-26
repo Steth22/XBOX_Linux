@@ -1830,6 +1830,10 @@ function M.start(gui, remotes)
 			stepper(g, T("ad_hp"), { 100, 250, 500, 1000, 5000, 100000 }, ad.hp or 100, function(v) act("admin", "hp", v) end)
 			stepper(g, T("ad_dmg"), { 1, 2, 5, 10, 50, 100, 1000 }, ad.dmg or 1, function(v) act("admin", "dmg", v) end)
 			stepper(g, T("ad_jump"), { 50, 80, 120, 200, 300 }, ad.jump or 50, function(v) act("admin", "jump", v) end)
+			-- night vision on this screen only, from off to full strength
+			stepper(g, T("ad_vision"), { "0%", "25%", "50%", "75%", "100%" }, string.format("%d%%", math.floor((Effects.visionAdmin or 0) * 100 + 0.5)), function(v)
+				Effects.visionAdmin = (tonumber((string.gsub(v, "%%", ""))) or 0) / 100
+			end)
 			section(T("ad_world"))
 			local w = grid()
 			btn(w, T("ad_heal"), c.accent, function() act("admin", "heal") end)

@@ -1128,7 +1128,8 @@ function E.start(remotes)
 				end
 			end
 			cave += ((caveT and 1 or 0) - cave) * math.min(1, dt * 1.6)
-			nv += ((E.vision and 1 or 0) - nv) * math.min(1, dt * 2)
+			-- night vision: the potion gives full strength; the admin can pick any strength (0..1)
+			nv += (math.max(E.vision and 1 or 0, E.visionAdmin or 0) - nv) * math.min(1, dt * 2)
 			if E.photo then continue end -- photo mode sets the light itself
 			local t = Lighting.ClockTime
 			local night = nightFactor(t)
@@ -1162,6 +1163,7 @@ function E.start(remotes)
 				local finish = f.finish * dawn
 				finish = finish + (110 - finish) * night * 0.55 -- you see less at night
 				finish = finish + (85 - finish) * cave
+				finish = finish + (f.finish - finish) * nv * 0.85 -- night vision sees further in the dark
 				finish = finish * (1 - 0.45 * wdim)
 				Lighting.FogStart = f.start * dawn * (1 - cave * 0.8) * (1 - 0.6 * wdim)
 				Lighting.FogEnd = finish
