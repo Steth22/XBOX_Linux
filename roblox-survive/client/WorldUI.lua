@@ -1269,6 +1269,44 @@ function M.start(gui, remotes)
 		lastDsig = dsig
 	end)
 
+	---------------------------------------------------------------- event feed (bottom left, like a game chat)
+	local feedBox = UI.frame({ Size = UDim2.fromOffset(460, 260), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 14, 1, UserInputService.TouchEnabled and -235 or -100), BackgroundTransparency = 1, Parent = root })
+	local fl = UI.list(feedBox, 4)
+	if fl then fl.VerticalAlignment = Enum.VerticalAlignment.Bottom end
+	local feedN = 0
+	local function esc(t) return (tostring(t):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")) end
+	local function nameTag(n) return '<font color="#ffd35a">' .. esc(n) .. "</font>" end
+	local function mobTag(k) return '<font color="#ff8a6a">' .. esc(T("mob_" .. tostring(k))) .. "</font>" end
+	local function feedLine(d)
+		local k, a, b = d.k, d.a, d.b
+		local text
+		if k == "death" then
+			if Bestiary.kinds[b] then text = Locale.f(lang, "f_deathMob", nameTag(a), mobTag(b))
+			elseif type(b) == "string" and b:sub(1, 1) == "@" then text = Locale.f(lang, "f_deathPlayer", nameTag(a), nameTag(b:sub(2)))
+			else text = Locale.f(lang, "f_death", nameTag(a), esc(T("cause_" .. tostring(b)))) end
+		elseif k == "level" then text = Locale.f(lang, "f_level", nameTag(a), tostring(b))
+		elseif k == "medal" then text = Locale.f(lang, "f_medal", nameTag(a), esc(T("biome_" .. tostring(b))))
+		elseif k == "bossSpawn" then text = Locale.f(lang, "f_bossSpawn", mobTag(a))
+		elseif k == "bossDown" then text = Locale.f(lang, "f_bossDown", nameTag(b), mobTag(a))
+		elseif k == "blackMoved" then text = T("f_blackMoved")
+		else text = Locale.f(lang, "f_" .. tostring(k), nameTag(a)) end
+		feedN += 1
+		local line = UI.text({ Text = text, RichText = true, LayoutOrder = feedN, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, TextWrapped = true,
+			TextXAlignment = UI.align(lang), TextSize = 15, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, TextStrokeTransparency = 0.6, Parent = feedBox })
+		UI.new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8), PaddingTop = UDim.new(0, 3), PaddingBottom = UDim.new(0, 3), Parent = line })
+		UI.corner(line, 6)
+		local lines = {}
+		for _, ch in ipairs(feedBox:GetChildren()) do if ch:IsA("TextLabel") then table.insert(lines, ch) end end
+		table.sort(lines, function(x, y) return x.LayoutOrder < y.LayoutOrder end)
+		while #lines > 7 do table.remove(lines, 1):Destroy() end
+		task.delay(9, function()
+			if line.Parent then
+				UI.tween(line, 1, { TextTransparency = 1, BackgroundTransparency = 1, TextStrokeTransparency = 1 })
+				task.delay(1.05, function() line:Destroy() end)
+			end
+		end)
+	end
+
 	local deathShade = nil
 	local function deathScreen(cause)
 		if deathShade then deathShade:Destroy() end
@@ -1307,6 +1345,10 @@ function M.start(gui, remotes)
 		if key == "openShop" then
 			shopId = a or "forest"
 			if state then shopModal() end
+			return
+		end
+		if key == "feed" then
+			if type(a) == "table" then pcall(feedLine, a) end
 			return
 		end
 		if key == "mapData" then

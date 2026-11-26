@@ -198,6 +198,11 @@ ctx.room = Data.room
 ctx.buff = hasBuff
 ctx.push = push
 ctx.notify = notify
+-- the event feed (bottom left, for everyone): joins, deaths, bosses, levels...
+local leaving = {} -- [userId] = "kick" / "ban" so the feed says why someone left
+function ctx.feed(key, a, b, c)
+	remotes.Notify:FireAllClients("feed", { k = key, a = a, b = b, c = c })
+end
 function ctx.broadcast(key, a)
 	for _, pl in ipairs(Players:GetPlayers()) do notify(pl, key, a) end
 end
@@ -224,6 +229,7 @@ function ctx.reward(player, xp, coins)
 	local gained, level = Data.addXp(player, xp or 0)
 	if gained > 0 then
 		notify(player, "levelUp", level)
+		ctx.feed("level", player.DisplayName, level)
 		if player.Character then ctx.fx("levelUp", player.Character) end
 	end
 	push(player)
@@ -287,6 +293,7 @@ function ctx.killed(player, kind)
 		if not room.dex.medals[region] then
 			room.dex.medals[region] = true
 			notify(player, "medalGot", region)
+			ctx.feed("medal", player.DisplayName, region)
 			if player.Character then ctx.fx("levelUp", player.Character) end
 			ctx.reward(player, 250, 400)
 			if not room.dex.neck then
@@ -740,6 +747,7 @@ local function onCharacter(player, char)
 	hum.Health = hum.MaxHealth
 	hum.Died:Connect(function()
 		notify(player, "deathBy", lastHit[player] or "unknown")
+		ctx.feed("death", player.DisplayName, lastHit[player] or "unknown")
 		local rr = Data.room(player)
 		if rr then rr.pos = nil end
 		lastHit[player] = nil
@@ -1180,6 +1188,7 @@ function actions.kick(player, room, uid)
 	local target = uid and Players:GetPlayerByUserId(uid)
 	if not ownerOnly(player) or not target or target == player then return end
 	Data.saveRoom(target)
+	leaving[target.UserId] = "kick"
 	Rooms.toLobby(target, "kicked")
 end
 function actions.ban(player, room, uid)
@@ -1194,6 +1203,7 @@ function actions.ban(player, room, uid)
 	local target = Players:GetPlayerByUserId(uid)
 	if target then
 		Data.saveRoom(target)
+		leaving[target.UserId] = "ban"
 		Rooms.toLobby(target, "banned")
 	end
 end
@@ -1343,7 +1353,8 @@ local function onJoin(player)
 			end)
 		end)
 	end
-	Data.loadRoom(player, serverCode)
+	local loaded = Data.loadRoom(player, serverCode)
+	ctx.feed(loaded and loaded._new and "newPlayer" or "join", player.DisplayName)
 	Rooms.setPresence(player.UserId, serverCode)
 	push(player)
 	spawnCharacter(player)
@@ -1444,6 +1455,9 @@ function World.start(r)
 		beds[player] = nil
 		buffs[player] = nil
 		lastHit[player] = nil
+		local why = leaving[player.UserId]
+		leaving[player.UserId] = nil
+		ctx.feed(why == "ban" and "banned" or (why == "kick" and "kicked" or "leave"), player.DisplayName)
 		placedOnce[player] = nil
 		spawnBed[player] = nil
 		lamp[player] = nil
@@ -1481,7 +1495,7 @@ function World.start(r)
 			if next(sleeping) then pcall(checkSleep) end
 			if tick == 3 or (tick % BLACK_STAY == 0) then
 				local ok, moved = pcall(moveBlack)
-				if ok and moved and tick > 3 then ctx.broadcast("blackMoved") end
+				if ok and moved and tick > 3 then ctx.broadcast("blackMoved") ctx.feed("blackMoved") end
 				if ok and not moved and tick > 3 then tick -= 45 end
 			end
 			if serverCode and tick % 30 == 0 then

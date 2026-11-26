@@ -794,7 +794,10 @@ local function kill(m, s, player)
 			end
 		end
 		if #over > 0 then ctx.drop(s.hrp.Position, over, player.UserId) end
-		if def.boss then ctx.broadcast("bossDown", s.kind) end
+		if def.boss then
+			ctx.broadcast("bossDown", s.kind)
+			if ctx.feed then ctx.feed("bossDown", s.kind, player.DisplayName) end
+		end
 	end
 	ctx.fx("mobDie", s.hrp.Position, s.kind)
 	m:PivotTo(m:GetPivot() * CFrame.Angles(0, 0, math.rad(80)))
@@ -1060,6 +1063,7 @@ local function populate()
 				if m then
 					bossTimer[key] = os.clock()
 					ctx.broadcast("bossSpawn", boss)
+					if ctx.feed then ctx.feed("bossSpawn", boss) end
 					if boss == "alpha" then
 						for _ = 1, 2 do Mobs.spawn("wolf", g + Vector3.new(rng:NextNumber(-8, 8), 0, rng:NextNumber(-8, 8)), levelAt(g)) end
 					end
@@ -1131,6 +1135,7 @@ local function cavePopulate()
 						caveBoss[cave] = os.clock()
 						Mobs.spawn(bossKind, lair, levelAt(lair) + 4, { id = cave, surface = surface })
 						ctx.broadcast("bossSpawn", bossKind)
+						if ctx.feed then ctx.feed("bossSpawn", bossKind) end
 					end
 				end
 			end

@@ -159,6 +159,8 @@ function Data.loadRoom(player, code)
 	elseif not ok then
 		r._noSave = true
 		warn("Room load failed", code, player.UserId, res)
+	else
+		r._new = true -- first time in this room
 	end
 	if player.Parent then
 		rooms[player] = r
