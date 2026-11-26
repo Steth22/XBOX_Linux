@@ -403,11 +403,20 @@ function M.start(gui, remotes)
 	local rebuilding = false
 	local cinematic -- defined with the shop below
 	local mini -- the minimap (built further down)
+	local closeModalNow, modalPanel = nil, nil
 	local function openModal(kind, title, size)
-		if closeModal then closeModal() end
+		-- rebuilding the same window in place: no animation, and the lists keep their scroll position
+		local inPlace = rebuilding and modalKind == kind and modalPanel and modalPanel.Parent
+		local scrolls = {}
+		if inPlace then
+			for _, d in ipairs(modalPanel:GetDescendants()) do
+				if d:IsA("ScrollingFrame") then table.insert(scrolls, d.CanvasPosition) end
+			end
+		end
+		if inPlace and closeModalNow then closeModalNow() elseif closeModal then closeModal() end
 		modalKind = kind
 		local thisKind = kind
-		local content, close, panel = UI.modal(root, title, lang, size, function()
+		local content, close, panel, closeNow = UI.modal(root, title, lang, size, function()
 			closeModal, modalKind = nil, nil
 			pending = nil
 			if press then
@@ -418,8 +427,19 @@ function M.start(gui, remotes)
 			if thisKind == "furnace" then act("closeFurnace") end
 			if thisKind == "craft" then act("closeCraft") end
 			if thisKind == "smith" then act("closeSmith") end
-		end)
-		closeModal = close
+		end, inPlace)
+		closeModal, closeModalNow, modalPanel = close, closeNow, panel
+		if inPlace and #scrolls > 0 then
+			task.defer(function()
+				local k = 0
+				for _, d in ipairs(panel:GetDescendants()) do
+					if d:IsA("ScrollingFrame") then
+						k += 1
+						if scrolls[k] then d.CanvasPosition = scrolls[k] end
+					end
+				end
+			end)
+		end
 		return content, panel
 	end
 
@@ -878,7 +898,7 @@ function M.start(gui, remotes)
 			end
 			local bx = lang == "ar" and 0 or 1
 			UI.button({ Text = btnText, Size = UDim2.fromOffset(116, 42), AnchorPoint = Vector2.new(bx, 0.5), Position = UDim2.new(bx, lang == "ar" and 10 or -10, 0.5, 0), BackgroundColor3 = btnColor, TextSize = 17, ZIndex = 55, Parent = r }, cb)
-			UI.enter(r, n * 0.03, 10)
+			if not rebuilding then UI.enter(r, n * 0.03, 10) end
 		end
 		if shopTab == "buy" then
 			if not state.bag and shopCat == "supplies" and shopId == "forest" then
@@ -1884,7 +1904,7 @@ function M.start(gui, remotes)
 					UI.corner(knob, 14)
 					UI.text({ Text = on and T("pwOn") or T("pwOff"), Size = UDim2.new(1, -40, 1, 0), Position = UDim2.fromOffset(on and 6 or 34, 0), TextSize = 15, TextColor3 = on and c.bg or c.text, ZIndex = 56, Parent = sw })
 				end
-				UI.enter(r, i * 0.05, 10)
+				if not rebuilding then UI.enter(r, i * 0.05, 10) end
 			end
 			return
 		end
@@ -1909,7 +1929,7 @@ function M.start(gui, remotes)
 				act("skill", k)
 			end)
 			Icons.draw("plus", b, 22, can and c.text or c.dim, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
-			UI.enter(r, i * 0.04, 10)
+			if not rebuilding then UI.enter(r, i * 0.04, 10) end
 		end
 	end
 
@@ -2665,7 +2685,11 @@ function M.start(gui, remotes)
 
 	function refreshModal(force)
 		if modalKind == "bag" then
-			if bagShape ~= (tostring(state.bag) .. tostring(state.armor)) then bagModal() else refreshBag() end
+			if bagShape ~= (tostring(state.bag) .. tostring(state.armor)) then
+				rebuilding = true
+				bagModal()
+				rebuilding = false
+			else refreshBag() end
 		elseif modalKind == "furnace" and force and furnaceBagSize ~= tostring(state.bag) then
 			furnaceModal()
 		elseif modalKind == "stash" then
@@ -2680,7 +2704,10 @@ function M.start(gui, remotes)
 			rebuilding = true
 			shopModal()
 			rebuilding = false
-		elseif modalKind == "skills" and force then skillsModal()
+		elseif modalKind == "skills" and force then
+			rebuilding = true
+			skillsModal()
+			rebuilding = false
 		elseif modalKind == "furnace" then refreshFurnace()
 		elseif modalKind == "craft" and force and craftBagSize ~= tostring(state.bag) then craftModal()
 		elseif modalKind == "craft" then refreshCraft()
@@ -2981,8 +3008,8 @@ function M.start(gui, remotes)
 			Icons.draw(s.night and "moon" or "sun", clockIcon, 22, s.night and Color3.fromRGB(200, 210, 255) or c.gold, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5), c.card)
 		end
 		-- slots: only rebuild what changed
-		local parts = { tostring(s.sel), tostring(s.bag), tostring(s.armor), tostring(s.off and (s.off.id .. ":" .. tostring(s.off.d))) }
-		for i, sl in ipairs(s.slots) do parts[#parts + 1] = sl and (sl.id .. ":" .. sl.n .. ":" .. tostring(sl.d)) or "-" end
+		local parts = { tostring(s.sel), tostring(s.bag), tostring(s.armor), tostring(s.off and s.off.id) }
+		for i, sl in ipairs(s.slots) do parts[#parts + 1] = sl and (sl.id .. ":" .. sl.n .. ":" .. tostring(sl.d) .. (sl.e and "*" or "")) or "-" end
 		local sig = table.concat(parts, "|")
 		local sk = {}
 		for _, k in ipairs(Config.SKILLS) do sk[#sk + 1] = tostring(s.skills and s.skills[k] or 0) end

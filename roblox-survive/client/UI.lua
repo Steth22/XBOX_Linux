@@ -160,8 +160,9 @@ local function drawX(parent, color)
 	end
 end
 
--- centered modal. returns content, close(), panel
-function UI.modal(root, title, lang, size, onClose)
+-- centered modal. returns content, close(), panel, closeNow(). `instant`: no opening animation
+-- (used when a window is rebuilt in place, so it doesn't flicker)
+function UI.modal(root, title, lang, size, onClose, instant)
 	local overlay = UI.frame({
 		Name = "Modal", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0),
 		BackgroundTransparency = 1, ZIndex = 50, Active = true, Parent = root,
@@ -173,9 +174,13 @@ function UI.modal(root, title, lang, size, onClose)
 	UI.corner(panel, 18)
 	UI.stroke(panel, UI.c.card2, 2)
 	UI.new("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(205, 212, 208)), Parent = panel })
-	local sc = UI.new("UIScale", { Scale = 0.82, Parent = panel })
-	UI.tween(overlay, 0.2, { BackgroundTransparency = 0.45 })
-	UI.tween(sc, 0.32, { Scale = 1 }, Enum.EasingStyle.Back)
+	local sc = UI.new("UIScale", { Scale = instant and 1 or 0.82, Parent = panel })
+	if instant then
+		overlay.BackgroundTransparency = 0.45
+	else
+		UI.tween(overlay, 0.2, { BackgroundTransparency = 0.45 })
+		UI.tween(sc, 0.32, { Scale = 1 }, Enum.EasingStyle.Back)
+	end
 	UI.text({
 		Text = title, Size = UDim2.new(1, -90, 0, 44), Position = UDim2.fromOffset(18, 10), TextSize = 26, ZIndex = 52,
 		TextXAlignment = UI.align(lang), Parent = panel,
@@ -187,6 +192,13 @@ function UI.modal(root, title, lang, size, onClose)
 		UI.tween(overlay, 0.15, { BackgroundTransparency = 1 })
 		UI.tween(sc, 0.15, { Scale = 0.85 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 		task.delay(0.16, function() overlay:Destroy() end)
+		if onClose then onClose() end
+	end
+	-- gone at once, without the closing animation
+	local function closeNow()
+		if closing then return end
+		closing = true
+		overlay:Destroy()
 		if onClose then onClose() end
 	end
 	local x = UI.button({
@@ -217,7 +229,7 @@ function UI.modal(root, title, lang, size, onClose)
 			GuiService.SelectedObject = x
 		end)
 	end
-	return content, close, panel
+	return content, close, panel, closeNow
 end
 
 function UI.usingGamepad()
