@@ -1007,6 +1007,7 @@ function M.start(gui, remotes)
 	}
 	local ROCK = Color3.fromRGB(34, 32, 36)
 	local cellColor, terrainColor, caveColor -- defined just below
+	local regionLabels
 	-- draws the explored part of a layer into `parent` (px = pixels per map cell).
 	-- Each row is drawn as a few long strips of one colour (not one frame per cell), and only
 	-- rows whose explored cells changed are redrawn, so switching maps stays smooth.
@@ -1129,6 +1130,36 @@ function M.start(gui, remotes)
 		return n > 0 and col:Lerp(Color3.new(1, 1, 1), n) or col:Lerp(Color3.new(0, 0, 0), -n)
 	end
 	local mapCells = {} -- index -> Frame (kept between opens)
+	-- where to write each region's name: the sampled spot of that region closest to its average position
+	local regionCache = nil
+	function regionLabels()
+		if regionCache then return regionCache end
+		local H = Biomes.HALF
+		local pts = {}
+		for gx = 0, 47 do
+			for gz = 0, 47 do
+				local x, z = -H + (gx + 0.5) * (2 * H / 48), -H + (gz + 0.5) * (2 * H / 48)
+				if math.max(math.abs(x), math.abs(z)) < Biomes.SEA - 40 then
+					local b = Biomes.at(x, z)
+					pts[b] = pts[b] or {}
+					table.insert(pts[b], Vector2.new(x, z))
+				end
+			end
+		end
+		regionCache = {}
+		for b, list in pairs(pts) do
+			local sum = Vector2.zero
+			for _, p in ipairs(list) do sum += p end
+			local avg = sum / #list
+			local best, bd = list[1], math.huge
+			for _, p in ipairs(list) do
+				local d = (p - avg).Magnitude
+				if d < bd then best, bd = p, d end
+			end
+			table.insert(regionCache, { b, best.X, best.Y })
+		end
+		return regionCache
+	end
 	local function mapModal(layerOverride)
 		local layer = layerOverride or currentLayer()
 		local content = openModal("map", T("map") .. "  |  " .. T(layer == "under" and "mapCaves" or "mapSurface"), UDim2.fromOffset(580, 650))
@@ -1147,6 +1178,14 @@ function M.start(gui, remotes)
 		local board = UI.frame({ Size = UDim2.fromOffset(SIZE, SIZE), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 26), BackgroundColor3 = Color3.fromRGB(16, 18, 22), ClipsDescendants = true, ZIndex = 53, Parent = content })
 		UI.corner(board, 10)
 		UI.stroke(board, c.card2, 2)
+		-- everything is drawn on a canvas inside the board; zooming scales the canvas, dragging moves it
+		local canvas = UI.frame({ Size = UDim2.fromOffset(SIZE, SIZE), BackgroundTransparency = 1, ZIndex = 53, Parent = board })
+		local zoomScale = UI.new("UIScale", { Scale = 1, Parent = canvas })
+		local fixed = {} -- icons and names that keep their size when zooming
+		local function keepSize(obj)
+			table.insert(fixed, UI.new("UIScale", { Scale = 1 / zoomScale.Scale, Parent = obj }))
+			return obj
+		end
 		local function toMap(x, z)
 			return UDim2.fromOffset((x + H) / (2 * H) * SIZE, (z + H) / (2 * H) * SIZE)
 		end
@@ -1157,7 +1196,7 @@ function M.start(gui, remotes)
 			return ex:sub(i, i) == "1"
 		end
 		-- the explored cells of this layer
-		mapCells = drawLayer(board, cell, layer, 54, {})
+		mapCells = drawLayer(canvas, cell, layer, 54, {})
 		-- the mine rails, where you have been
 		if layer == "under" then
 			for line in string.gmatch(ReplicatedStorage:GetAttribute("RailLines") or "", "[^|]+") do
@@ -1175,7 +1214,7 @@ function M.start(gui, remotes)
 						local pb = Vector2.new((b.X + H) / (2 * H) * SIZE, (b.Y + H) / (2 * H) * SIZE)
 						local d = pb - pa
 						if d.Magnitude > 0.5 then
-							UI.frame({ Size = UDim2.fromOffset(d.Magnitude + 2, 3), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset((pa.X + pb.X) / 2, (pa.Y + pb.Y) / 2), Rotation = math.deg(math.atan2(d.Y, d.X)), BackgroundColor3 = Color3.fromRGB(176, 120, 70), BorderSizePixel = 0, ZIndex = 55, Parent = board })
+							UI.frame({ Size = UDim2.fromOffset(d.Magnitude + 2, 3), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset((pa.X + pb.X) / 2, (pa.Y + pb.Y) / 2), Rotation = math.deg(math.atan2(d.Y, d.X)), BackgroundColor3 = Color3.fromRGB(176, 120, 70), BorderSizePixel = 0, ZIndex = 55, Parent = canvas })
 						end
 					end
 				end
@@ -1183,10 +1222,10 @@ function M.start(gui, remotes)
 		end
 		-- places
 		local function marker(kind, x, z, color, size)
-			local holder = UI.frame({ Size = UDim2.fromOffset(size, size), AnchorPoint = Vector2.new(0.5, 0.5), Position = toMap(x, z), BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.25, ZIndex = 56, Parent = board })
+			local holder = UI.frame({ Size = UDim2.fromOffset(size, size), AnchorPoint = Vector2.new(0.5, 0.5), Position = toMap(x, z), BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.25, ZIndex = 56, Parent = canvas })
 			UI.corner(holder, size / 2)
 			Icons.draw(kind, holder, size * 0.72, color, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
-			return holder
+			return keepSize(holder)
 		end
 		for _, poi in ipairs(mapPoisList) do
 			local def = POI_ICON[poi[1]]
@@ -1195,16 +1234,23 @@ function M.start(gui, remotes)
 			local always = poi[1] == "dwarf" and layer == "under"
 			if def and (poiLayer(poi) == layer or poi[1] == "cave") and (always or explored(poi[2], poi[3])) then marker(def[1], poi[2], poi[3], def[2], always and 28 or 22) end
 		end
+		-- region names, at a spot inside each region near its middle
+		for _, rl in ipairs(regionLabels()) do
+			local lbl = UI.text({ Text = T("biome_" .. rl[1]), Size = UDim2.fromOffset(140, 22), AnchorPoint = Vector2.new(0.5, 0.5), Position = toMap(rl[2], rl[3]), TextSize = 17, TextColor3 = Color3.fromRGB(255, 244, 220), TextTransparency = 0.05, TextStrokeTransparency = 0.25, TextStrokeColor3 = Color3.fromRGB(20, 16, 12), ZIndex = 57, Parent = canvas })
+			keepSize(lbl)
+		end
 		if state.death then
 			marker("close", state.death[1], state.death[2], Color3.fromRGB(255, 70, 60), 24)
 		end
 		-- you (an arrow that turns with you) and the other players
-		local me = UI.frame({ Size = UDim2.fromOffset(16, 16), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, ZIndex = 58, Parent = board })
+		local me = UI.frame({ Size = UDim2.fromOffset(16, 16), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, ZIndex = 58, Parent = canvas })
 		local tip = UI.frame({ Size = UDim2.fromOffset(12, 12), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.62), Rotation = 45, BackgroundColor3 = Color3.fromRGB(80, 200, 255), ZIndex = 58, Parent = me })
 		UI.stroke(tip, Color3.new(1, 1, 1), 2)
 		local nose = UI.frame({ Size = UDim2.fromOffset(6, 10), AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 0.35), BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 59, Parent = me })
 		UI.corner(nose, 3)
-		local meTag = UI.text({ Text = T("leg_you"), Size = UDim2.fromOffset(60, 16), AnchorPoint = Vector2.new(0.5, 1), TextSize = 13, TextColor3 = Color3.fromRGB(120, 210, 255), TextStrokeTransparency = 0.2, ZIndex = 60, Parent = board })
+		keepSize(me)
+		local meTag = UI.text({ Text = T("leg_you"), Size = UDim2.fromOffset(60, 16), AnchorPoint = Vector2.new(0.5, 1), TextSize = 13, TextColor3 = Color3.fromRGB(120, 210, 255), TextStrokeTransparency = 0.2, ZIndex = 60, Parent = canvas })
+		keepSize(meTag)
 		local others = {}
 		-- legend
 		local legend = UI.frame({ Size = UDim2.new(1, 0, 0, 34), ClipsDescendants = false, Position = UDim2.new(0, 0, 0, SIZE + 34), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
@@ -1218,6 +1264,94 @@ function M.start(gui, remotes)
 			UI.corner(ic, 12)
 			Icons.draw(l[1], ic, 17, l[2], UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 			UI.text({ Text = T(l[3]), Size = UDim2.new(1, -30, 1, 0), Position = UDim2.fromOffset(30, 0), TextXAlignment = Enum.TextXAlignment.Left, TextSize = 14, ZIndex = 54, Parent = item })
+		end
+		-- zoom (two fingers or the mouse wheel) and drag to move around
+		local zoom = 1
+		local pan = Vector2.zero
+		local function apply()
+			zoom = math.clamp(zoom, 1, 5)
+			local maxOff = SIZE * zoom - SIZE
+			pan = Vector2.new(math.clamp(pan.X, -maxOff, 0), math.clamp(pan.Y, -maxOff, 0))
+			zoomScale.Scale = zoom
+			canvas.Position = UDim2.fromOffset(pan.X, pan.Y)
+			for _, sc in ipairs(fixed) do if sc.Parent then sc.Scale = 1 / zoom end end
+		end
+		-- zoom keeping the point under `at` (board pixels) in place
+		local function zoomAt(newZoom, at)
+			newZoom = math.clamp(newZoom, 1, 5)
+			local world = (at - pan) / zoom
+			zoom = newZoom
+			pan = at - world * zoom
+			apply()
+		end
+		local dragging, lastPos = nil, nil
+		local conns = {}
+		table.insert(conns, board.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				if not dragging then dragging, lastPos = input, Vector2.new(input.Position.X, input.Position.Y) end
+			end
+		end))
+		table.insert(conns, UserInputService.InputChanged:Connect(function(input)
+			if dragging and (input == dragging or (input.UserInputType == Enum.UserInputType.MouseMovement and dragging.UserInputType == Enum.UserInputType.MouseButton1)) then
+				local p = Vector2.new(input.Position.X, input.Position.Y)
+				local sc = board.AbsoluteSize.X / SIZE -- screen pixels per board pixel
+				pan += (p - lastPos) / math.max(sc, 0.01)
+				lastPos = p
+				apply()
+			elseif input.UserInputType == Enum.UserInputType.MouseWheel then
+				local m = UserInputService:GetMouseLocation()
+				local rel = (Vector2.new(m.X, m.Y) - board.AbsolutePosition) / math.max(board.AbsoluteSize.X / SIZE, 0.01)
+				if rel.X >= 0 and rel.Y >= 0 and rel.X <= SIZE and rel.Y <= SIZE then zoomAt(zoom * (input.Position.Z > 0 and 1.25 or 0.8), rel) end
+			end
+		end))
+		table.insert(conns, UserInputService.InputEnded:Connect(function(input)
+			if dragging and (input == dragging or input.UserInputType == Enum.UserInputType.MouseButton1) then dragging = nil end
+		end))
+		local pinchStart = nil
+		table.insert(conns, UserInputService.TouchPinch:Connect(function(points, scale, _, st)
+			if st == Enum.UserInputState.Begin then pinchStart = zoom end
+			if pinchStart and #points >= 2 then
+				dragging = nil
+				local mid = (points[1] + points[2]) / 2
+				local rel = (mid - board.AbsolutePosition) / math.max(board.AbsoluteSize.X / SIZE, 0.01)
+				zoomAt(pinchStart * scale, rel)
+			end
+			if st == Enum.UserInputState.End then pinchStart = nil end
+		end))
+		-- controller: R2 zooms in, L2 zooms out (as hard as you press), the right stick moves the map
+		local pad = { r2 = 0, l2 = 0, stick = Vector2.zero }
+		table.insert(conns, UserInputService.InputChanged:Connect(function(input)
+			if input.KeyCode == Enum.KeyCode.ButtonR2 then pad.r2 = input.Position.Z
+			elseif input.KeyCode == Enum.KeyCode.ButtonL2 then pad.l2 = input.Position.Z
+			elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then pad.stick = Vector2.new(input.Position.X, -input.Position.Y) end
+		end))
+		table.insert(conns, UserInputService.InputBegan:Connect(function(input)
+			if input.KeyCode == Enum.KeyCode.ButtonR2 then pad.r2 = math.max(pad.r2, 1) end
+			if input.KeyCode == Enum.KeyCode.ButtonL2 then pad.l2 = math.max(pad.l2, 1) end
+		end))
+		table.insert(conns, UserInputService.InputEnded:Connect(function(input)
+			if input.KeyCode == Enum.KeyCode.ButtonR2 then pad.r2 = 0 end
+			if input.KeyCode == Enum.KeyCode.ButtonL2 then pad.l2 = 0 end
+			if input.KeyCode == Enum.KeyCode.Thumbstick2 then pad.stick = Vector2.zero end
+		end))
+		table.insert(conns, RunService.RenderStepped:Connect(function(dt)
+			local z = pad.r2 - pad.l2
+			if math.abs(z) > 0.05 then zoomAt(zoom * (1 + z * 1.6 * dt), Vector2.new(SIZE / 2, SIZE / 2)) end
+			if pad.stick.Magnitude > 0.15 then
+				pan -= pad.stick * 260 * dt
+				apply()
+			end
+		end))
+		board.Destroying:Connect(function() for _, cn in ipairs(conns) do cn:Disconnect() end end)
+		-- open zoomed in a little, centred on you
+		do
+			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				zoom = 2
+				local me0 = Vector2.new((hrp.Position.X + H) / (2 * H) * SIZE, (hrp.Position.Z + H) / (2 * H) * SIZE)
+				pan = Vector2.new(SIZE / 2, SIZE / 2) - me0 * zoom
+			end
+			apply()
 		end
 		task.spawn(function()
 			while modalKind == "map" and board.Parent do
@@ -1234,10 +1368,11 @@ function M.start(gui, remotes)
 					if r then
 						local dot = others[pl]
 						if not dot then
-							dot = UI.frame({ Size = UDim2.fromOffset(12, 12), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.fromRGB(120, 255, 140), ZIndex = 57, Parent = board })
+							dot = UI.frame({ Size = UDim2.fromOffset(12, 12), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.fromRGB(120, 255, 140), ZIndex = 57, Parent = canvas })
 							UI.corner(dot, 6)
 							UI.stroke(dot, Color3.new(0, 0, 0), 1.5)
 							UI.text({ Text = pl.DisplayName, Size = UDim2.fromOffset(120, 16), AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -2), TextSize = 13, TextColor3 = Color3.fromRGB(170, 255, 180), TextStrokeTransparency = 0.2, ZIndex = 60, Parent = dot })
+							keepSize(dot)
 							others[pl] = dot
 						end
 						dot.Position = toMap(r.Position.X, r.Position.Z)
