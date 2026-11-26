@@ -185,7 +185,7 @@ function M.start(gui, remotes)
 		if pr.button.Parent then pr.button.BackgroundTransparency = 0 end
 		setHover(nil)
 		if dropZone and dropZone.Parent then UI.tween(dropZone, 0.15, { BackgroundTransparency = 0.35 }) end
-		if modalKind == "bag" and bagPanel and bagPanel.Parent and not inside(bagPanel, p) then
+		if modalKind == "bag" and bagPanel and bagPanel.Parent and not inside(bagPanel, p) and pr.index < 100 then
 			act("discard", pr.index)
 			pending = nil
 			return
@@ -204,7 +204,7 @@ function M.start(gui, remotes)
 		if t == Enum.UserInputType.MouseMovement or (t == Enum.UserInputType.Touch and input == press.input) then
 			local pos = Vector2.new(input.Position.X, input.Position.Y)
 			if not press.dragging and (pos - press.start).Magnitude > 12 then
-				local data = state and state.slots[press.index]
+				local data = state and (press.index == 100 and state.armor and { id = state.armor, n = 1 } or press.index == 101 and state.off or state.slots[press.index])
 				if not data then press = nil return end
 				startDrag(data)
 			end
@@ -389,9 +389,10 @@ function M.start(gui, remotes)
 	end
 
 	local bagW, bagInfo, bagShape = {}, nil, ""
+	local bagEq = {}
 	local refreshBag
 	local function bagModal()
-		local content, panel = openModal("bag", T("bag"), UDim2.fromOffset(500, 520))
+		local content, panel = openModal("bag", T("bag"), UDim2.fromOffset(500, 540))
 		bagPanel, bagW = panel, {}
 		bagShape = tostring(state.bag) .. tostring(state.armor)
 		UI.text({ Text = T("dropOutside"), Size = UDim2.new(1, 0, 0, 22), TextSize = 14, TextColor3 = c.dim, ZIndex = 53, Parent = content })
@@ -429,7 +430,38 @@ function M.start(gui, remotes)
 				Icons.draw("lock", shade, 22, c.dim, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 			end
 		end
-		bagInfo = UI.frame({ Size = UDim2.new(1, 0, 0, 136), Position = UDim2.fromOffset(0, 98 + 3 * 66 + 6), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		-- armor and off-hand slots, same look as the bag slots, with a label under each
+		bagEq = {}
+		local eqY = 98 + 3 * 66 + 8
+		for k, info in ipairs({ { 100, "armorLbl", "shield" }, { 101, "offhand", "flame" } }) do
+			local holder = UI.frame({ Size = UDim2.fromOffset(110, 84), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(k == 1 and 0.27 or 0.73, 0, 0, eqY), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+			local w = slotWidget(holder, 60, 0)
+			w.button.AnchorPoint = Vector2.new(0.5, 0)
+			w.button.Position = UDim2.fromScale(0.5, 0)
+			w.button.ZIndex = 54
+			local ghostIcon = UI.frame({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 4, Parent = w.button })
+			Icons.draw(info[3], ghostIcon, 26, c.card2, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+			w.empty = ghostIcon
+			UI.text({ Text = T(info[2]), Size = UDim2.new(1, 0, 0, 20), Position = UDim2.fromOffset(0, 63), TextSize = 13, TextColor3 = c.dim, ZIndex = 54, Parent = holder })
+			local idx = info[1]
+			register(w, idx, function()
+				-- tap: put the selected bag item here, or take this item back out
+				if pending and pending < 100 then
+					act("move", pending, idx)
+					pending = nil
+				elseif (idx == 100 and state.armor) or (idx == 101 and state.off) then
+					act(idx == 100 and "unequipArmor" or "unequipOff")
+				end
+				refreshBag()
+			end)
+			local base = w.set
+			w.set = function(data, sel)
+				base(data, sel)
+				ghostIcon.Visible = data == nil
+			end
+			bagEq[idx] = w
+		end
+		bagInfo = UI.frame({ Size = UDim2.new(1, 0, 0, 56), Position = UDim2.fromOffset(0, eqY + 88), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
 		refreshBag()
 	end
 
@@ -441,36 +473,14 @@ function M.start(gui, remotes)
 		if not bagInfo or not bagInfo.Parent then return end
 		bagInfo:ClearAllChildren()
 		local ar = lang == "ar"
-		-- equipment: the armor you wear and what your off hand (left hand) holds
-		local equip = UI.frame({ Size = UDim2.new(1, 0, 0, 68), BackgroundTransparency = 1, ZIndex = 53, Parent = bagInfo })
-		local function equipBox(order, title, id, sub, onTake)
-			local box = UI.frame({ Size = UDim2.new(0.5, -5, 1, 0), Position = UDim2.new(order == 1 and (ar and 0.5 or 0) or (ar and 0 or 0.5), order == 1 and (ar and 5 or 0) or (ar and 0 or 5), 0, 0), BackgroundColor3 = c.card, ZIndex = 53, Parent = equip })
-			UI.corner(box, 12)
-			UI.stroke(box, id and c.gold or c.card2, 1.5)
-			local slot = UI.frame({ Size = UDim2.fromOffset(56, 56), AnchorPoint = Vector2.new(ar and 1 or 0, 0.5), Position = UDim2.new(ar and 1 or 0, ar and -6 or 6, 0.5, 0), BackgroundColor3 = c.bg, ZIndex = 54, Parent = box })
-			UI.corner(slot, 10)
-			if id then
-				ItemView.new(slot, id, UDim2.fromScale(1, 1), nil, 55)
-			else
-				Icons.draw(order == 1 and "shield" or "flame", slot, 26, c.card2, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
-			end
-			local tx = ar and -68 or 68
-			UI.text({ Text = title, Size = UDim2.new(1, -150, 0, 18), Position = UDim2.new(ar and 1 or 0, tx, 0, 8), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 13, TextColor3 = c.dim, ZIndex = 54, Parent = box })
-			UI.text({ Text = id and Items.name(id, lang) or T("empty"), Size = UDim2.new(1, -150, 0, 20), Position = UDim2.new(ar and 1 or 0, tx, 0, 26), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextTruncate = Enum.TextTruncate.AtEnd, TextSize = 15, TextColor3 = id and c.text or c.dim, ZIndex = 54, Parent = box })
-			if sub then
-				UI.text({ Text = sub, Size = UDim2.new(1, -150, 0, 16), Position = UDim2.new(ar and 1 or 0, tx, 0, 46), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 12, TextColor3 = c.gold, ZIndex = 54, Parent = box })
-			end
-			if id then
-				UI.button({ Text = T("unequip"), Size = UDim2.fromOffset(72, 34), AnchorPoint = Vector2.new(ar and 0 or 1, 0.5), Position = UDim2.new(ar and 0 or 1, ar and 6 or -6, 0.5, 0), BackgroundColor3 = c.card2, TextColor3 = c.text, TextSize = 13, ZIndex = 55, Parent = box }, onTake)
-			end
+		-- equipment slots (100 = armor, 101 = off hand); drag items in and out like any bag slot
+		if bagEq[100] and bagEq[100].button.Parent then
+			bagEq[100].set(state.armor and { id = state.armor, n = 1 } or nil, pending == 100)
+			bagEq[101].set(state.off or nil, pending == 101)
 		end
-		local armorDef = state.armor and Items.get(state.armor)
-		equipBox(1, T("armorLbl"), state.armor or nil, armorDef and armorDef.reduce and (T("st_armor") .. " " .. math.floor(armorDef.reduce * 100) .. "%") or nil, function() act("unequipArmor") end)
-		local off = state.off
-		equipBox(2, T("offhand"), off and off.id or nil, off and off.d and string.format("%d:%02d", off.d // 60, off.d % 60) or nil, function() act("unequipOff") end)
 		local d = pending and state.slots[pending]
 		if pending and not d then pending = nil end
-		local below = UI.frame({ Size = UDim2.new(1, 0, 0, 60), Position = UDim2.fromOffset(0, 76), BackgroundTransparency = 1, ZIndex = 53, Parent = bagInfo })
+		local below = UI.frame({ Size = UDim2.new(1, 0, 0, 56), Position = UDim2.fromOffset(0, 0), BackgroundTransparency = 1, ZIndex = 53, Parent = bagInfo })
 		if d then
 			local row = UI.frame({ Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 8), BackgroundTransparency = 1, ZIndex = 53, Parent = below })
 			UI.list(row, 8, Enum.FillDirection.Horizontal)

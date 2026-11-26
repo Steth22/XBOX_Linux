@@ -1150,8 +1150,74 @@ local actions = {}
 function actions.select(player, room, i) select(player, i) end
 function actions.shoot(player, room, i, dir) shoot(player, tonumber(i), dir) end
 
+-- equipment "slots" in the bag window: 100 = armor, 101 = off hand
+local EQ_ARMOR, EQ_OFF = 100, 101
+local function wearArmor(player, id)
+	local char = player.Character
+	if not char then return end
+	local def = id and Items.get(id)
+	if def then Appearance.armor(char, def.color, def.mat, id) else Appearance.armor(char, nil) end
+	applyStats(player)
+end
 function actions.move(player, room, a, b)
-	if Inventory.move(room.inv, tonumber(a), tonumber(b)) then revalidate(player) end
+	a, b = tonumber(a), tonumber(b)
+	if not a or not b then return end
+	local inv = room.inv
+	local function slotOk(i) return i >= 1 and i <= Config.HOTBAR + Config.BAG and Inventory.usable(inv, i) end
+	if b == EQ_ARMOR or b == EQ_OFF then
+		-- bag slot -> equipment
+		if not slotOk(a) then return end
+		local sl = inv.slots[a]
+		local d = sl and Items.get(sl.id)
+		if not d then return end
+		if b == EQ_ARMOR then
+			if d.kind ~= "armor" then notify(player, "wrongSlot") return end
+			local old = inv.armor
+			inv.armor = sl.id
+			inv.slots[a] = old and { id = old, n = 1 } or false
+			wearArmor(player, inv.armor)
+			notify(player, "armorOn")
+		else
+			if d.kind ~= "light" then notify(player, "wrongSlot") return end
+			local old = inv.off
+			inv.off = { id = sl.id, n = 1, d = sl.d }
+			if sl.n > 1 then
+				sl.n -= 1
+				if old and Inventory.add(inv, old.id, 1, old.d) > 0 then inv.off = old sl.n += 1 notify(player, "bagFull") push(player) return end
+			else
+				inv.slots[a] = old and { id = old.id, n = 1, d = old.d } or false
+			end
+			lamp[player] = true
+			setLamp(player, true)
+		end
+		if selected[player] == a then select(player, 0) else revalidate(player) end
+		return
+	end
+	if a == EQ_ARMOR or a == EQ_OFF then
+		-- equipment -> a bag slot (empty, or holding something that fits the same place)
+		if not slotOk(b) then return end
+		local there = inv.slots[b]
+		local td = there and Items.get(there.id)
+		if a == EQ_ARMOR then
+			if not inv.armor then return end
+			if there and not (td and td.kind == "armor") then return end
+			local old = inv.armor
+			inv.armor = there and there.id or false
+			inv.slots[b] = { id = old, n = 1 }
+			wearArmor(player, inv.armor or nil)
+		else
+			if not inv.off then return end
+			if there and not (td and td.kind == "light" and there.n == 1) then return end
+			local old = inv.off
+			inv.off = there and { id = there.id, n = 1, d = there.d } or false
+			inv.slots[b] = { id = old.id, n = 1, d = old.d }
+			lamp[player] = inv.off and true or nil
+			setLamp(player, inv.off ~= false)
+		end
+		revalidate(player)
+		return
+	end
+	if Inventory.move(inv, a, b) then revalidate(player) end
 end
 
 function actions.discard(player, room, i, count)

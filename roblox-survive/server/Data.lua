@@ -11,7 +11,7 @@ local Data = {}
 
 local profileStore = DataStoreService:GetDataStore("Profiles_v1")
 local roomStore = DataStoreService:GetDataStore("RoomPlayers_v1")
-local board = DataStoreService:GetOrderedDataStore("GlobalXP_v2")
+local board = DataStoreService:GetOrderedDataStore("GlobalXP_v1")
 
 local profiles = {} -- [Player] = profile
 local rooms = {} -- [Player] = room data
@@ -53,8 +53,13 @@ function Data.loadProfile(player)
 	if ok and type(res) == "table" then
 		p.lang = (res.lang == "en") and "en" or "ar"
 		p.look = Appearance.sanitize(res.look)
-		-- a new season starts everyone's ranking XP from zero
-		p.lifeXp = res.season == Config.XP_SEASON and math.max(0, tonumber(res.lifeXp) or 0) or 0
+		p.lifeXp = math.max(0, tonumber(res.lifeXp) or 0)
+		-- undo the short-lived ranking wipe (season 2): add back what the ranking held before it
+		if res.season == 2 then
+			local okB, before = pcall(function() return board:GetAsync(tostring(player.UserId)) end)
+			if okB and tonumber(before) then p.lifeXp += math.max(0, tonumber(before)) end
+			p._migrated = true
+		end
 		if type(res.owned) == "table" then
 			for _, c in ipairs(res.owned) do
 				if type(c) == "string" and #p.owned < 5 then table.insert(p.owned, c) end
@@ -74,6 +79,11 @@ function Data.loadProfile(player)
 	if player.Parent then
 		profiles[player] = p
 		if p.lifeXp > 0 then boardDirty[player] = true end
+	end
+	-- write the repaired value straight away so a second server can't add it again
+	if p._migrated and player.Parent then
+		p._migrated = nil
+		Data.saveProfile(player)
 	end
 	return p
 end
