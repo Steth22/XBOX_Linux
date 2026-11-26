@@ -15,6 +15,7 @@ Best.kinds = {
 	monkey = "peaceful", tiger = "predator", snake = "predator", gorilla = "boss",
 	lavalizard = "predator", ashwolf = "predator", magma = "boss",
 	bat = "cave", crawler = "cave", ghoul = "cave", golem = "boss",
+	spiderqueen = "boss", giantworm = "boss", mineguardian = "boss",
 	bandit = "outlaw", banditlord = "boss",
 }
 
@@ -28,7 +29,7 @@ Best.regions = {
 	{ key = "beach", kinds = { "turtle", "crab", "zombie", "crabking" } },
 	{ key = "jungle", kinds = { "monkey", "snake", "tiger", "spider", "gorilla" } },
 	{ key = "volcano", kinds = { "lavalizard", "ashwolf", "zombie", "magma" } },
-	{ key = "caves", kinds = { "bat", "crawler", "ghoul", "golem" } },
+	{ key = "caves", kinds = { "bat", "crawler", "ghoul", "golem", "spiderqueen", "giantworm", "mineguardian" } },
 	{ key = "bandits", kinds = { "bandit", "banditlord" } },
 }
 

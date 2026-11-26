@@ -74,6 +74,9 @@ I.defs.magma_blade = { ar = "سيف الحمم", en = "Magma Blade", kind = "too
 I.defs.lava_cloak = { ar = "عباءة الحمم", en = "Lava Cloak", kind = "armor", stack = 1, reduce = 0.25, cool = 24, buy = 900, color = Color3.fromRGB(90, 40, 30), mat = Enum.Material.Fabric }
 I.defs.jungle_vest = { ar = "سترة الأدغال", en = "Jungle Vest", kind = "armor", stack = 1, reduce = 0.22, cool = 12, buy = 520, color = Color3.fromRGB(70, 100, 60), mat = Enum.Material.Fabric }
 
+-- the underground
+I.defs.ancient_key = { ar = "مفتاح قديم", en = "Ancient Key", kind = "res", stack = 5 }
+
 -- light: burns only while held, `dur` = seconds of light left
 I.defs.lantern = { ar = "مصباح", en = "Lantern", kind = "light", stack = 1, dur = 720, buy = 1000 }
 -- secret market goods (never below 300)
@@ -86,6 +89,7 @@ I.potions = {
 	{ id = "potion_stone", ar = "جرعة الحصانة", en = "Stoneskin Potion", buff = "stone", time = 90, buy = 500, color = Color3.fromRGB(160, 150, 140) },
 	{ id = "potion_vision", ar = "جرعة الرؤية الليلية", en = "Night Vision Potion", buff = "vision", time = 240, buy = 380, color = Color3.fromRGB(190, 120, 255) },
 	{ id = "potion_warmth", ar = "جرعة الدفء", en = "Warmth Potion", buff = "warmth", time = 300, buy = 300, color = Color3.fromRGB(255, 160, 60) },
+	{ id = "potion_antidote", ar = "جرعة مضاد السموم", en = "Antidote Potion", buff = "antidote", time = 240, buy = 320, color = Color3.fromRGB(150, 230, 80) },
 }
 for _, p in ipairs(I.potions) do
 	I.defs[p.id] = { ar = p.ar, en = p.en, kind = "potion", stack = 5, buff = p.buff, time = p.time, buy = p.buy, color = p.color }
@@ -133,6 +137,11 @@ I.shops = {
 		{ key = "tools", ids = { "diamond_pickaxe", "diamond_axe" } },
 		{ key = "supplies", ids = { "bandage", "lantern" } },
 	},
+	-- dwarf traders deep underground: mining gear (and they pay more for ores)
+	dwarf = {
+		{ key = "tools", ids = { "iron_pickaxe", "diamond_pickaxe", "war_hammer" } },
+		{ key = "supplies", ids = { "lantern", "dynamite", "potion_antidote", "bandage", "campfire" } },
+	},
 	-- village traders: everyday goods
 	village = {
 		{ key = "supplies", ids = { "berries", "coconut", "bandage", "campfire", "trap", "lantern" } },
@@ -142,7 +151,7 @@ I.shops = {
 	-- the secret trader: open day and night, moves around the map
 	black = {
 		{ key = "special", ids = { "bed", "shadow_blade", "lantern" } },
-		{ key = "potions", ids = { "potion_speed", "potion_strength", "potion_regen", "potion_stone", "potion_vision", "potion_warmth" } },
+		{ key = "potions", ids = { "potion_speed", "potion_strength", "potion_regen", "potion_stone", "potion_vision", "potion_warmth", "potion_antidote" } },
 	},
 }
 function I.inShop(shop, id)
@@ -505,6 +514,12 @@ local function gemSpec(c1, c2, mat)
 		P(Vector3.new(0.3, 0.6, 0.3), CFrame.new(0.05, -0.25, 0.42) * A(r(25), r(45), 0), c2, mat),
 		P(Vector3.new(1.3, 0.3, 1.0), CFrame.new(0, -0.55, 0), Color3.fromRGB(90, 88, 96), Enum.Material.Slate) }
 end
+SPECS.ancient_key = { P(Vector3.new(0.22, 0.22, 2.0), CFrame.new(0, 0, 0.2), Color3.fromRGB(214, 172, 74), Enum.Material.Metal),
+	P(Vector3.new(0.18, 1.0, 1.0), CFrame.new(0, 0, -1.0) * A(0, r(90), 0), Color3.fromRGB(214, 172, 74), Enum.Material.Metal, CYL),
+	P(Vector3.new(0.2, 0.5, 0.5), CFrame.new(0, 0, -1.0) * A(0, r(90), 0), Color3.fromRGB(60, 50, 40), Enum.Material.Metal, CYL),
+	P(Vector3.new(0.2, 0.5, 0.2), CFrame.new(0, -0.3, 0.95), Color3.fromRGB(214, 172, 74), Enum.Material.Metal),
+	P(Vector3.new(0.2, 0.35, 0.2), CFrame.new(0, -0.24, 0.6), Color3.fromRGB(214, 172, 74), Enum.Material.Metal),
+	P(Vector3.new(0.3, 0.3, 0.3), CFrame.new(0, 0, -1.0), Color3.fromRGB(90, 230, 200), Enum.Material.Neon, BALL) }
 SPECS.crystal = gemSpec(Color3.fromRGB(150, 110, 255), Color3.fromRGB(190, 150, 255), Enum.Material.Glass)
 SPECS.obsidian = gemSpec(Color3.fromRGB(40, 30, 55), Color3.fromRGB(70, 50, 90), Enum.Material.Glass)
 

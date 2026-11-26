@@ -46,6 +46,13 @@ local function materials(biome, h, wx, wz)
 	end
 end
 
+-- rock and cave floors under each region (the underground layer)
+local UGWALL = { forest = Enum.Material.Rock, hills = Enum.Material.Rock, mountains = Enum.Material.Slate, snow = Enum.Material.Glacier,
+	desert = Enum.Material.Sandstone, jungle = Enum.Material.Rock, volcano = Enum.Material.Basalt, beach = Enum.Material.Limestone }
+local UGFLOOR = { forest = Enum.Material.Ground, hills = Enum.Material.Ground, mountains = Enum.Material.Slate, snow = Enum.Material.Snow,
+	desert = Enum.Material.Sand, jungle = Enum.Material.Mud, volcano = Enum.Material.Basalt, beach = Enum.Material.Sand }
+Terrain:SetMaterialColor(Enum.Material.Limestone, Color3.fromRGB(206, 200, 178))
+
 if XFROM == -HALF // RES then Terrain:Clear() end
 for cx = XFROM, XTO - 1, CH do
 	for cz = VZ0, VZ1, CH do
@@ -57,11 +64,23 @@ for cx = XFROM, XTO - 1, CH do
 			for iz = cz, z1 do
 				local wx, wz = ix * RES + RES / 2, iz * RES + RES / 2
 				local h, biome = heightB(wx, wz)
-				cols[ix][iz] = { h = h, biome = biome, wx = wx, wz = wz }
+				local shapes = UG.column(wx, wz)
+				local ylo, yhi = 1e9, -1e9
+				if shapes then
+					for _, sh in ipairs(shapes) do
+						if sh.cav then
+							ylo, yhi = math.min(ylo, sh.cav.y - sh.cav.ry - 6), math.max(yhi, sh.cav.y + sh.cav.ry + 6)
+						else
+							ylo = math.min(ylo, math.min(sh.a.Y, sh.b.Y) - sh.r - 6)
+							yhi = math.max(yhi, math.max(sh.a.Y, sh.b.Y) + sh.r + 6)
+						end
+					end
+				end
+				cols[ix][iz] = { h = h, biome = biome, wx = wx, wz = wz, shapes = shapes, ylo = ylo, yhi = yhi, under = Biomes.at(wx, wz) }
 				if h > maxH then maxH = h end
 			end
 		end
-		local VY0, VY1 = -4, math.ceil(maxH / RES) + 1
+		local VY0, VY1 = -36, math.ceil(maxH / RES) + 1
 		local mats, occ = {}, {}
 		for ix = cx, x1 do
 			local mx, ox = {}, {}
@@ -72,15 +91,38 @@ for cx = XFROM, XTO - 1, CH do
 			for iz = cz, z1 do
 				local c = cols[ix][iz]
 				local top, sub, deep = materials(c.biome, c.h, c.wx, c.wz)
+				local wallM, floorM = UGWALL[c.under] or Enum.Material.Rock, UGFLOOR[c.under] or Enum.Material.Ground
 				for iy = VY0, VY1 do
 					local y0 = iy * RES
+					local yc = y0 + RES / 2
 					local solid = math.clamp((c.h - y0) / RES, 0, 1)
+					if iy == VY0 then solid = 1 end
 					local m, o = Enum.Material.Air, 0
-					if solid > 0 then
-						o = solid
-						if c.h - y0 <= RES * 1.2 then m = top
+					-- caves cut into the rock (and through the surface at the entrances)
+					local f, cav = -99, nil
+					if c.shapes and yc > c.ylo and yc < c.yhi then f, cav = UG.field(c.wx, yc, c.wz, c.shapes) end
+					local rockOcc = f > -2 and math.clamp(0.5 - f / 3, 0, 1) or 1
+					if iy == VY0 then rockOcc = 1 end
+					if solid > 0 and rockOcc > 0.04 then
+						o = math.min(solid, rockOcc)
+						if yc < -16 then
+							m = wallM
+							if f > -5 and c.shapes then
+								local fa, cavA = UG.field(c.wx, yc + RES, c.wz, c.shapes)
+								if fa > 0 then
+									m = floorM
+									local cc = cavA or cav
+									if cc and cc.pool and (Vector3.new(c.wx - cc.pool.x, 0, c.wz - cc.pool.z)).Magnitude < cc.pool.r then m = Enum.Material.CrackedLava end
+								end
+							elseif c.under ~= "snow" and math.noise(c.wx / 40, yc / 40, c.wz / 40) > 0.35 then
+								m = Enum.Material.Slate
+							end
+						elseif c.h - y0 <= RES * 1.2 then m = top
 						elseif c.h - y0 <= RES * 3.2 then m = sub
 						else m = deep end
+					elseif solid > 0 then
+						-- carved: air, or an underground lake
+						if cav and cav.water and yc < cav.water then m, o = Enum.Material.Water, 1 end
 					elseif y0 < WATER then
 						if c.biome == "snow" then
 							m = Enum.Material.Glacier -- frozen ponds

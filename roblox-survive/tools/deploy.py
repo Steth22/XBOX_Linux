@@ -24,6 +24,7 @@ FILES = [
  ("ServerScriptService/Services/Loot","ModuleScript","server/Loot.lua"),
  ("ServerScriptService/Services/Survival","ModuleScript","server/Survival.lua"),
  ("ServerScriptService/Services/Villages","ModuleScript","server/Villages.lua"),
+ ("ServerScriptService/Services/Underground","ModuleScript","server/Underground.lua"),
  ("ServerScriptService/Services/World","ModuleScript","server/World.lua"),
  ("ServerScriptService/Main","Script","server/Main.server.lua"),
  ("StarterPlayer/StarterPlayerScripts/Client","LocalScript","client/Client.client.lua"),

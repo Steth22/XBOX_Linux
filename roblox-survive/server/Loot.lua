@@ -11,6 +11,9 @@ local TABLES = {
 	cabin = { coins = { 5, 20 }, items = {
 		{ "bandage", 1, 2, 0.5 }, { "arrow", 5, 10, 0.35 }, { "meat_cooked", 1, 2, 0.5 },
 		{ "wood_sword", 1, 1, 0.12 }, { "bow", 1, 1, 0.07 }, { "trap", 1, 1, 0.2 }, { "campfire", 1, 1, 0.3 } } },
+	vault = { coins = { 400, 900 }, items = {
+		{ "diamond", 2, 5, 1 }, { "gold", 4, 10, 1 }, { "obsidian", 2, 4, 0.8 }, { "shadow_blade", 1, 1, 0.15 },
+		{ "magma_blade", 1, 1, 0.15 }, { "potion_strength", 1, 2, 0.6 }, { "potion_stone", 1, 2, 0.5 }, { "diamond_armor", 1, 1, 0.12 } } },
 	house = { coins = { 3, 12 }, items = {
 		{ "berries", 2, 5, 0.6 }, { "bandage", 1, 1, 0.3 }, { "meat_cooked", 1, 2, 0.4 }, { "wood", 4, 10, 0.5 },
 		{ "arrow", 4, 8, 0.25 }, { "campfire", 1, 1, 0.2 }, { "coconut", 1, 2, 0.15 } } },

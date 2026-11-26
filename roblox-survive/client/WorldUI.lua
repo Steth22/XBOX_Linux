@@ -543,7 +543,7 @@ function M.start(gui, remotes)
 			-- the trader nearest to the player (camp, outposts or the secret markets)
 			local me = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 			local hrp, best
-			for _, folderName in ipairs({ "Camp", "Outposts", "BlackMarkets", "Villages" }) do
+			for _, folderName in ipairs({ "Camp", "Outposts", "BlackMarkets", "Villages", "UnderCamps" }) do
 				local f = workspace:FindFirstChild(folderName)
 				if f then
 					for _, d in ipairs(f:GetDescendants()) do
@@ -593,7 +593,7 @@ function M.start(gui, remotes)
 		end
 	end
 	local function shopModal()
-		local content, panel = openModal("shop", shopId == "black" and T("o_black") or T("o_vendor"), UDim2.fromOffset(540, 560))
+		local content, panel = openModal("shop", (shopId == "black" and T("o_black")) or (shopId == "dwarf" and T("o_dwarf")) or T("o_vendor"), UDim2.fromOffset(540, 560))
 		cinematic(true)
 		panel.AnchorPoint = Vector2.new(1, 0.5)
 		panel.Position = UDim2.new(1, -28, 0.5, 0)
@@ -785,7 +785,13 @@ function M.start(gui, remotes)
 				local chip = UI.frame({ Size = UDim2.fromOffset(84, 20), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 138), BackgroundColor3 = TYPE_COLOR[ty] or c.card2, ZIndex = 55, Parent = card })
 				UI.corner(chip, 10)
 				UI.text({ Text = T("ty_" .. ty), Size = UDim2.fromScale(1, 1), TextSize = 13, TextColor3 = c.bg, ZIndex = 56, Parent = chip })
-				UI.text({ Text = Locale.f(lang, "kills", dex.kills and dex.kills[kind] or 0), Size = UDim2.new(1, -8, 0, 18), Position = UDim2.fromOffset(4, 162), TextSize = 13, TextColor3 = c.dim, ZIndex = 55, Parent = card })
+				local killsN = dex.kills and dex.kills[kind] or 0
+				local weak = (ty == "boss" and killsN > 0) and Locale.t(lang, "weak_" .. kind) or nil
+				UI.text({ Text = Locale.f(lang, "kills", killsN), Size = UDim2.new(1, -8, 0, 18), Position = UDim2.fromOffset(4, 162), TextSize = 13, TextColor3 = c.dim, ZIndex = 55, Parent = card })
+				if weak and weak ~= "weak_" .. kind then
+					card.Size = card.Size
+					UI.text({ Text = Locale.f(lang, "weakness", weak), Size = UDim2.new(1, -8, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.fromOffset(4, 112), TextWrapped = true, TextSize = 12, TextColor3 = Color3.fromRGB(255, 150, 120), BackgroundColor3 = Color3.fromRGB(20, 16, 18), BackgroundTransparency = 0.25, ZIndex = 58, Parent = card })
+				end
 			else
 				UI.text({ Text = "?", Size = UDim2.fromScale(1, 1), TextSize = 54, TextColor3 = c.card2, ZIndex = 56, Parent = view })
 				UI.text({ Text = T("unknown"), Size = UDim2.new(1, -8, 0, 40), Position = UDim2.fromOffset(4, 120), TextWrapped = true, TextSize = 14, TextColor3 = c.dim, ZIndex = 55, Parent = card })
@@ -795,14 +801,62 @@ function M.start(gui, remotes)
 	end
 
 	---------------------------------------------------------------- world map (only what you have explored)
-	local mapPoisList, mapExplored = {}, ""
+	local mapPoisList, mapExplored, mapExplored2, caveMask, maskN = {}, "", "", "", 96
+	-- which map to show: the caves map once you are deep underground
+	local function currentLayer()
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		return (hrp and hrp.Position.Y < -26) and "under" or "surface"
+	end
+	local CAVE_COLOR = {
+		forest = Color3.fromRGB(128, 112, 92), hills = Color3.fromRGB(128, 112, 92), mountains = Color3.fromRGB(112, 112, 124),
+		snow = Color3.fromRGB(170, 205, 228), desert = Color3.fromRGB(204, 172, 120), jungle = Color3.fromRGB(74, 118, 82),
+		volcano = Color3.fromRGB(160, 74, 40), beach = Color3.fromRGB(196, 186, 156),
+	}
+	local ROCK = Color3.fromRGB(34, 32, 36)
+	local cellColor -- defined just below
+	-- draws the explored part of a layer into `parent` (px = pixels per map cell)
+	local function drawLayer(parent, px, layer, z, cache)
+		local N = Config.MAP_CELLS
+		local H = Biomes.HALF
+		local ex = layer == "under" and mapExplored2 or mapExplored
+		cache = cache or {}
+		for i = 1, #ex do
+			if ex:sub(i, i) == "1" and not cache[i] then
+				local cx, cz = (i - 1) % N, (i - 1) // N
+				if layer == "under" and #caveMask == maskN * maskN then
+					-- each map cell shows the cave openings inside it
+					local sub = maskN // N
+					local holder = UI.frame({ Size = UDim2.fromOffset(px + 1, px + 1), Position = UDim2.fromOffset(cx * px, cz * px), BackgroundColor3 = ROCK, BorderSizePixel = 0, ZIndex = z, Parent = parent })
+					for sx = 0, sub - 1 do
+						for sz = 0, sub - 1 do
+							local mx, mz = cx * sub + sx, cz * sub + sz
+							local k = mz * maskN + mx + 1
+							if caveMask:sub(k, k) == "1" then
+								local wx, wz = -H + (mx + 0.5) * (2 * H / maskN), -H + (mz + 0.5) * (2 * H / maskN)
+								UI.frame({ Size = UDim2.fromOffset(px / sub + 1, px / sub + 1), Position = UDim2.fromOffset(sx * px / sub, sz * px / sub), BackgroundColor3 = CAVE_COLOR[Biomes.at(wx, wz)] or CAVE_COLOR.forest, BorderSizePixel = 0, ZIndex = z, Parent = holder })
+							end
+						end
+					end
+					cache[i] = holder
+				else
+					local wx, wz = -H + (cx + 0.5) * (2 * H / N), -H + (cz + 0.5) * (2 * H / N)
+					cache[i] = UI.frame({ Size = UDim2.fromOffset(math.ceil(px) + 1, math.ceil(px) + 1), Position = UDim2.fromOffset(cx * px, cz * px), BackgroundColor3 = cellColor(wx, wz), BorderSizePixel = 0, ZIndex = z, Parent = parent })
+				end
+			end
+		end
+		return cache
+	end
+	local POI_ICON = { village = { "village", Color3.fromRGB(242, 193, 78) }, trader = { "coin", Color3.fromRGB(255, 210, 90) }, cave = { "cave", Color3.fromRGB(170, 150, 200) },
+		dwarf = { "coin", Color3.fromRGB(255, 170, 70) }, camp = { "home", Color3.fromRGB(255, 200, 120) }, ruins = { "medal", Color3.fromRGB(242, 193, 78) } }
+	local function poiLayer(poi) return poi[4] == "under" and "under" or "surface" end
 	local REGION_COLOR = {
 		forest = Color3.fromRGB(70, 128, 60), hills = Color3.fromRGB(128, 156, 88), snow = Color3.fromRGB(226, 232, 240),
 		desert = Color3.fromRGB(218, 188, 128), mountains = Color3.fromRGB(128, 128, 138), beach = Color3.fromRGB(224, 208, 158),
 		jungle = Color3.fromRGB(36, 104, 58), volcano = Color3.fromRGB(82, 52, 46),
 	}
 	local SEA = Color3.fromRGB(44, 92, 140)
-	local function cellColor(x, z)
+	function cellColor(x, z)
 		local d = math.max(math.abs(x), math.abs(z))
 		if d > Biomes.SEA then return SEA end
 		local col = REGION_COLOR[Biomes.at(x, z)] or REGION_COLOR.forest
@@ -810,15 +864,21 @@ function M.start(gui, remotes)
 		return n > 0 and col:Lerp(Color3.new(1, 1, 1), n) or col:Lerp(Color3.new(0, 0, 0), -n)
 	end
 	local mapCells = {} -- index -> Frame (kept between opens)
-	local function mapModal()
-		local content = openModal("map", T("map"), UDim2.fromOffset(580, 650))
+	local function mapModal(layerOverride)
+		local layer = layerOverride or currentLayer()
+		local content = openModal("map", T("map") .. "  |  " .. T(layer == "under" and "mapCaves" or "mapSurface"), UDim2.fromOffset(580, 650))
 		local N = Config.MAP_CELLS
 		local SIZE = 500
 		local cell = SIZE / N
 		local H = Biomes.HALF
+		local ex = layer == "under" and mapExplored2 or mapExplored
 		local seen = 0
-		for i = 1, #mapExplored do if mapExplored:sub(i, i) == "1" then seen += 1 end end
-		UI.text({ Text = Locale.f(lang, "explored", math.floor(seen / (N * N) * 100 + 0.5)), Size = UDim2.new(1, 0, 0, 22), TextSize = 15, TextColor3 = c.dim, ZIndex = 53, Parent = content })
+		for i = 1, #ex do if ex:sub(i, i) == "1" then seen += 1 end end
+		UI.text({ Text = Locale.f(lang, "explored", math.floor(seen / (N * N) * 100 + 0.5)), Size = UDim2.new(0.6, 0, 0, 22), TextXAlignment = UI.align(lang), Position = UDim2.fromScale(lang == "ar" and 0.4 or 0, 0), TextSize = 15, TextColor3 = c.dim, ZIndex = 53, Parent = content })
+		-- switch between the surface and cave maps
+		UI.button({ Text = T(layer == "under" and "mapSurface" or "mapCaves"), Size = UDim2.fromOffset(120, 24), AnchorPoint = Vector2.new(lang == "ar" and 0 or 1, 0), Position = UDim2.new(lang == "ar" and 0 or 1, 0, 0, -2), TextSize = 14, BackgroundColor3 = c.card2, TextColor3 = c.text, ZIndex = 54, Parent = content }, function()
+			mapModal(layer == "under" and "surface" or "under")
+		end)
 		local board = UI.frame({ Size = UDim2.fromOffset(SIZE, SIZE), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 26), BackgroundColor3 = Color3.fromRGB(16, 18, 22), ClipsDescendants = true, ZIndex = 53, Parent = content })
 		UI.corner(board, 10)
 		UI.stroke(board, c.card2, 2)
@@ -829,17 +889,10 @@ function M.start(gui, remotes)
 			local cx, cz = math.floor((x + H) / (2 * H) * N), math.floor((z + H) / (2 * H) * N)
 			if cx < 0 or cz < 0 or cx >= N or cz >= N then return false end
 			local i = cz * N + cx + 1
-			return mapExplored:sub(i, i) == "1"
+			return ex:sub(i, i) == "1"
 		end
-		-- terrain of the explored cells
-		mapCells = {}
-		for i = 1, #mapExplored do
-			if mapExplored:sub(i, i) == "1" then
-				local cx, cz = (i - 1) % N, (i - 1) // N
-				local wx, wz = -H + (cx + 0.5) * (2 * H / N), -H + (cz + 0.5) * (2 * H / N)
-				mapCells[i] = UI.frame({ Size = UDim2.fromOffset(math.ceil(cell) + 1, math.ceil(cell) + 1), Position = UDim2.fromOffset(cx * cell, cz * cell), BackgroundColor3 = cellColor(wx, wz), BorderSizePixel = 0, ZIndex = 54, Parent = board })
-			end
-		end
+		-- the explored cells of this layer
+		mapCells = drawLayer(board, cell, layer, 54, {})
 		-- places
 		local function marker(kind, x, z, color, size)
 			local holder = UI.frame({ Size = UDim2.fromOffset(size, size), AnchorPoint = Vector2.new(0.5, 0.5), Position = toMap(x, z), BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.25, ZIndex = 56, Parent = board })
@@ -847,10 +900,10 @@ function M.start(gui, remotes)
 			Icons.draw(kind, holder, size * 0.72, color, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 			return holder
 		end
-		local ICON = { village = { "village", c.gold }, trader = { "coin", Color3.fromRGB(255, 210, 90) }, cave = { "cave", Color3.fromRGB(170, 150, 200) } }
 		for _, poi in ipairs(mapPoisList) do
-			local def = ICON[poi[1]]
-			if def and explored(poi[2], poi[3]) then marker(def[1], poi[2], poi[3], def[2], 22) end
+			local def = POI_ICON[poi[1]]
+			-- cave entrances show on both maps
+			if def and (poiLayer(poi) == layer or poi[1] == "cave") and explored(poi[2], poi[3]) then marker(def[1], poi[2], poi[3], def[2], 22) end
 		end
 		if state.death then
 			marker("close", state.death[1], state.death[2], Color3.fromRGB(255, 70, 60), 24)
@@ -866,7 +919,10 @@ function M.start(gui, remotes)
 		-- legend
 		local legend = UI.frame({ Size = UDim2.new(1, 0, 0, 34), ClipsDescendants = false, Position = UDim2.new(0, 0, 0, SIZE + 34), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
 		UI.list(legend, 14, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
-		for _, l in ipairs({ { "village", c.gold, "leg_village" }, { "coin", Color3.fromRGB(255, 210, 90), "leg_trader" }, { "cave", Color3.fromRGB(170, 150, 200), "leg_cave" }, { "close", Color3.fromRGB(255, 70, 60), "leg_death" }, { "dot", Color3.fromRGB(120, 255, 140), "leg_players" } }) do
+		local legendList = layer == "under"
+			and { { "coin", Color3.fromRGB(255, 170, 70), "leg_dwarf" }, { "home", Color3.fromRGB(255, 200, 120), "leg_camp" }, { "medal", c.gold, "leg_ruins" }, { "cave", Color3.fromRGB(170, 150, 200), "leg_cave" }, { "close", Color3.fromRGB(255, 70, 60), "leg_death" } }
+			or { { "village", c.gold, "leg_village" }, { "coin", Color3.fromRGB(255, 210, 90), "leg_trader" }, { "cave", Color3.fromRGB(170, 150, 200), "leg_cave" }, { "close", Color3.fromRGB(255, 70, 60), "leg_death" }, { "dot", Color3.fromRGB(120, 255, 140), "leg_players" } }
+		for _, l in ipairs(legendList) do
 			local item = UI.frame({ Size = UDim2.fromOffset(104, 30), BackgroundTransparency = 1, ZIndex = 53, Parent = legend })
 			local ic = UI.frame({ Size = UDim2.fromOffset(24, 24), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), BackgroundColor3 = Color3.fromRGB(20, 20, 24), ZIndex = 54, Parent = item })
 			UI.corner(ic, 12)
@@ -915,28 +971,26 @@ function M.start(gui, remotes)
 	UI.stroke(mini, c.card2, 2)
 	local K = MINI / VIEW -- pixels per stud
 	local H2 = Biomes.HALF
-	local canvas = UI.frame({ Size = UDim2.fromOffset(2 * H2 * K, 2 * H2 * K), BackgroundTransparency = 1, ZIndex = 2, Parent = mini })
-	local miniCells, miniPois = {}, {}
+	local canvasS = UI.frame({ Size = UDim2.fromOffset(2 * H2 * K, 2 * H2 * K), BackgroundTransparency = 1, ZIndex = 2, Parent = mini })
+	local canvasU = UI.frame({ Size = UDim2.fromOffset(2 * H2 * K, 2 * H2 * K), BackgroundTransparency = 1, ZIndex = 2, Visible = false, Parent = mini })
+	local canvas = canvasS
+	local miniCells, miniCellsU, miniPois = {}, {}, {}
 	local function miniPos(x, z) return UDim2.fromOffset((x + H2) * K, (z + H2) * K) end
 	local function refreshMini()
 		local N = Config.MAP_CELLS
 		local cw = 2 * H2 / N
-		for i = 1, #mapExplored do
-			if mapExplored:sub(i, i) == "1" and not miniCells[i] then
-				local cx, cz = (i - 1) % N, (i - 1) // N
-				miniCells[i] = UI.frame({ Size = UDim2.fromOffset(math.ceil(cw * K) + 1, math.ceil(cw * K) + 1), Position = UDim2.fromOffset(cx * cw * K, cz * cw * K),
-					BackgroundColor3 = cellColor(-H2 + (cx + 0.5) * cw, -H2 + (cz + 0.5) * cw), BorderSizePixel = 0, ZIndex = 3, Parent = canvas })
-			end
-		end
-		local ICONS = { village = { "village", c.gold }, trader = { "coin", Color3.fromRGB(255, 210, 90) }, cave = { "cave", Color3.fromRGB(170, 150, 200) } }
+		drawLayer(canvasS, cw * K, "surface", 3, miniCells)
+		drawLayer(canvasU, cw * K, "under", 3, miniCellsU)
 		for idx, poi in ipairs(mapPoisList) do
 			local cx = math.floor((poi[2] + H2) / cw)
 			local cz = math.floor((poi[3] + H2) / cw)
 			local i = cz * N + cx + 1
-			if not miniPois[idx] and mapExplored:sub(i, i) == "1" and ICONS[poi[1]] then
-				local h = UI.frame({ Size = UDim2.fromOffset(20, 20), AnchorPoint = Vector2.new(0.5, 0.5), Position = miniPos(poi[2], poi[3]), BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.2, ZIndex = 5, Parent = canvas })
+			local layer = poiLayer(poi)
+			local ex = layer == "under" and mapExplored2 or mapExplored
+			if not miniPois[idx] and ex:sub(i, i) == "1" and POI_ICON[poi[1]] then
+				local h = UI.frame({ Size = UDim2.fromOffset(20, 20), AnchorPoint = Vector2.new(0.5, 0.5), Position = miniPos(poi[2], poi[3]), BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.2, ZIndex = 5, Parent = layer == "under" and canvasU or canvasS })
 				UI.corner(h, 10)
-				Icons.draw(ICONS[poi[1]][1], h, 14, ICONS[poi[1]][2], UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+				Icons.draw(POI_ICON[poi[1]][1], h, 14, POI_ICON[poi[1]][2], UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 				miniPois[idx] = h
 			end
 		end
@@ -956,12 +1010,19 @@ function M.start(gui, remotes)
 		local char = player.Character
 		local hrp = char and char:FindFirstChild("HumanoidRootPart")
 		if not hrp or not mini.Visible then return end
-		if mapExplored ~= lastExplored then
-			lastExplored = mapExplored
+		local sig = mapExplored .. mapExplored2
+		if sig ~= lastExplored then
+			lastExplored = sig
 			refreshMini()
 		end
 		local p = hrp.Position
-		canvas.Position = UDim2.fromOffset(MINI / 2 - (p.X + H2) * K, MINI / 2 - (p.Z + H2) * K)
+		local under = p.Y < -26
+		canvasS.Visible, canvasU.Visible = not under, under
+		mini.BackgroundColor3 = under and Color3.fromRGB(26, 24, 28) or Color3.fromRGB(16, 18, 22)
+		north.Text = under and (lang == "ar" and "كهوف" or "CAVES") or "N"
+		north.Size = UDim2.fromOffset(under and 60 or 20, 18)
+		canvasS.Position = UDim2.fromOffset(MINI / 2 - (p.X + H2) * K, MINI / 2 - (p.Z + H2) * K)
+		canvasU.Position = canvasS.Position
 		local look = hrp.CFrame.LookVector
 		meArrow.Rotation = math.deg(math.atan2(look.X, -look.Z))
 		if state and state.death then
@@ -1050,6 +1111,55 @@ function M.start(gui, remotes)
 		end
 		for pl, mk in pairs(playerMarkers) do
 			if not pl.Parent then mk.anchor:Destroy() mk.bb:Destroy() playerMarkers[pl] = nil end
+		end
+	end)
+
+	---------------------------------------------------------------- boss health bar (top centre) and minecart driving
+	local bossBar = UI.frame({ Size = UDim2.fromOffset(460, 46), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 12), BackgroundColor3 = Color3.fromRGB(16, 14, 18), BackgroundTransparency = 0.2, Visible = false, Parent = root })
+	UI.corner(bossBar, 12)
+	UI.stroke(bossBar, Color3.fromRGB(200, 60, 50), 2)
+	local bossName = UI.text({ Text = "", Size = UDim2.new(1, 0, 0, 20), Position = UDim2.fromOffset(0, 3), TextSize = 16, TextColor3 = Color3.fromRGB(255, 200, 120), Parent = bossBar })
+	local bossBg = UI.frame({ Size = UDim2.new(1, -24, 0, 12), Position = UDim2.fromOffset(12, 27), BackgroundColor3 = Color3.fromRGB(50, 20, 20), Parent = bossBar })
+	UI.corner(bossBg, 6)
+	local bossFill = UI.frame({ Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(220, 60, 50), Parent = bossBg })
+	UI.corner(bossFill, 6)
+	local lastThrottle = 0
+	RunService.Heartbeat:Connect(function()
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		-- nearest boss within 120 studs
+		local best, bd
+		local mobsF = workspace:FindFirstChild("Mobs")
+		if hrp and mobsF then
+			for _, m in ipairs(mobsF:GetChildren()) do
+				if m:GetAttribute("Boss") and (m:GetAttribute("HP") or 0) > 0 then
+					local r = m:FindFirstChild("HumanoidRootPart")
+					local d = r and (r.Position - hrp.Position).Magnitude
+					if d and d < 120 and (not bd or d < bd) then best, bd = m, d end
+				end
+			end
+		end
+		bossBar.Visible = best ~= nil and not camState
+		if best then
+			bossName.Text = T("mob_" .. tostring(best:GetAttribute("Kind"))) .. "   Lv " .. tostring(best:GetAttribute("Level") or 1)
+			bossFill.Size = UDim2.fromScale(math.clamp((best:GetAttribute("HP") or 0) / math.max(1, best:GetAttribute("MaxHP") or 1), 0, 1), 1)
+		end
+		-- minecart: W / S (or the stick forward / back) drive it
+		local seat = hum and hum.SeatPart
+		if seat and seat:GetAttribute("Cart") then
+			local v = 0
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsKeyDown(Enum.KeyCode.Up) then v = 1 end
+			if UserInputService:IsKeyDown(Enum.KeyCode.S) or UserInputService:IsKeyDown(Enum.KeyCode.Down) then v = -1 end
+			if v == 0 and hum.MoveDirection.Magnitude > 0.3 then
+				v = hum.MoveDirection:Dot(seat.CFrame.LookVector) >= 0 and 1 or -1
+			end
+			if v ~= lastThrottle then
+				lastThrottle = v
+				act("cart", v)
+			end
+		elseif lastThrottle ~= 0 then
+			lastThrottle = 0
 		end
 	end)
 
@@ -1481,6 +1591,8 @@ function M.start(gui, remotes)
 		elseif key == "pick" then prompt.ObjectText = T("o_berries")
 		elseif key == "trade" and prompt:GetAttribute("Shop") == "black" then
 			prompt.ObjectText = T("o_black")
+		elseif key == "trade" and prompt:GetAttribute("Shop") == "dwarf" then
+			prompt.ObjectText = T("o_dwarf")
 		elseif key == "trade" then
 			prompt.ObjectText = T("o_vendor") .. (ReplicatedStorage:GetAttribute("Night") and ("  (" .. T("shopClosed") .. ")") or "")
 		end
@@ -1724,12 +1836,16 @@ function M.start(gui, remotes)
 			return
 		end
 		if key == "mapData" then
-			mapPoisList, mapExplored = a or {}, b or ""
+			mapPoisList = a or {}
+			if type(b) == "table" then
+				mapExplored, mapExplored2, caveMask, maskN = b[1] or "", b[2] or "", b[3] or "", b[4] or 96
+			end
 			if modalKind == "map" then mapModal() end
 			return
 		end
 		if key == "explored" then
 			mapExplored = a or mapExplored
+			mapExplored2 = b or mapExplored2
 			return
 		end
 		if key == "deathBy" then
@@ -1776,6 +1892,7 @@ function M.start(gui, remotes)
 		elseif key == "stashUp" then text = Locale.f(lang, "stashUp", a or 10)
 		elseif key == "discovered" then text = Locale.f(lang, "discovered", T("mob_" .. tostring(a))) Effects.ui("pop")
 		elseif key == "medalGot" then text = Locale.f(lang, "medalGot", T("biome_" .. tostring(a))) Effects.ui("skill")
+		elseif key == "weakHit" then text = T("weakHit") Effects.ui("skill")
 		elseif key == "adminDone" then text = Locale.f(lang, "adminDone", a or 0)
 		elseif key == "drank" then text = Locale.f(lang, "drank", Items.name(a, lang)) Effects.ui("skill")
 		elseif key == "buffEnd" then text = Locale.f(lang, "buffEnd", T("buff_" .. tostring(a)))

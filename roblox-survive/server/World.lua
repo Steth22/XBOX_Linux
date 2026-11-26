@@ -27,6 +27,8 @@ local World = {}
 local remotes
 local serverCode = nil
 local serverRec = nil -- the room record (owner, settings, bans)
+local select -- forward
+local applyStats -- forward
 local selected = {} -- [Player] = hotbar index
 local cooldown = {} -- [Player] = { [key] = clock }
 local luckCd = {}
@@ -47,7 +49,8 @@ local CELL = (2 * Biomes.HALF) / MAPN
 local function reveal(player, pos)
 	local room = Data.room(player)
 	if not room then return end
-	local ex = room.explored
+	local deep = pos.Y < -26
+	local ex = deep and room.explored2 or room.explored
 	if type(ex) ~= "string" or #ex ~= MAPN * MAPN then ex = string.rep("0", MAPN * MAPN) end
 	local cx = math.floor((pos.X + Biomes.HALF) / CELL)
 	local cz = math.floor((pos.Z + Biomes.HALF) / CELL)
@@ -64,7 +67,7 @@ local function reveal(player, pos)
 			end
 		end
 	end
-	room.explored = ex
+	if deep then room.explored2 = ex else room.explored = ex end
 	if changed then mapDirty[player] = true end
 end
 
@@ -85,6 +88,13 @@ local function mapPois()
 		local e = cv:GetAttribute("Entry")
 		if e then add("cave", e) end
 	end
+	-- underground places carry a 4th field: "under"
+	for _, m in ipairs(workspace:FindFirstChild("UnderCamps") and workspace.UnderCamps:GetChildren() or {}) do
+		local c = m:GetAttribute("Center")
+		if c then table.insert(pois, { m.Name == "DwarfHold" and "dwarf" or "camp", math.floor(c.X), math.floor(c.Z), "under" }) end
+	end
+	local ruins = workspace:FindFirstChild("Underground") and workspace.Underground:FindFirstChild("Ruins")
+	if ruins then local p = ruins:GetPivot().Position table.insert(pois, { "ruins", math.floor(p.X), math.floor(p.Z), "under" }) end
 	return pois
 end
 
@@ -311,6 +321,22 @@ function ctx.killed(player, kind)
 	end
 end
 
+local slowed, poisoned = {}, {}
+function ctx.slow(player, secs, factor)
+	local _, hum = hrpOf(player)
+	if not hum then return end
+	slowed[player] = os.clock() + secs
+	hum.WalkSpeed = hum.WalkSpeed * factor
+	task.delay(secs, function()
+		if slowed[player] and os.clock() >= slowed[player] - 0.05 then slowed[player] = nil applyStats(player) end
+	end)
+end
+function ctx.poison(player, dps, secs)
+	if hasBuff(player, "antidote") then return end
+	poisoned[player] = { dps = dps, untilT = os.clock() + secs }
+	notify(player, "poisoned")
+end
+
 function ctx.addSp(player, n)
 	local room = Data.room(player)
 	if not room then return end
@@ -341,8 +367,6 @@ local function clearTools(player)
 	end
 end
 
-local select -- forward
-local applyStats -- forward
 
 local function useDurability(player, index)
 	local room = Data.room(player)
@@ -379,7 +403,8 @@ local function swing(player, index, def)
 		end
 	end
 	if best then
-		Mobs.damage(best, (def.dmg or 5) * (1 + 0.1 * str) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1), player)
+		local slotNow = Data.room(player) and Data.room(player).inv.slots[index]
+		Mobs.damage(best, (def.dmg or 5) * (1 + 0.1 * str) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1), player, { id = slotNow and slotNow.id, class = def.class, lamp = lamp[player] ~= nil })
 		useDurability(player, index)
 		return
 	end
@@ -435,7 +460,7 @@ local function shoot(player, index, dir)
 	ctx.fx("anim", char, def.ammo == "arrow" and "bow" or "gun")
 	if res then
 		local m = Mobs.modelOf(res.Instance)
-		if m then Mobs.damage(m, def.dmg * (1 + 0.1 * skill(player, "strength")) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1), player) end
+		if m then Mobs.damage(m, def.dmg * (1 + 0.1 * skill(player, "strength")) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1), player, { id = slot.id, class = "ranged", lamp = lamp[player] ~= nil }) end
 		local victim = Players:GetPlayerFromCharacter(res.Instance:FindFirstAncestorOfClass("Model"))
 		if victim and victim ~= player and serverRec and serverRec.pvp then
 			ctx.hurt(victim, def.dmg * 0.6, "@" .. player.DisplayName)
@@ -512,7 +537,7 @@ local function place(player, index, def, id)
 			ctx.fx("explode", at)
 			for _, mob in ipairs(Mobs.folder():GetChildren()) do
 				local root = mob.PrimaryPart
-				if root and (root.Position - at).Magnitude < 16 then Mobs.damage(mob, 140, player.Parent and player or nil) end
+				if root and (root.Position - at).Magnitude < 16 then Mobs.damage(mob, 140, player.Parent and player or nil, { id = "dynamite" }) end
 			end
 			if player.Parent then
 				for _, node in ipairs(Resources.near(at, 13)) do
@@ -955,6 +980,10 @@ local function lightAndBuffs(player)
 			end
 		end
 	end
+	local pz = poisoned[player]
+	if pz then
+		if os.clock() > pz.untilT or hasBuff(player, "antidote") then poisoned[player] = nil else ctx.hurt(player, pz.dps, "poison") end
+	end
 	local b = buffs[player]
 	if b then
 		local _, hum = hrpOf(player)
@@ -1163,6 +1192,8 @@ function actions.sell(player, room, id)
 	if n <= 0 then return end
 	Inventory.remove(room.inv, id, n)
 	local total = n * def.sell
+	local ORES = { stone = true, iron = true, gold = true, diamond = true, crystal = true, obsidian = true }
+	if ORES[id] and nearVendor(player, "dwarf") then total = math.floor(total * 1.5) end
 	room.coins += total
 	notify(player, "sold", total)
 	ctx.reward(player, math.max(1, math.floor(total / 8)), 0)
@@ -1192,6 +1223,7 @@ end
 
 function actions.state(player) push(player) end
 function actions.crateTake(player, room, id, what) Loot.take(player, id, what) end
+function actions.cart(player, room, v) require(script.Parent.Underground).throttle(player, v) end
 
 -- admin tools (only for Config.ADMINS; checked here on the server)
 local ADMIN = {}
@@ -1254,7 +1286,8 @@ function ADMIN.bring(player, room, ad, uid)
 end
 function ADMIN.reveal(player, room)
 	room.explored = string.rep("1", Config.MAP_CELLS * Config.MAP_CELLS)
-	notify(player, "explored", room.explored)
+	room.explored2 = room.explored
+	notify(player, "explored", room.explored, room.explored2)
 end
 function ADMIN.medals(player, room)
 	for _, reg in ipairs(Bestiary.regions) do
@@ -1309,7 +1342,7 @@ function actions.lock(player, room, on)
 	for _, pl in ipairs(Players:GetPlayers()) do push(pl) end
 end
 function actions.map(player, room)
-	notify(player, "mapData", mapPois(), room.explored or string.rep("0", MAPN * MAPN))
+	notify(player, "mapData", mapPois(), { room.explored or string.rep("0", MAPN * MAPN), room.explored2 or string.rep("0", MAPN * MAPN), workspace:GetAttribute("CaveMask") or "", workspace:GetAttribute("CaveMaskN") or 96 })
 	mapDirty[player] = nil
 end
 function actions.wearMedal(player, room, region)
@@ -1477,7 +1510,12 @@ function World.start(r)
 		if not ok then warn("start", name, err) Debug.log("start." .. name, err) end
 	end
 	Debug.log("world", "started")
-	for _, d in ipairs(workspace:FindFirstChild("Villages") and workspace.Villages:GetDescendants() or {}) do
+	local bedFolders = {}
+	for _, n in ipairs({ "Villages", "UnderCamps" }) do
+		local f = workspace:FindFirstChild(n)
+		for _, d in ipairs(f and f:GetDescendants() or {}) do table.insert(bedFolders, d) end
+	end
+	for _, d in ipairs(bedFolders) do
 		if d:IsA("BasePart") and d.Name == "Bed" then
 			local pr = Instance.new("ProximityPrompt")
 			pr.ActionText = "Sleep"
@@ -1491,11 +1529,13 @@ function World.start(r)
 			pr.Triggered:Connect(function(pl) ctx.sleep(pl, d) end)
 		end
 	end
+	local okU, errU = pcall(function() require(script.Parent.Underground).start(ctx, Inventory, Data) end)
+	if not okU then Debug.log("start.underground", errU) end
 	local okV, errV = pcall(function() require(script.Parent.Villages).start(ctx, Mobs) end)
 	if not okV then Debug.log("start.villages", errV) end
 
 	-- camp: trader + fire
-	for _, campName in ipairs({ "Camp", "Outposts", "Villages", "BanditCamps" }) do
+	for _, campName in ipairs({ "Camp", "Outposts", "Villages", "BanditCamps", "UnderCamps" }) do
 		local camp = workspace:FindFirstChild(campName)
 		if not camp then continue end
 		for _, d in ipairs(camp:GetDescendants()) do
@@ -1580,7 +1620,7 @@ function World.start(r)
 				if hrp and hum and hum.Health > 0 then reveal(pl, hrp.Position) end
 				if mapDirty[pl] and tick % 3 == 0 and rr then
 					mapDirty[pl] = nil
-					notify(pl, "explored", rr.explored)
+					notify(pl, "explored", rr.explored, rr.explored2)
 				end
 				local ok, err = pcall(lightAndBuffs, pl)
 				if not ok then Debug.log("tick.buffs", err) end

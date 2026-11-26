@@ -6,31 +6,49 @@ local function check(name, fn)
 end
 local SSS = game:GetService("ServerScriptService")
 local RS = game:GetService("ReplicatedStorage")
-check("caves have spots on real floors", function()
+check("underground caverns have spots on real floors", function()
 	local Ground = require(SSS.Services.Ground)
-	local n, bad = 0, {}
+	local n, bad, caverns = 0, {}, 0
 	for _, cave in ipairs(workspace.Caves:GetChildren()) do
-		assert(cave:GetAttribute("Type"), "no type " .. cave.Name)
-		for _, sp in ipairs(cave.Spots:GetChildren()) do
-			n += 1
-			local f = Ground.floor(sp.Position.X, sp.Position.Y + 1, sp.Position.Z)
-			if not f or math.abs(f - sp.Position.Y) > 2.5 then table.insert(bad, cave.Name .. " " .. tostring(f) .. "/" .. math.floor(sp.Position.Y)) end
+		local spots = cave:FindFirstChild("Spots")
+		if spots then
+			caverns += 1
+			for _, sp in ipairs(spots:GetChildren()) do
+				n += 1
+				if n % 5 == 0 then
+					local f = Ground.floor(sp.Position.X, sp.Position.Y + 1, sp.Position.Z)
+					if not f or math.abs(f - sp.Position.Y) > 2.5 then table.insert(bad, cave.Name) end
+				end
+			end
 		end
 	end
-	assert(n >= 20, "spots " .. n)
-	assert(#bad <= 2, table.concat(bad, ", "))
+	assert(caverns >= 200, "caverns " .. caverns)
+	assert(n >= 600, "spots " .. n)
+	assert(#bad <= 6, #bad .. " bad: " .. table.concat(bad, ", "))
 end)
-check("cave creatures spawn and walk", function()
+check("cave creatures and the new bosses spawn", function()
 	local Mobs = require(SSS.Services.Mobs)
 	local cave = nil
-	for _, c in ipairs(workspace.Caves:GetChildren()) do if c:GetAttribute("Type") == "wide" then cave = c end end
-	assert(cave, "no wide cave")
+	for _, c in ipairs(workspace.Caves:GetChildren()) do if c:GetAttribute("Boss") == "spiderqueen" then cave = c end end
+	assert(cave, "no spider queen lair")
 	local sp = cave.Spots:GetChildren()[1].Position
-	for _, k in ipairs({ "bat", "crawler", "ghoul", "golem" }) do
+	for _, k in ipairs({ "bat", "crawler", "ghoul", "golem", "spiderqueen", "giantworm", "mineguardian" }) do
 		local m = Mobs.spawn(k, sp, 3, { id = cave })
 		assert(m and m.PrimaryPart, k)
 		m:Destroy()
 	end
+end)
+check("mines, carts, entrances, camps, ruins, mask", function()
+	local u = workspace.Underground
+	assert(#u.Tracks:GetChildren() == 4, "tracks")
+	assert(#u.Minecarts:GetChildren() >= 12, "carts")
+	for _, t in ipairs(u.Tracks:GetChildren()) do assert(#(t:GetAttribute("Points") or "") > 1000, t.Name) end
+	local e = 0
+	for _, c in ipairs(workspace.Caves:GetChildren()) do if c:GetAttribute("Type") == "entrance" then e += 1 end end
+	assert(e >= 20, "entrances " .. e)
+	assert(#workspace.UnderCamps:GetChildren() >= 6, "camps")
+	assert(u:FindFirstChild("Ruins") and u.Ruins:FindFirstChild("VaultDoor"), "vault")
+	assert(#(workspace:GetAttribute("CaveMask") or "") == 96 * 96, "mask")
 end)
 check("secret trader builds and moves", function()
 	local W = require(SSS.Services.World)

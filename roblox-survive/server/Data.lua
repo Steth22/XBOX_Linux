@@ -136,6 +136,9 @@ function Data.loadRoom(player, code)
 		if type(res.explored) == "string" and #res.explored == Config.MAP_CELLS * Config.MAP_CELLS and not res.explored:find("[^01]") then
 			r.explored = res.explored
 		end
+		if type(res.explored2) == "string" and #res.explored2 == Config.MAP_CELLS * Config.MAP_CELLS and not res.explored2:find("[^01]") then
+			r.explored2 = res.explored2
+		end
 		if type(res.spawn) == "table" and tonumber(res.spawn[1]) and tonumber(res.spawn[2]) and tonumber(res.spawn[3]) then
 			r.spawn = { tonumber(res.spawn[1]), tonumber(res.spawn[2]), tonumber(res.spawn[3]), village = res.spawn.village == true }
 		end
@@ -183,7 +186,7 @@ function Data.saveRoom(player)
 	if not r or not code then return end
 	Data.touchRoomList(player, code, r.coins, r.xp)
 	if r._noSave then return end
-	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, dex = r.dex, pos = r.pos, explored = r.explored, spawn = r.spawn, t = os.time() }
+	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, dex = r.dex, pos = r.pos, explored = r.explored, explored2 = r.explored2, spawn = r.spawn, t = os.time() }
 	try(function()
 		roomStore:SetAsync("r_" .. code .. "_" .. player.UserId, copy)
 	end)

@@ -37,6 +37,11 @@ end
 function S.envTemp(pos, wet, heat, armorId)
 	local biome = Biomes.at(pos.X, pos.Z)
 	local t = Biomes.temp[biome] or 22
+	if pos.Y < -26 then
+		-- deep underground the air is cool and steady (hot under the volcanoes, freezing under the snow)
+		t = ({ snow = 4, volcano = 40, desert = 26 })[biome] or 16
+		return t + (wet and -6 or 0) + (heat and 18 or 0)
+	end
 	if isNight() then t -= Biomes.nightDrop[biome] or 14 end
 	if pos.Y > 70 then t -= (pos.Y - 70) / 8 end -- high peaks are colder
 	local armor = armorId and Items.get(armorId)

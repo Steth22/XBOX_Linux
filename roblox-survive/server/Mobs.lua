@@ -51,6 +51,9 @@ local DEFS = {
 	bat = { hp = 30, speed = 15, aggro = 40, dmg = 6, reach = 4.5, cave = true, hip = 4.5, xp = 10, coins = 4, color = Color3.fromRGB(46, 40, 48), drops = { { "crystal", 1, 1, 0.12 } } },
 	crawler = { hp = 110, speed = 12, aggro = 45, dmg = 14, reach = 5, cave = true, size = 1.35, xp = 26, coins = 9, color = Color3.fromRGB(196, 190, 176), drops = { { "crystal", 1, 2, 0.3 }, { "mushroom", 1, 2, 0.3 } } },
 	ghoul = { hp = 140, speed = 9.5, aggro = 50, dmg = 18, reach = 4.5, cave = true, xp = 32, coins = 12, color = Color3.fromRGB(120, 130, 150), drops = { { "bandage", 1, 1, 0.25 }, { "gold", 1, 2, 0.18 }, { "obsidian", 1, 1, 0.05 } } },
+	spiderqueen = { hp = 3200, speed = 12, aggro = 70, dmg = 40, reach = 9, boss = true, tier = 3, cave = true, size = 2.4, xp = 700, coins = 300, color = Color3.fromRGB(46, 30, 52), drops = { { "ancient_key", 1, 1, 0.35 }, { "potion_antidote", 1, 2, 0.8 }, { "crystal", 4, 8, 1 }, { "diamond", 1, 2, 0.5 } } },
+	giantworm = { hp = 3800, speed = 9, aggro = 75, dmg = 48, reach = 11, boss = true, tier = 4, cave = true, xp = 820, coins = 340, color = Color3.fromRGB(196, 150, 120), drops = { { "ancient_key", 1, 1, 0.35 }, { "gold", 5, 10, 1 }, { "hide_desert", 2, 4, 1 }, { "diamond", 1, 3, 0.6 } } },
+	mineguardian = { tier = 4, hp = 4500, speed = 8, aggro = 60, dmg = 55, reach = 11, boss = true, cave = true, xp = 950, coins = 400, color = Color3.fromRGB(120, 124, 132), glow = Color3.fromRGB(255, 160, 60), drops = { { "ancient_key", 1, 1, 1 }, { "diamond", 2, 4, 1 }, { "obsidian", 2, 5, 1 }, { "iron", 6, 12, 1 } } },
 	golem = { tier = 3, hp = 3000, speed = 8, aggro = 60, dmg = 45, reach = 10, boss = true, cave = true, xp = 650, coins = 280, color = Color3.fromRGB(58, 54, 66), glow = Color3.fromRGB(160, 110, 255), drops = { { "obsidian", 3, 5, 1 }, { "crystal", 4, 8, 1 }, { "diamond", 1, 2, 0.6 } } },
 	guardian = { tier = 2, hp = 1500, speed = 9, aggro = 90, dmg = 30, reach = 10, boss = true, xp = 400, coins = 150, color = Color3.fromRGB(108, 112, 104), drops = { { "iron_sword", 1, 1, 0.5 }, { "pistol", 1, 1, 0.3 }, { "ammo", 10, 20, 1 } } },
 }
@@ -431,22 +434,55 @@ local function jointedLegs(m, hrp, n, spread, bodyY, ground, s, color, thick, zF
 end
 
 local function spider(def, at, kind)
-	local m, hrp, hum = base(kind or "spider", Vector3.new(2.2, 1, 2.6), 1.2, at)
+	local s = (kind == "spiderqueen") and def.size or 1
+	local m, hrp, hum = base(kind or "spider", Vector3.new(2.2, 1, 2.6) * s, 1.2 * s, at)
 	local col = def.color
-	local ground = -(1.2 + 0.5)
-	vis(m, hrp, Vector3.new(2.5, 2.5, 2.5), CFrame.new(0, 0.35, 1.25), col, BALL)
-	vis(m, hrp, Vector3.new(1.4, 1.2, 1.5), CFrame.new(0, 0.1, -0.5), col:Lerp(Color3.new(1, 1, 1), 0.06), BALL)
-	vis(m, hrp, Vector3.new(0.9, 0.85, 0.85), CFrame.new(0, 0.15, -1.35), col, BALL)
+	local ground = -(1.2 + 0.5) * s
+	vis(m, hrp, Vector3.new(2.5, 2.5, 2.5) * s, CFrame.new(0, 0.35 * s, 1.25 * s), col, BALL)
+	vis(m, hrp, Vector3.new(1.4, 1.2, 1.5) * s, CFrame.new(0, 0.1 * s, -0.5 * s), col:Lerp(Color3.new(1, 1, 1), 0.06), BALL)
+	vis(m, hrp, Vector3.new(0.9, 0.85, 0.85) * s, CFrame.new(0, 0.15 * s, -1.35 * s), col, BALL)
 	if kind == "crawler" then
 		for i = 0, 2 do vis(m, hrp, Vector3.new(1.6 - i * 0.3, 0.2, 0.3), CFrame.new(0, 1.55 - i * 0.05, 0.7 + i * 0.5), col:Lerp(Color3.new(0, 0, 0), 0.3)) end
+	elseif kind == "spiderqueen" then
+		-- a glowing purple crown of spikes and a pattern on her back
+		for k = 0, 4 do
+			local a = (k - 2) * 0.35
+			seg(m, hrp, Vector3.new(math.sin(a) * 0.45, 0.55, -1.2) * s, Vector3.new(math.sin(a) * 0.7, 1.35, -1.35) * s, 0.16 * s, Color3.fromRGB(190, 110, 255), Enum.Material.Neon)
+		end
+		for k = 0, 3 do vis(m, hrp, Vector3.new(0.4, 0.12, 0.4) * s, CFrame.new(((k % 2) * 2 - 1) * 0.45 * s, 1.58 * s, (0.8 + k * 0.3) * s), Color3.fromRGB(190, 110, 255), nil, Enum.Material.Neon) end
 	else
 		vis(m, hrp, Vector3.new(0.5, 0.12, 0.9), CFrame.new(0, 1.58, 1.25), Color3.fromRGB(170, 30, 30))
 		vis(m, hrp, Vector3.new(0.9, 0.12, 0.35), CFrame.new(0, 1.6, 1.25), Color3.fromRGB(170, 30, 30))
 	end
 	for _, x in ipairs({ -1, 1 }) do
-		seg(m, hrp, Vector3.new(x * 0.2, -0.05, -1.7), Vector3.new(x * 0.15, -0.55, -1.85), 0.18, Color3.fromRGB(20, 18, 20))
+		seg(m, hrp, Vector3.new(x * 0.2, -0.05, -1.7) * s, Vector3.new(x * 0.15, -0.55, -1.85) * s, 0.18 * s, Color3.fromRGB(20, 18, 20))
 	end
-	jointedLegs(m, hrp, 4, 1.25, 0.2, ground, 1, col, 0.2, -0.9, 0.6)
+	jointedLegs(m, hrp, 4, 1.25, 0.2 * s, ground, s, col, 0.2 * s, -0.9 * s, 0.6 * s)
+	return m, hrp, hum
+end
+
+-- a giant worm rearing out of the ground: a curve of ribbed segments and a ring of teeth on top
+local function giantworm(def, at)
+	local m, hrp, hum = base("giantworm", Vector3.new(4, 4, 4), 0.5, at)
+	local col, ring = def.color, def.color:Lerp(Color3.new(0, 0, 0), 0.25)
+	local pts = {}
+	for k = 0, 9 do
+		local t = k / 9
+		table.insert(pts, Vector3.new(math.sin(t * 2.2) * 2.5, -2.5 + t * 16, 1.5 - t * 7 + math.sin(t * 3) * 2))
+	end
+	for k = 1, #pts - 1 do
+		local th = 4.4 - k * 0.12
+		seg(m, hrp, pts[k], pts[k + 1], th, k % 2 == 0 and col or ring, Enum.Material.SmoothPlastic, th)
+		vis(m, hrp, Vector3.new(th * 1.05, th * 1.05, th * 1.05), CFrame.new(pts[k + 1]), col, BALL)
+	end
+	local top = pts[#pts]
+	for k = 0, 9 do
+		local a = k / 10 * math.pi * 2
+		seg(m, hrp, top + Vector3.new(math.cos(a) * 1.6, 1.4, math.sin(a) * 1.6), top + Vector3.new(math.cos(a) * 1.1, 2.6, math.sin(a) * 1.1), 0.35, Color3.fromRGB(240, 232, 214))
+	end
+	vis(m, hrp, Vector3.new(3.4, 0.4, 3.4), CFrame.new(top + Vector3.new(0, 1.5, 0)), Color3.fromRGB(70, 30, 30))
+	-- the hole it came out of
+	vis(m, hrp, Vector3.new(0.6, 8, 8), CFrame.new(0, -2.3, 1.5) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(60, 46, 36), Enum.PartType.Cylinder)
 	return m, hrp, hum
 end
 
@@ -636,7 +672,8 @@ local function guardian(def, at, kind)
 	local m, hrp, hum = base(kind or "guardian", Vector3.new(6, 7, 4), 5, at)
 	local stone, moss = def.color, def.glow and def.color:Lerp(Color3.new(0, 0, 0), 0.3) or Color3.fromRGB(70, 120, 56)
 	local glow = def.glow or Color3.fromRGB(110, 230, 210)
-	vis(m, hrp, Vector3.new(6, 7, 4), CFrame.new(), stone, nil, Enum.Material.Slate)
+	local stoneMat = kind == "mineguardian" and Enum.Material.DiamondPlate or Enum.Material.Slate
+	vis(m, hrp, Vector3.new(6, 7, 4), CFrame.new(), stone, nil, stoneMat)
 	vis(m, hrp, Vector3.new(4, 3.2, 3.6), CFrame.new(0, 5, -0.2), stone, nil, Enum.Material.Slate)
 	vis(m, hrp, Vector3.new(6.2, 1.2, 4.2), CFrame.new(0, 3, 0), moss, nil, Enum.Material.Grass)
 	vis(m, hrp, Vector3.new(1.6, 1.6, 1.6), CFrame.new(0, 0.6, -2.05), glow, BALL, Enum.Material.Neon)
@@ -734,8 +771,9 @@ function Mobs.spawn(kind, at, level, cave)
 	level = math.clamp(math.floor(level or 1), 1, 99)
 	local m, hrp, hum
 	if kind == "zombie" or kind == "ghoul" then m, hrp, hum = zombie(def, at, kind)
-	elseif kind == "guardian" or kind == "golem" or kind == "magma" then m, hrp, hum = guardian(def, at, kind)
-	elseif kind == "spider" or kind == "crawler" then m, hrp, hum = spider(def, at, kind)
+	elseif kind == "giantworm" then m, hrp, hum = giantworm(def, at)
+	elseif kind == "guardian" or kind == "golem" or kind == "magma" or kind == "mineguardian" then m, hrp, hum = guardian(def, at, kind)
+	elseif kind == "spider" or kind == "crawler" or kind == "spiderqueen" then m, hrp, hum = spider(def, at, kind)
 	elseif kind == "bat" then m, hrp, hum = bat(def, at)
 	elseif kind == "scorpion" or kind == "scorpionking" or kind == "crab" or kind == "crabking" then m, hrp, hum = scorpion(kind, def, at)
 	elseif kind == "yeti" then m, hrp, hum = yeti(def, at, kind)
@@ -812,9 +850,228 @@ local function kill(m, s, player)
 	end)
 end
 
-function Mobs.damage(m, amount, player)
+---------------------------------------------------------------- bosses: special attacks (always telegraphed) and weak points
+local TweenService2 = game:GetService("TweenService")
+local KIT = {
+	alpha = { abilities = { "howl", "pounce" }, weak = { class = { spear = 2 } } },
+	yeti = { abilities = { "slam", "snowball" }, weak = { id = { magma_blade = 3, dynamite = 2 } } },
+	scorpionking = { abilities = { "sting", "burrow" }, weak = { class = { hammer = 2 } } },
+	guardian = { abilities = { "roots", "slam" }, weak = { class = { axe = 2 } } },
+	crabking = { abilities = { "shell", "bubbles" }, weak = { id = { harpoon = 2.5 }, class = { spear = 1.5 } } },
+	gorilla = { abilities = { "enrage", "boulder" }, weak = { class = { ranged = 2 } } },
+	magma = { abilities = { "lavapools", "slam" }, weak = { id = { ice_spear = 3 } } },
+	golem = { abilities = { "quake", "shards" }, weak = { class = { pickaxe = 2.5 } } },
+	banditlord = { abilities = { "reinforce", "smoke" }, weak = { id = { pistol = 1.8, rifle = 1.8 } } },
+	spiderqueen = { abilities = { "web", "brood" }, weak = { lamp = 2 } },
+	giantworm = { abilities = { "burrow", "sandblast" }, weak = { id = { dynamite = 4 } }, exposed = 2 },
+	mineguardian = { abilities = { "charge", "shockwave" }, weak = { class = { hammer = 2 } }, overheat = true, exposed = 3 },
+}
+Mobs.KIT = KIT
+
+local function groundOf(s) return s.at - Vector3.new(0, s.lift or 2, 0) end
+local function playersNear(pos, r)
+	local out = {}
+	for _, pl in ipairs(Players:GetPlayers()) do
+		local root = alive(pl)
+		if root and (Vector3.new(root.Position.X - pos.X, 0, root.Position.Z - pos.Z)).Magnitude < r and math.abs(root.Position.Y - pos.Y) < 14 then table.insert(out, pl) end
+	end
+	return out
+end
+local function area(s, pos, r, delay, dmg, after)
+	ctx.fx("telegraph", pos, r, delay)
+	task.delay(delay, function()
+		if s.dead then return end
+		ctx.fx("explode", pos + Vector3.new(0, 1, 0))
+		for _, pl in ipairs(playersNear(pos, r)) do
+			ctx.hurt(pl, dmg, s.kind)
+			if after then after(pl) end
+		end
+	end)
+end
+local function projectile(s, toPos, color, size, onHit)
+	local from = s.hrp.Position + Vector3.new(0, 3, 0)
+	local ball = Instance.new("Part")
+	ball.Shape = Enum.PartType.Ball
+	ball.Size = Vector3.one * size
+	ball.Color = color
+	ball.Material = Enum.Material.Neon
+	ball.Anchored, ball.CanCollide, ball.CanQuery, ball.CanTouch = true, false, false, false
+	ball.CFrame = CFrame.new(from)
+	ball.Parent = workspace
+	ctx.fx("telegraph", toPos, 5, 0.7)
+	local tw = TweenService2:Create(ball, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.new(toPos + Vector3.new(0, 1, 0)) })
+	tw:Play()
+	tw.Completed:Connect(function()
+		ball:Destroy()
+		if s.dead then return end
+		ctx.fx("crate", toPos)
+		for _, pl in ipairs(playersNear(toPos, 5)) do onHit(pl) end
+	end)
+end
+local function highlight(m, color, secs)
+	local hl = Instance.new("Highlight")
+	hl.FillColor = color
+	hl.FillTransparency = 0.55
+	hl.OutlineColor = color
+	hl.Parent = m
+	task.delay(secs, function() hl:Destroy() end)
+end
+
+local ABIL = {}
+function ABIL.slam(m, s, tr) area(s, groundOf(s), 16, 1.3, s.dmg * 1.4) end
+function ABIL.quake(m, s, tr) area(s, groundOf(s), 24, 1.6, s.dmg * 1.2) end
+function ABIL.shockwave(m, s, tr) area(s, groundOf(s), 20, 1.2, s.dmg * 1.3) end
+function ABIL.roots(m, s, tr) area(s, groundOf(s), 14, 1.2, s.dmg * 0.6, function(pl) if ctx.slow then ctx.slow(pl, 2.5, 0) end end) end
+function ABIL.snowball(m, s, tr)
+	projectile(s, tr.Position - Vector3.new(0, 2.5, 0), Color3.fromRGB(235, 245, 255), 2.4, function(pl) ctx.hurt(pl, s.dmg * 0.9, s.kind) if ctx.slow then ctx.slow(pl, 2, 0.4) end end)
+end
+function ABIL.boulder(m, s, tr)
+	projectile(s, tr.Position - Vector3.new(0, 2.5, 0), Color3.fromRGB(110, 100, 90), 3, function(pl) ctx.hurt(pl, s.dmg * 1.2, s.kind) end)
+end
+function ABIL.web(m, s, tr)
+	projectile(s, tr.Position - Vector3.new(0, 2.5, 0), Color3.fromRGB(235, 235, 240), 2, function(pl) ctx.hurt(pl, s.dmg * 0.4, s.kind) if ctx.slow then ctx.slow(pl, 3, 0.2) end end)
+end
+function ABIL.bubbles(m, s, tr)
+	for k = 1, 3 do
+		task.delay(k * 0.3, function()
+			if s.dead then return end
+			local off = Vector3.new(rng:NextNumber(-4, 4), 0, rng:NextNumber(-4, 4))
+			projectile(s, tr.Position - Vector3.new(0, 2.5, 0) + off, Color3.fromRGB(150, 220, 255), 1.6, function(pl) ctx.hurt(pl, s.dmg * 0.5, s.kind) end)
+		end)
+	end
+end
+function ABIL.shards(m, s, tr)
+	for k = 1, 5 do
+		task.delay(k * 0.25, function()
+			if s.dead then return end
+			local at = tr.Position - Vector3.new(0, 2.5, 0) + Vector3.new(rng:NextNumber(-9, 9), 0, rng:NextNumber(-9, 9))
+			area(s, at, 5, 1.0, s.dmg * 0.6)
+		end)
+	end
+end
+function ABIL.sandblast(m, s, tr)
+	area(s, tr.Position - Vector3.new(0, 2.5, 0), 10, 1.1, s.dmg, function(pl) if ctx.slow then ctx.slow(pl, 2, 0.5) end end)
+end
+function ABIL.sting(m, s, tr)
+	area(s, tr.Position - Vector3.new(0, 2.5, 0), 6, 0.9, s.dmg * 0.8, function(pl) if ctx.poison then ctx.poison(pl, 5, 7) end end)
+end
+function ABIL.lavapools(m, s, tr)
+	for k = 1, 3 do
+		local at = tr.Position - Vector3.new(0, 2.8, 0) + Vector3.new(rng:NextNumber(-10, 10), 0, rng:NextNumber(-10, 10))
+		ctx.fx("telegraph", at, 5, 0.8)
+		task.delay(0.8, function()
+			local p = Instance.new("Part")
+			p.Shape = Enum.PartType.Cylinder
+			p.Size = Vector3.new(0.4, 9, 9)
+			p.CFrame = CFrame.new(at) * CFrame.Angles(0, 0, math.rad(90))
+			p.Color = Color3.fromRGB(255, 110, 30)
+			p.Material = Enum.Material.Neon
+			p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+			p.Parent = workspace
+			for _ = 1, 14 do
+				task.wait(0.5)
+				for _, pl in ipairs(playersNear(at, 4.5)) do ctx.hurt(pl, 6, "lava") end
+			end
+			p:Destroy()
+		end)
+	end
+end
+local function summon(s, kind, n, cave)
+	for _ = 1, n do
+		local at = groundOf(s) + Vector3.new(rng:NextNumber(-8, 8), 0, rng:NextNumber(-8, 8))
+		Mobs.spawn(kind, at, s.level, cave and s.caveId and { id = s.caveId, surface = not s.cave } or nil)
+	end
+end
+function ABIL.howl(m, s, tr) ctx.fx("mobAttack", s.hrp.Position, s.kind) summon(s, "wolf", 2) end
+function ABIL.brood(m, s, tr) summon(s, "spider", 3, true) end
+function ABIL.reinforce(m, s, tr) summon(s, "bandit", 2, true) end
+function ABIL.pounce(m, s, tr)
+	local at = tr.Position - Vector3.new(0, 2.5, 0)
+	ctx.fx("telegraph", at, 7, 0.7)
+	task.delay(0.7, function()
+		if s.dead then return end
+		s.dashUntil = os.clock() + 0.6
+		s.dest = at
+		task.delay(0.6, function() if not s.dead then area(s, at, 7, 0.05, s.dmg * 1.2) end end)
+	end)
+end
+ABIL.charge = ABIL.pounce
+function ABIL.smoke(m, s, tr)
+	ctx.fx("crate", s.hrp.Position)
+	local behind = tr.CFrame * CFrame.new(0, 0, 5)
+	local g = Ground.height(behind.X, behind.Z) or (tr.Position.Y - 2.5)
+	s.at = Vector3.new(behind.X, g + s.lift, behind.Z)
+	if s.ap then s.ap.Position = s.at end
+	ctx.fx("crate", s.at)
+end
+function ABIL.shell(m, s, tr)
+	s.guardUntil = os.clock() + 4
+	highlight(m, Color3.fromRGB(230, 240, 255), 4)
+end
+function ABIL.enrage(m, s, tr)
+	s.enragedUntil = os.clock() + 6
+	highlight(m, Color3.fromRGB(255, 90, 50), 6)
+end
+function ABIL.burrow(m, s, tr)
+	-- dives into the ground, comes up under the target, then stays exposed for a moment
+	s.burrowedUntil = os.clock() + 2.2
+	local saved = s.lift
+	s.at = s.at - Vector3.new(0, saved + 12, 0)
+	if s.ap then s.ap.Position = s.at end
+	local at = tr.Position - Vector3.new(0, 2.5, 0)
+	ctx.fx("telegraph", at, 9, 1.6)
+	task.delay(1.6, function()
+		if s.dead then return end
+		s.at = at + Vector3.new(0, saved, 0)
+		if s.ap then s.ap.Position = s.at end
+		ctx.fx("explode", at)
+		for _, pl in ipairs(playersNear(at, 9)) do ctx.hurt(pl, s.dmg * 1.4, s.kind) end
+		s.burrowedUntil = 0
+		s.exposedUntil = os.clock() + 3.5
+		highlight(m, Color3.fromRGB(255, 230, 90), 3.5)
+	end)
+end
+
+function Mobs.bossThink(m, s, tr, now)
+	local kit = KIT[s.kind]
+	if not kit or not tr then return end
+	if now < (s.nextAbility or 0) or now < (s.exposedUntil or 0) or now < (s.burrowedUntil or 0) then return end
+	if (tr.Position - s.hrp.Position).Magnitude > 45 then return end
+	s.nextAbility = now + rng:NextNumber(6, 10)
+	local name = kit.abilities[rng:NextInteger(1, #kit.abilities)]
+	local ok, err = pcall(ABIL[name], m, s, tr)
+	if not ok then Debug.log("boss." .. name, err) end
+	if kit.overheat then
+		s.used = (s.used or 0) + 1
+		if s.used >= 3 then
+			-- overheated: it stops, glows and takes triple damage for a while
+			s.used = 0
+			s.exposedUntil = now + 5.5
+			s.rootedUntil = now + 5.5
+			highlight(m, Color3.fromRGB(255, 150, 40), 5.5)
+			ctx.fx("telegraph", groundOf(s), 3, 5.5)
+		end
+	end
+end
+
+-- src (optional) = { id = item id, class = weapon class, lamp = true when the attacker's lantern is lit }
+function Mobs.damage(m, amount, player, src)
 	local s = mobs[m]
 	if not s or s.dead then return false end
+	local now = os.clock()
+	if now < (s.burrowedUntil or 0) then return false end
+	local kit = KIT[s.kind]
+	local mult = 1
+	if kit and src then
+		local w = kit.weak
+		if w.class and src.class and w.class[src.class] then mult = math.max(mult, w.class[src.class]) end
+		if w.id and src.id and w.id[src.id] then mult = math.max(mult, w.id[src.id]) end
+		if w.lamp and src.lamp then mult = math.max(mult, w.lamp) end
+	end
+	if now < (s.exposedUntil or 0) then mult *= (kit and kit.exposed or 2) end
+	if now < (s.guardUntil or 0) then mult *= 0.2 end
+	amount *= mult
+	if mult >= 1.5 and player then ctx.notify(player, "weakHit") end
 	s.hp -= amount
 	m:SetAttribute("HP", math.max(0, s.hp))
 	local hl = Instance.new("Highlight")
@@ -897,6 +1154,10 @@ local function moveStep(s, dt)
 	local d = flat.Magnitude
 	if d < 1.5 then s.dest = nil return end
 	local speed = (s.speed or s.def.speed) * (s.pace or 1)
+	local nowc = os.clock()
+	if nowc < (s.dashUntil or 0) then speed *= 3.2 end
+	if nowc < (s.enragedUntil or 0) then speed *= 1.45 end
+	if nowc < (s.burrowedUntil or 0) then return end
 	local dir = flat.Unit
 	local stepLen = math.min(d, speed * dt)
 	-- walls of houses, camps and outposts block creatures: try to slide along them, else stop
@@ -998,12 +1259,13 @@ function stepOne(m, s)
 					end
 				end
 				if tr and s.target then
+					if def.boss and Mobs.bossThink then Mobs.bossThink(m, s, tr, now) end
 					local d = (tr.Position - pos).Magnitude
 					if d > def.reach * 0.7 then s.dest = tr.Position s.pace = 1 else s.dest = nil end
 					if d <= def.reach + (def.boss and 2 or 0) and now >= s.nextAttack then
 						s.nextAttack = now + (def.boss and 1.8 or 1.2)
 						ctx.fx("mobAttack", pos, s.kind)
-						ctx.hurt(s.target, s.dmg, s.kind)
+						ctx.hurt(s.target, s.dmg * (os.clock() < (s.enragedUntil or 0) and 1.5 or 1), s.kind)
 					end
 				else
 					wander(s, now)
@@ -1136,6 +1398,14 @@ local CAVE_MOBS = {
 }
 local caveBoss = {}
 CAVE_MOBS.bandit = { bandit = 4 }
+CAVE_MOBS.under_forest = { bat = 3, crawler = 2, ghoul = 2 }
+CAVE_MOBS.under_hills = { bat = 3, crawler = 2, ghoul = 2 }
+CAVE_MOBS.under_mountains = { bat = 3, ghoul = 2, crawler = 2 }
+CAVE_MOBS.under_snow = { bat = 2, crawler = 2, ghoul = 2, snowwolf = 1 }
+CAVE_MOBS.under_desert = { scorpion = 3, bat = 2, crawler = 1 }
+CAVE_MOBS.under_jungle = { spider = 3, snake = 2, bat = 2 }
+CAVE_MOBS.under_volcano = { lavalizard = 3, bat = 2, ashwolf = 1 }
+CAVE_MOBS.under_beach = { crab = 3, bat = 2, ghoul = 1 }
 local function cavePopulate()
 	local list = {}
 	for _, n in ipairs({ "Caves", "BanditCamps" }) do
@@ -1180,7 +1450,7 @@ local function cavePopulate()
 					end
 				end
 				-- the rock giant sleeps in the wide caves
-				local bossKind = (cave:GetAttribute("Type") == "wide" and "golem") or (surface and "banditlord") or nil
+				local bossKind = cave:GetAttribute("Boss") or (cave:GetAttribute("Type") == "wide" and "golem") or (surface and "banditlord") or nil
 				if bossKind and r then
 					caveBoss[cave] = caveBoss[cave] or (os.clock() - 9999)
 					local bossAlive = false

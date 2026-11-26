@@ -294,6 +294,24 @@ local MOB_SOUND = { wolf = "wolf", zombie = "zombie", guardian = "guardian", rab
 
 local handlers = {}
 function handlers.anim(char, kind) E.anim(char, kind) end
+-- a boss attack is coming: a red circle on the ground that fills up until it lands
+function handlers.telegraph(pos, radius, delay)
+	local ring = Instance.new("Part")
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Anchored, ring.CanCollide, ring.CanQuery, ring.CanTouch, ring.CastShadow = true, false, false, false, false
+	ring.Material = Enum.Material.Neon
+	ring.Color = Color3.fromRGB(255, 60, 50)
+	ring.Transparency = 0.75
+	ring.Size = Vector3.new(0.2, radius * 2, radius * 2)
+	ring.CFrame = CFrame.new(pos + Vector3.new(0, 0.25, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Parent = workspace
+	local core = ring:Clone()
+	core.Size = Vector3.new(0.25, 0.2, 0.2)
+	core.Transparency = 0.4
+	core.Parent = workspace
+	TweenService:Create(core, TweenInfo.new(math.max(0.05, delay), Enum.EasingStyle.Linear), { Size = Vector3.new(0.25, radius * 2, radius * 2) }):Play()
+	task.delay(delay + 0.15, function() ring:Destroy() core:Destroy() end)
+end
 function handlers.hitTree(pos, node)
 	E.play("chop", pos, 0.8)
 	E.chunks(pos + Vector3.new(0, 1, 0), Color3.fromRGB(176, 130, 84), 5, 0.6, Enum.Material.Wood)

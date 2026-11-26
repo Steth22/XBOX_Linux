@@ -38,7 +38,7 @@ def villages():
     return go("villages", g("common.lua") + g("part.lua") + g("villages.lua"))
 
 def caves():
-    return go("caves", g("common.lua") + g("part.lua") + g("ore.lua") + g("caves.lua"))
+    return go("underground", g("common.lua") + g("part.lua") + g("ore.lua") + g("underground.lua"))
 
 def fixcabins():
     return go("fixcabins", g("common.lua") + g("fixcabins.lua"))
@@ -57,6 +57,7 @@ if __name__ == "__main__":
     if what in ("all", "terrain"):
         terrain(int(sys.argv[2]) if len(sys.argv) > 2 and what == "terrain" else 0)
     if what in ("all", "structures"): structures()
+    if what == "all": fixcabins(); fixcabindoors()
     if what in ("all", "villages"): villages()
     if what in ("all", "caves"): caves()
     if what in ("all", "vegetation"): vegetation()
