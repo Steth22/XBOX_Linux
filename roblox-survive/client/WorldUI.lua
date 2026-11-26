@@ -42,12 +42,18 @@ function M.start(gui, remotes)
 	local pending = nil
 	local refreshModal
 	local furnaceData, refreshFurnace, furnaceModal -- the furnace window (built further down)
+	local furnaceBagSize = ""
 	local lastSig = ""
 	local lastMsig = nil
 	local lastDsig = nil
 
 	local function T(k) return Locale.t(lang, k) end
+	-- sounds for handling items: moving/swapping, throwing away, picking a tool, equipping
+	local ACT_SOUND = { move = { "pop", 0.45, 1.05 }, discard = { "swing", 0.5, 0.8 }, select = { "clickBright", 0.4, 1 },
+		unequipArmor = { "pop", 0.45, 0.9 }, unequipOff = { "pop", 0.45, 0.9 } }
 	local function act(action, a, b)
+		local snd = ACT_SOUND[action]
+		if snd then pcall(Effects.play, snd[1], nil, snd[2], snd[3]) end
 		task.spawn(function() pcall(function() remotes.World:InvokeServer(action, a, b) end) end)
 	end
 
@@ -396,7 +402,8 @@ function M.start(gui, remotes)
 	local bagEq = {}
 	local refreshBag
 	local function bagModal()
-		local content, panel = openModal("bag", T("bag"), UDim2.fromOffset(500, 540))
+		local big = state.bag == "big"
+		local content, panel = openModal("bag", T("bag"), UDim2.fromOffset(big and 700 or 500, 540))
 		bagPanel, bagW = panel, {}
 		bagShape = tostring(state.bag) .. tostring(state.armor)
 		UI.text({ Text = T("dropOutside"), Size = UDim2.new(1, 0, 0, 22), TextSize = 14, TextColor3 = c.dim, ZIndex = 53, Parent = content })
@@ -422,7 +429,7 @@ function M.start(gui, remotes)
 		end
 		local grid = UI.frame({ Size = UDim2.new(1, 0, 0, 3 * 66), Position = UDim2.fromOffset(0, 98), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
 		UI.new("UIGridLayout", { CellSize = UDim2.fromOffset(60, 60), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = grid })
-		for k = 1, Config.BAG do
+		for k = 1, big and Config.BIG_BAG or Config.BAG do
 			local i = Config.HOTBAR + k
 			local w = slotWidget(grid, 60, k)
 			if state.bag then
@@ -520,7 +527,7 @@ function M.start(gui, remotes)
 		UI.corner(left, 12)
 		UI.pad(left, 6)
 		UI.text({ Text = T("yourItems"), Size = UDim2.new(0.42, 0, 0, 28), TextSize = 17, TextColor3 = c.dim, ZIndex = 53, Parent = content })
-		local invCount = state.bag and (Config.HOTBAR + Config.BAG) or Config.HOTBAR
+		local invCount = Config.HOTBAR + Config.bagSlots(state.bag)
 		grid(left, state.slots, invCount, function(i) if state.slots[i] then act("stashPut", i) end end)
 		local right = UI.frame({ Size = UDim2.new(0.58, -8, 1, -40), Position = UDim2.new(0.42, 8, 0, 34), BackgroundColor3 = c.card, BackgroundTransparency = 0.5, ZIndex = 53, Parent = content })
 		UI.corner(right, 12)
@@ -689,6 +696,9 @@ function M.start(gui, remotes)
 		if shopTab == "buy" then
 			if not state.bag and shopCat == "supplies" and shopId == "forest" then
 				row(nil, Locale.f(lang, "buyBag", Config.BAG), Format.number(state.bagPrice), T("buy"), c.gold, function() act("buyBag") end)
+			end
+			if state.bag ~= "big" and shopCat == "supplies" and shopId == "dwarf" then
+				row(nil, Locale.f(lang, "buyBigBag", Config.BIG_BAG), Format.number(Config.BIG_BAG_PRICE), T("buy"), state.coins >= Config.BIG_BAG_PRICE and c.gold or c.card2, function() act("buyBigBag") end)
 			end
 			local ids = {}
 			for _, cat in ipairs(Items.shops[shopId] or Items.shopCats) do
@@ -972,7 +982,7 @@ function M.start(gui, remotes)
 		volcano = Color3.fromRGB(160, 74, 40), beach = Color3.fromRGB(196, 186, 156),
 	}
 	local ROCK = Color3.fromRGB(34, 32, 36)
-	local cellColor -- defined just below
+	local cellColor, terrainColor, caveColor -- defined just below
 	-- draws the explored part of a layer into `parent` (px = pixels per map cell).
 	-- Each row is drawn as a few long strips of one colour (not one frame per cell), and only
 	-- rows whose explored cells changed are redrawn, so switching maps stays smooth.
@@ -1010,13 +1020,15 @@ function M.start(gui, remotes)
 								local cx = rx // sub
 								if sig:sub(cx + 1, cx + 1) == "1" then
 									local wx, wz = -H + (rx + 0.5) * (2 * H / R), -H + (rz + 0.5) * (2 * H / R)
-									if fine then
+									if layer == "under" and caveColor(rx, rz, R) then
+										col = caveColor(rx, rz, R)
+									elseif fine then
 										local k = rz * maskN + rx + 1
 										col = caveMask:sub(k, k) == "1" and (CAVE_COLOR[Biomes.at(wx, wz)] or CAVE_COLOR.forest) or ROCK
 									elseif layer == "under" then
 										col = ROCK
 									else
-										col = cellColor(wx, wz)
+										col = terrainColor(rx, rz, R) or cellColor(wx, wz)
 									end
 								end
 							end
@@ -1040,6 +1052,50 @@ function M.start(gui, remotes)
 		jungle = Color3.fromRGB(36, 104, 58), volcano = Color3.fromRGB(82, 52, 46),
 	}
 	local SEA = Color3.fromRGB(44, 92, 140)
+	-- the real ground of each map cell, sampled from the world (workspace TerrainMap)
+	local TPAL = { Color3.fromRGB(30, 78, 130), Color3.fromRGB(52, 110, 170), Color3.fromRGB(86, 140, 66), Color3.fromRGB(44, 104, 58),
+		Color3.fromRGB(120, 100, 70), Color3.fromRGB(96, 78, 56), Color3.fromRGB(222, 200, 140), Color3.fromRGB(196, 150, 100),
+		Color3.fromRGB(236, 242, 248), Color3.fromRGB(180, 214, 236), Color3.fromRGB(128, 128, 134), Color3.fromRGB(230, 96, 30),
+		Color3.fromRGB(70, 62, 62), Color3.fromRGB(200, 196, 180), Color3.fromRGB(190, 160, 112), Color3.fromRGB(168, 78, 54) }
+	local TSHADE = { 0.86, 0.94, 1, 1.08 }
+	local tcache = {}
+	function terrainColor(rx, rz, R)
+		local tm = workspace:GetAttribute("TerrainMap")
+		local tn = workspace:GetAttribute("TerrainMapN")
+		if type(tm) ~= "string" or type(tn) ~= "number" or #tm ~= tn * tn then return nil end
+		local x, z = rx * tn // R, rz * tn // R
+		local k = z * tn + x + 1
+		local v = string.byte(tm, k) - 48
+		local col = tcache[v]
+		if not col then
+			local base = TPAL[v // 4 + 1] or TPAL[11]
+			local f = TSHADE[v % 4 + 1]
+			col = Color3.new(math.min(1, base.R * f), math.min(1, base.G * f), math.min(1, base.B * f))
+			tcache[v] = col
+		end
+		return col
+	end
+	-- the caves, sampled the same way (workspace CaveMap): floors by material, water, lava, solid rock
+	local CPAL = { ROCK, Color3.fromRGB(52, 110, 170), Color3.fromRGB(240, 110, 30), Color3.fromRGB(150, 128, 100), Color3.fromRGB(120, 122, 132),
+		Color3.fromRGB(200, 224, 240), Color3.fromRGB(210, 186, 130), Color3.fromRGB(96, 124, 72), Color3.fromRGB(116, 88, 80), Color3.fromRGB(206, 200, 178) }
+	local CSHADE = { 0.8, 0.9, 1, 1.1 }
+	local ccache = {}
+	function caveColor(rx, rz, R)
+		local cm = workspace:GetAttribute("CaveMap")
+		local tn = workspace:GetAttribute("TerrainMapN")
+		if type(cm) ~= "string" or type(tn) ~= "number" or #cm ~= tn * tn then return nil end
+		local x, z = rx * tn // R, rz * tn // R
+		local v = string.byte(cm, z * tn + x + 1) - 48
+		local col = ccache[v]
+		if not col then
+			local p = v // 4
+			local base = CPAL[p + 1] or ROCK
+			local f = p == 0 and 1 or CSHADE[v % 4 + 1]
+			col = Color3.new(math.min(1, base.R * f), math.min(1, base.G * f), math.min(1, base.B * f))
+			ccache[v] = col
+		end
+		return col
+	end
 	function cellColor(x, z)
 		local d = math.max(math.abs(x), math.abs(z))
 		if d > Biomes.SEA then return SEA end
@@ -1078,6 +1134,31 @@ function M.start(gui, remotes)
 		end
 		-- the explored cells of this layer
 		mapCells = drawLayer(board, cell, layer, 54, {})
+		-- the mine rails, where you have been
+		if layer == "under" then
+			local under = workspace:FindFirstChild("Underground")
+			local tracks = under and under:FindFirstChild("Tracks")
+			for _, t in ipairs(tracks and tracks:GetChildren() or {}) do
+				local pts = {}
+				for x, _, z in string.gmatch(t:GetAttribute("Points") or "", "([%-%d%.]+),([%-%d%.]+),([%-%d%.]+)") do
+					local p = Vector2.new(tonumber(x), tonumber(z))
+					-- keep only points a few pixels apart (fewer pieces to draw)
+					if #pts == 0 or (p - pts[#pts]).Magnitude > 40 then table.insert(pts, p) end
+				end
+				for k = 2, #pts do
+					local a, b = pts[k - 1], pts[k]
+					local mid = (a + b) / 2
+					if explored(mid.X, mid.Y) then
+						local pa = Vector2.new((a.X + H) / (2 * H) * SIZE, (a.Y + H) / (2 * H) * SIZE)
+						local pb = Vector2.new((b.X + H) / (2 * H) * SIZE, (b.Y + H) / (2 * H) * SIZE)
+						local d = pb - pa
+						if d.Magnitude > 0.5 then
+							UI.frame({ Size = UDim2.fromOffset(d.Magnitude + 2, 3), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset((pa.X + pb.X) / 2, (pa.Y + pb.Y) / 2), Rotation = math.deg(math.atan2(d.Y, d.X)), BackgroundColor3 = Color3.fromRGB(176, 120, 70), BorderSizePixel = 0, ZIndex = 55, Parent = board })
+						end
+					end
+				end
+			end
+		end
 		-- places
 		local function marker(kind, x, z, color, size)
 			local holder = UI.frame({ Size = UDim2.fromOffset(size, size), AnchorPoint = Vector2.new(0.5, 0.5), Position = toMap(x, z), BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.25, ZIndex = 56, Parent = board })
@@ -1495,6 +1576,9 @@ function M.start(gui, remotes)
 			btn(w, T("ad_day"), nil, function() act("admin", "time", "day") end)
 			btn(w, T("ad_night"), nil, function() act("admin", "time", "night") end)
 			btn(w, T("ad_skip"), nil, function() act("admin", "time", "skip") end)
+			for _, wx in ipairs({ "clear", "wind", "rain", "storm", "tornado" }) do
+				btn(w, T("wx_" .. wx), wx == "tornado" and c.danger or nil, function() act("admin", "weather", wx) end)
+			end
 			btn(w, T("ad_reveal"), nil, function() act("admin", "reveal") end)
 			btn(w, T("ad_medals"), nil, function() act("admin", "medals") end)
 			btn(w, T("ad_clearMobs"), nil, function() act("admin", "clearMobs") end)
@@ -1683,6 +1767,7 @@ function M.start(gui, remotes)
 	function furnaceModal()
 		local content = openModal("furnace", T("furnace"), UDim2.fromOffset(880, 470))
 		furnaceW, furnaceBag = {}, {}
+		furnaceBagSize = tostring(state.bag)
 		local ar = lang == "ar"
 		-- tap a bag item: wood goes to the fuel slot, anything that cooks goes in on top
 		local function tapBag(i)
@@ -1705,11 +1790,13 @@ function M.start(gui, remotes)
 			furnaceBag[i] = w
 		end
 		UI.frame({ Size = UDim2.new(1, -40, 0, 2), Position = UDim2.fromOffset(20, 112), BackgroundColor3 = c.card2, BackgroundTransparency = 0.4, ZIndex = 54, Parent = left })
-		local grid = UI.frame({ Size = UDim2.new(1, 0, 0, 3 * 66), Position = UDim2.fromOffset(0, 124), BackgroundTransparency = 1, ZIndex = 54, Parent = left })
-		UI.new("UIGridLayout", { CellSize = UDim2.fromOffset(60, 60), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = grid })
-		for k = 1, Config.BAG do
+		local bigF = state.bag == "big"
+		local cell = bigF and 40 or 60
+		local grid = UI.frame({ Size = UDim2.new(1, 0, 0, 3 * (cell + 6)), Position = UDim2.fromOffset(0, 124), BackgroundTransparency = 1, ZIndex = 54, Parent = left })
+		UI.new("UIGridLayout", { CellSize = UDim2.fromOffset(cell, cell), CellPadding = UDim2.fromOffset(bigF and 4 or 6, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = grid })
+		for k = 1, bigF and Config.BIG_BAG or Config.BAG do
 			local i = Config.HOTBAR + k
-			local w = slotWidget(grid, 60, k)
+			local w = slotWidget(grid, cell, k)
 			if state.bag then
 				register(w, i, function() tapBag(i) end)
 				furnaceBag[i] = w
@@ -1777,6 +1864,8 @@ function M.start(gui, remotes)
 	function refreshModal(force)
 		if modalKind == "bag" then
 			if bagShape ~= (tostring(state.bag) .. tostring(state.armor)) then bagModal() else refreshBag() end
+		elseif modalKind == "furnace" and force and furnaceBagSize ~= tostring(state.bag) then
+			furnaceModal()
 		elseif modalKind == "stash" then
 			rebuilding = true
 			stashModal()

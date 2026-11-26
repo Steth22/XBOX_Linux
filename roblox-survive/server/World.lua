@@ -19,6 +19,7 @@ local Survival = require(script.Parent.Survival)
 local Debug = require(script.Parent.Debug)
 local Bestiary = require(ReplicatedStorage.Shared.Bestiary)
 local Furnace = require(script.Parent.Furnace)
+local Weather = require(script.Parent.Weather)
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 
 local MessagingService = game:GetService("MessagingService")
@@ -56,10 +57,10 @@ local function reveal(player, pos)
 	local cx = math.floor((pos.X + Biomes.HALF) / CELL)
 	local cz = math.floor((pos.Z + Biomes.HALF) / CELL)
 	local changed = false
-	for dz = -2, 2 do
-		for dx = -2, 2 do
+	for dz = -4, 4 do
+		for dx = -4, 4 do
 			local x, z = cx + dx, cz + dz
-			if dx * dx + dz * dz <= 5 and x >= 0 and z >= 0 and x < MAPN and z < MAPN then
+			if dx * dx + dz * dz <= 18 and x >= 0 and z >= 0 and x < MAPN and z < MAPN then
 				local i = z * MAPN + x + 1
 				if ex:sub(i, i) ~= "1" then
 					ex = ex:sub(1, i - 1) .. "1" .. ex:sub(i + 1)
@@ -1129,7 +1130,7 @@ function actions.move(player, room, a, b)
 		return
 	end
 	local inv = room.inv
-	local function slotOk(i) return i >= 1 and i <= Config.HOTBAR + Config.BAG and Inventory.usable(inv, i) end
+	local function slotOk(i) return i >= 1 and i <= Config.HOTBAR + Config.BIG_BAG and Inventory.usable(inv, i) end
 	if b == EQ_ARMOR or b == EQ_OFF then
 		-- bag slot -> equipment
 		if not slotOk(a) then return end
@@ -1208,7 +1209,7 @@ function actions.split(player, room, i)
 	if not i or not Inventory.usable(room.inv, i) then return end
 	local s = room.inv.slots[i]
 	if not s or s.n < 2 then return end
-	for j = 1, Config.HOTBAR + Config.BAG do
+	for j = 1, Config.HOTBAR + Config.BIG_BAG do
 		if j ~= i and Inventory.usable(room.inv, j) and not room.inv.slots[j] then
 			local half = math.floor(s.n / 2)
 			s.n -= half
@@ -1244,6 +1245,18 @@ function actions.buyBag(player, room)
 	room.inv.bag = true
 	notify(player, "bought")
 	ctx.reward(player, 15, 0)
+end
+
+-- the dwarves' big bag: 30 slots
+function actions.buyBigBag(player, room)
+	if room.inv.bag == "big" then return end
+	if not nearVendor(player) then notify(player, "tooFar") return end
+	if room.coins < Config.BIG_BAG_PRICE then notify(player, "needCoins") return end
+	room.coins -= Config.BIG_BAG_PRICE
+	room.inv.bag = "big"
+	notify(player, "bought")
+	ctx.reward(player, 30, 0)
+	push(player)
 end
 
 function actions.sell(player, room, id)
@@ -1326,6 +1339,7 @@ end
 function ADMIN.coins(player, room, ad, v) room.coins = math.max(0, room.coins + (tonumber(v) or 0)) end
 function ADMIN.xp(player, room, ad, v) ctx.reward(player, math.clamp(tonumber(v) or 0, 0, 1e7), 0) end
 function ADMIN.sp(player, room, ad, v) room.sp = math.max(0, room.sp + (tonumber(v) or 0)) end
+function ADMIN.weather(player, room, ad, v) Weather.force(tostring(v)) end
 function ADMIN.time(player, room, ad, v)
 	if v == "skip" then Survival.skipNight() return end
 	Lighting.ClockTime = v == "night" and 21 or 8
@@ -1667,6 +1681,8 @@ function World.start(r)
 		end
 	end
 
+	local okW, errW = pcall(function() Weather.start(ctx) end)
+	if not okW then Debug.log("start.weather", errW) end
 	local okF, errF = pcall(function() Furnace.start(ctx, Inventory, Data, vendors) end)
 	if not okF then Debug.log("start.furnace", errF) end
 

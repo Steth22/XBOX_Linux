@@ -106,27 +106,54 @@ function E.chunks(pos, color, count, size, material)
 end
 
 ---------------------------------------------------------------- character animations (procedural, on every client)
-local orig = setmetatable({}, { __mode = "k" })
+-- Avatar joints are AnimationConstraints now (Motor6D on older rigs). Both have a Transform that the
+-- Animator writes every frame, so each pose here is an extra offset (a CFrameValue we tween) laid on
+-- top of the Animator's pose right after it runs (PreSimulation), before the frame is drawn.
+local offsets = setmetatable({}, { __mode = "k" }) -- joint -> CFrameValue
+local function isJoint(m) return m and (m:IsA("Motor6D") or m:IsA("AnimationConstraint")) end
 local function motor(char, r15, r6parent, r6)
 	local p = char:FindFirstChild(r15[1])
 	local m = p and p:FindFirstChild(r15[2])
-	if not m then
+	if not isJoint(m) then
 		local t = char:FindFirstChild(r6parent)
 		m = t and t:FindFirstChild(r6)
 	end
-	if m and m:IsA("Motor6D") then
-		if not orig[m] then orig[m] = m.C0 end
-		return m, orig[m]
+	if isJoint(m) then
+		local v = offsets[m]
+		if not v then
+			v = Instance.new("CFrameValue")
+			offsets[m] = v
+		end
+		return v, CFrame.new()
 	end
 	return nil
 end
-local function tw(m, base, cf, t, style)
-	TweenService:Create(m, TweenInfo.new(t, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { C0 = base * cf }):Play()
+local function tw(v, base, cf, t, style)
+	TweenService:Create(v, TweenInfo.new(t, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = base * cf }):Play()
 end
+local baseT, wrote = setmetatable({}, { __mode = "k" }), setmetatable({}, { __mode = "k" })
+RunService.PreSimulation:Connect(function()
+	for joint, v in pairs(offsets) do
+		if joint.Parent then
+			local cur = joint.Transform
+			-- if nothing animated this joint since our last write, start again from the pose under it
+			if wrote[joint] and cur == wrote[joint] then cur = baseT[joint] or cur end
+			if v.Value ~= CFrame.identity then
+				baseT[joint] = cur
+				joint.Transform = cur * v.Value
+				wrote[joint] = joint.Transform
+			elseif wrote[joint] then
+				joint.Transform = cur
+				wrote[joint], baseT[joint] = nil, nil
+			end
+		else
+			offsets[joint] = nil
+		end
+	end
+end)
 local rad = math.rad
 
 local lastLocal = {}
-local reported = false
 function E.anim(char, kind, isLocal)
 	if not char or not char.Parent then return end
 	-- the owner already played it the moment they tapped; skip the copy from the server
@@ -147,13 +174,6 @@ function E.anim(char, kind, isLocal)
 		if arm then tw(arm, armBase, CFrame.new(), t) end
 		if larm then tw(larm, larmBase, CFrame.new(), t) end
 		if waist then tw(waist, waistBase, CFrame.new(), t) end
-	end
-	if arm and not reported and E.report and lp and char == lp.Character then
-		reported = true
-		local before = arm.C0
-		task.delay(0.1, function()
-			pcall(E.report, string.format("anim %s: arm moved %.2f rad", kind, select(2, (before:Inverse() * arm.C0):ToAxisAngle())))
-		end)
 	end
 	task.spawn(function()
 		if (kind == "chop" or kind == "swing") and arm then
@@ -221,20 +241,28 @@ function E.anim(char, kind, isLocal)
 			task.wait(0.3)
 			reset(0.25)
 		elseif (kind == "eat" or kind == "heal") and arm then
-			tw(arm, armBase, CFrame.Angles(rad(45), 0, rad(-35)), 0.2)
+			-- hand up to the mouth, a few bites
+			local fore, foreBase = motor(char, { "RightLowerArm", "RightElbow" }, "Torso", "Right Shoulder")
+			tw(arm, armBase, CFrame.Angles(rad(70), 0, rad(-28)), 0.18)
+			if fore and fore ~= arm then tw(fore, foreBase, CFrame.Angles(rad(80), 0, 0), 0.18) end
 			task.wait(0.2)
 			if kind == "eat" then
-				E.play("eat", head, 0.8)
-				for _ = 1, 3 do
+				for k = 1, 3 do
+					E.play("eat", head, 0.85)
 					if head then E.chunks(head.Position - head.CFrame.LookVector * 0.6, Color3.fromRGB(176, 52, 110), 2, 0.4) end
-					task.wait(0.22)
+					tw(arm, armBase, CFrame.Angles(rad(58), 0, rad(-24)), 0.1)
+					task.wait(0.11)
+					tw(arm, armBase, CFrame.Angles(rad(72), 0, rad(-28)), 0.1)
+					task.wait(0.13)
 				end
+				if fore and fore ~= arm then tw(fore, foreBase, CFrame.new(), 0.25) end
 			else
 				E.play("pop", head, 0.6)
 				if head then E.sparkle(head.Position - Vector3.new(0, 1.5, 0), Color3.fromRGB(120, 255, 150), 25) end
 				task.wait(0.5)
 			end
 			reset(0.25)
+			if fore and fore ~= arm then tw(fore, foreBase, CFrame.new(), 0.25) end
 		elseif kind == "place" and waist then
 			tw(waist, waistBase, CFrame.Angles(rad(-35), 0, 0), 0.18)
 			if arm then tw(arm, armBase, CFrame.Angles(rad(-30), 0, 0), 0.18) end
@@ -563,7 +591,270 @@ function E.ambience()
 	ReplicatedStorage:GetAttributeChangedSignal("Night"):Connect(update)
 end
 
+---------------------------------------------------------------- weather: rain, snow, wind, lightning, thunder, tornado
+local RAIN_TEX = "rbxassetid://71434446598916"
+local FLAKE_TEX = "rbxassetid://121235542395120"
+local function loopSound(name)
+	local id = Sounds[name] and Sounds[name][1]
+	local s = Instance.new("Sound")
+	s.SoundId = id and ("rbxassetid://" .. id) or ""
+	s.Looped = true
+	s.Volume = 0
+	s.Parent = SoundService
+	return s
+end
+local function startWeather()
+	local Biomes = require(ReplicatedStorage.Shared.Biomes)
+	local Lighting = game:GetService("Lighting")
+	-- a big invisible sheet above the camera sends the rain down around you
+	local sky = Instance.new("Part")
+	sky.Name = "WeatherSky"
+	sky.Anchored = true
+	sky.CanCollide = false
+	sky.CanQuery = false
+	sky.CanTouch = false
+	sky.Transparency = 1
+	sky.Size = Vector3.new(130, 1, 130)
+	local rain = Instance.new("ParticleEmitter")
+	rain.Texture = RAIN_TEX
+	rain.Orientation = Enum.ParticleOrientation.VelocityParallel
+	rain.EmissionDirection = Enum.NormalId.Bottom
+	rain.Speed = NumberRange.new(110, 130)
+	rain.Lifetime = NumberRange.new(0.7, 0.9)
+	rain.Size = NumberSequence.new(0.5)
+	rain.Squash = NumberSequence.new(-1.2)
+	rain.Transparency = NumberSequence.new(0.35)
+	rain.LightInfluence = 0.6
+	rain.Rate = 0
+	rain.WindAffectsDrag = true
+	rain.Drag = 0.2
+	rain.Parent = sky
+	local snow = Instance.new("ParticleEmitter")
+	snow.Texture = FLAKE_TEX
+	snow.EmissionDirection = Enum.NormalId.Bottom
+	snow.Speed = NumberRange.new(10, 16)
+	snow.Lifetime = NumberRange.new(5, 7)
+	snow.Size = NumberSequence.new(0.35, 0.5)
+	snow.SpreadAngle = Vector2.new(20, 20)
+	snow.RotSpeed = NumberRange.new(-60, 60)
+	snow.Rate = 0
+	snow.WindAffectsDrag = true
+	snow.Drag = 1.2
+	snow.Parent = sky
+	-- wind: dust and leaves blowing past
+	local gustBox = Instance.new("Part")
+	gustBox.Name = "WeatherGust"
+	gustBox.Anchored, gustBox.CanCollide, gustBox.CanQuery, gustBox.CanTouch = true, false, false, false
+	gustBox.Transparency = 1
+	gustBox.Size = Vector3.new(90, 20, 90)
+	local dust = Instance.new("ParticleEmitter")
+	dust.Texture = SMOKE
+	dust.Color = ColorSequence.new(Color3.fromRGB(196, 186, 160))
+	dust.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.85), NumberSequenceKeypoint.new(1, 1) })
+	dust.Size = NumberSequence.new(4, 9)
+	dust.Speed = NumberRange.new(0, 1)
+	dust.Lifetime = NumberRange.new(2.5, 4)
+	dust.Rate = 0
+	dust.WindAffectsDrag = true
+	dust.Drag = 2
+	dust.Parent = gustBox
+	local leaves = Instance.new("ParticleEmitter")
+	leaves.Texture = SPARK
+	leaves.Color = ColorSequence.new(Color3.fromRGB(90, 140, 60), Color3.fromRGB(150, 120, 60))
+	leaves.Size = NumberSequence.new(0.25)
+	leaves.Speed = NumberRange.new(0, 2)
+	leaves.Lifetime = NumberRange.new(2, 3)
+	leaves.RotSpeed = NumberRange.new(-200, 200)
+	leaves.Rate = 0
+	leaves.WindAffectsDrag = true
+	leaves.Drag = 1.5
+	leaves.Parent = gustBox
+	local sRainL, sRainH, sWind, sWindS, sTornado = loopSound("rainLight"), loopSound("rainHeavy"), loopSound("wind"), loopSound("windStrong"), loopSound("tornado")
+	for _, snd in ipairs({ sRainL, sRainH, sWind, sWindS }) do snd:Play() end
+	local vol = { [sRainL] = 0, [sRainH] = 0, [sWind] = 0, [sWindS] = 0, [sTornado] = 0 }
+	-- a lightning bolt far away, then the thunder a moment later
+	local function bolt(origin)
+		local cam = workspace.CurrentCamera
+		if not cam then return end
+		local a = rng:NextNumber(0, math.pi * 2)
+		local d = rng:NextNumber(140, 320)
+		local base = origin + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d)
+		local hit = workspace:Raycast(base + Vector3.new(0, 300, 0), Vector3.new(0, -500, 0))
+		local ground = hit and hit.Position or base
+		local top = ground + Vector3.new(rng:NextNumber(-30, 30), 260, rng:NextNumber(-30, 30))
+		local folder = Instance.new("Folder")
+		folder.Name = "Lightning"
+		folder.Parent = cam
+		local prev = top
+		for k = 1, 10 do
+			local t = k / 10
+			local p = top:Lerp(ground, t) + (k < 10 and Vector3.new(rng:NextNumber(-12, 12), 0, rng:NextNumber(-12, 12)) or Vector3.zero)
+			local seg = Instance.new("Part")
+			seg.Anchored, seg.CanCollide, seg.CanQuery, seg.CanTouch = true, false, false, false
+			seg.Material = Enum.Material.Neon
+			seg.Color = Color3.fromRGB(220, 230, 255)
+			local len = (p - prev).Magnitude
+			seg.Size = Vector3.new(0.9, 0.9, len)
+			seg.CFrame = CFrame.lookAt((p + prev) / 2, p)
+			seg.Parent = folder
+			prev = p
+		end
+		local light = Instance.new("PointLight")
+		light.Range = 60
+		light.Brightness = 8
+		light.Color = Color3.fromRGB(200, 215, 255)
+		light.Parent = folder:GetChildren()[10]
+		E.flash = 0.35
+		E.play("lightning", nil, 0.45)
+		task.delay(0.07, function() E.flash = 0 end)
+		task.delay(0.14, function() E.flash = 0.25 end)
+		task.delay(0.22, function() E.flash = 0 folder:Destroy() end)
+		task.delay(d / 340 * 3, function() E.play("thunder", nil, 0.9 * (1 - d / 500)) end)
+	end
+	-- the tornado: drawn here around the part the server moves, spinning smoothly
+	local tornadoView = nil
+	local function buildTornado(core)
+		local m = Instance.new("Model")
+		m.Name = "TornadoView"
+		local rings = {}
+		for k = 1, 14 do
+			local t = (k - 1) / 13
+			local r = 5 + t ^ 1.6 * 34
+			local p = Instance.new("Part")
+			p.Shape = Enum.PartType.Cylinder
+			p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+			p.Material = Enum.Material.SmoothPlastic
+			p.Color = Color3.fromRGB(120, 118, 112):Lerp(Color3.fromRGB(80, 82, 88), t)
+			p.Transparency = 0.45 + t * 0.2
+			p.Size = Vector3.new(7, r * 2, r * 2)
+			p.Parent = m
+			table.insert(rings, { part = p, h = 3 + k * 6.5, r = r, ph = rng:NextNumber(0, 6) })
+		end
+		local dustE = Instance.new("ParticleEmitter")
+		dustE.Texture = SMOKE
+		dustE.Color = ColorSequence.new(Color3.fromRGB(110, 100, 86))
+		dustE.Size = NumberSequence.new(8, 18)
+		dustE.Transparency = NumberSequence.new(0.5, 1)
+		dustE.Speed = NumberRange.new(10, 20)
+		dustE.SpreadAngle = Vector2.new(180, 20)
+		dustE.Lifetime = NumberRange.new(2, 3)
+		dustE.Rate = 30
+		dustE.RotSpeed = NumberRange.new(-90, 90)
+		local base = rings[1].part
+		dustE.Parent = base
+		m.Parent = workspace
+		sTornado.Parent = base
+		sTornado.RollOffMaxDistance = 400
+		sTornado.RollOffMinDistance = 30
+		sTornado:Play()
+		return { model = m, rings = rings, core = core }
+	end
+	local lastBolt = 0
+	local nextBolt = 0
+	local level = { rain = 0, wind = 0 }
+	local flung = 0
+	RunService.RenderStepped:Connect(function(dt)
+		local cam = workspace.CurrentCamera
+		if not cam then return end
+		local w = ReplicatedStorage:GetAttribute("Weather") or "clear"
+		local wd = ReplicatedStorage:GetAttribute("WindDir") or Vector3.new(1, 0, 0)
+		local pos = cam.CFrame.Position
+		local lp = Players.LocalPlayer
+		local hrp = lp and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+		local here = hrp and hrp.Position or pos
+		local under = here.Y < -26
+		-- a roof of rock or a building overhead keeps the rain off
+		local covered = under
+		if not covered and math.floor(os.clock() * 4) % 2 == 0 then
+			local hit = workspace:Raycast(here + Vector3.new(0, 3, 0), Vector3.new(0, 60, 0))
+			E.weatherCovered = hit ~= nil
+		end
+		covered = covered or E.weatherCovered == true
+		local targetRain = (w == "rain" and 0.55 or w == "storm" and 1 or 0)
+		local targetWind = (w == "wind" and 0.8 or w == "storm" and 1 or w == "rain" and 0.3 or 0.08)
+		level.rain += (targetRain - level.rain) * math.min(1, dt * 0.5)
+		level.wind += (targetWind - level.wind) * math.min(1, dt * 0.5)
+		E.weatherDim = level.rain * 0.9 + (w == "wind" and 0.1 or 0)
+		workspace.GlobalWind = wd * (6 + level.wind * 44)
+		local biome = Biomes.at(here.X, here.Z)
+		local snowy = biome == "snow" or (biome == "mountains" and here.Y > 120)
+		local outside = not under
+		sky.Parent = outside and cam or nil
+		gustBox.Parent = outside and cam or nil
+		sky.CFrame = CFrame.new(pos + Vector3.new(0, 45, 0)) + wd * -level.wind * 18
+		gustBox.CFrame = CFrame.new(pos + Vector3.new(0, 4, 0)) - wd * 30
+		rain.Rate = (not snowy and outside) and level.rain * 1400 or 0
+		snow.Rate = (snowy and outside) and level.rain * 500 or 0
+		dust.Rate = outside and (level.wind > 0.5 and (level.wind - 0.5) * 14 or 0) * (biome == "desert" and 3 or 1) or 0
+		leaves.Rate = outside and (biome ~= "desert" and biome ~= "snow") and math.max(0, level.wind - 0.4) * 40 or 0
+		-- sounds: quieter under a roof, silent deep underground
+		local muffle = under and 0 or (covered and 0.35 or 1)
+		vol[sRainL] = (not snowy) and math.clamp(level.rain * 1.6, 0, 1) * (1 - level.rain) * 1.6 * 0.6 * muffle or 0
+		vol[sRainH] = (not snowy) and math.max(0, level.rain - 0.5) * 2 * 0.8 * muffle or 0
+		vol[sWind] = math.clamp(level.wind - 0.1, 0, 0.7) * 0.7 * muffle
+		vol[sWindS] = math.max(0, level.wind - 0.6) * 1.6 * 0.6 * muffle
+		for snd, v in pairs(vol) do
+			if snd ~= sTornado then snd.Volume += (v - snd.Volume) * math.min(1, dt * 2) end
+		end
+		-- lightning in a storm
+		if w == "storm" and outside and os.clock() > nextBolt then
+			nextBolt = os.clock() + rng:NextNumber(7, 18)
+			if os.clock() - lastBolt > 5 then lastBolt = os.clock() task.spawn(bolt, here) end
+		end
+		if w ~= "storm" and E.flash and E.flash ~= 0 then E.flash = 0 end
+		-- tornado
+		local core = workspace:FindFirstChild("Tornado")
+		if core and not tornadoView then tornadoView = buildTornado(core) end
+		if tornadoView and (not core or tornadoView.core ~= core) then
+			sTornado:Stop()
+			sTornado.Parent = SoundService
+			tornadoView.model:Destroy()
+			tornadoView = nil
+		end
+		if tornadoView then
+			local c = core.Position
+			local t = os.clock()
+			for k, rg in ipairs(tornadoView.rings) do
+				local sway = Vector3.new(math.sin(t * 0.8 + k * 0.35) * k * 0.9, 0, math.cos(t * 0.6 + k * 0.3) * k * 0.9)
+				rg.part.CFrame = CFrame.new(c + Vector3.new(0, rg.h, 0) + sway) * CFrame.Angles(0, t * 4 + rg.ph, math.pi / 2)
+			end
+			sTornado.Volume = 1
+			-- pulled in, then thrown up and around when too close
+			if hrp and outside then
+				local flat = Vector3.new(c.X - here.X, 0, c.Z - here.Z)
+				local d = flat.Magnitude
+				if d < 70 and d > 1 then
+					local pull = flat.Unit * (1 - d / 70) * 28
+					hrp.AssemblyLinearVelocity += pull * dt * 3
+				end
+				if d < 20 and os.clock() - flung > 1.2 then
+					flung = os.clock()
+					local side = Vector3.new(-flat.Z, 0, flat.X).Unit
+					hrp.AssemblyLinearVelocity = Vector3.new(0, 70, 0) + side * 45
+					E.play("gust", hrp, 1)
+				end
+			end
+		end
+	end)
+	-- a gust now and then when it is windy
+	task.spawn(function()
+		while true do
+			task.wait(rng:NextNumber(5, 11))
+			local w = ReplicatedStorage:GetAttribute("Weather")
+			local lp = Players.LocalPlayer
+			local hrp = lp and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+			if (w == "wind" or w == "storm") and hrp and hrp.Position.Y > -26 and not E.weatherCovered then
+				E.play("gust", nil, 0.5)
+			end
+		end
+	end)
+end
+
 function E.start(remotes)
+	task.spawn(function()
+		local ok, err = pcall(startWeather)
+		if not ok then warn("weather", err) end
+	end)
 	remotes.Fx.OnClientEvent:Connect(function(kind, a, b, c)
 		local h = handlers[kind]
 		if h then
@@ -652,7 +943,10 @@ function E.start(remotes)
 			local amb = mix(Color3.fromRGB(100, 108, 118), Color3.fromRGB(3, 3, 6), dark)
 			local out = mix(Color3.fromRGB(128, 136, 148), Color3.fromRGB(4, 4, 9), night)
 			out = mix(out, Color3.new(0, 0, 0), cave)
+			local wdim = (E.weatherDim or 0) * (1 - cave)
 			local bright = 2.4 + (0.04 - 2.4) * dark
+			bright *= 1 - 0.45 * wdim
+			amb = mix(amb, Color3.fromRGB(70, 74, 82), wdim * 0.5 * (1 - dark))
 			local expo = -0.7 * dark
 			-- night vision lifts everything to a green glow
 			amb = mix(amb, Color3.fromRGB(60, 95, 60), nv * dark)
@@ -664,7 +958,8 @@ function E.start(remotes)
 			Lighting.Brightness = bright
 			Lighting.ExposureCompensation = expo
 			cc.TintColor = mix(Color3.new(1, 1, 1), Color3.fromRGB(170, 255, 170), nv * dark)
-			cc.Saturation = -0.35 * dark * (1 - nv)
+			cc.Saturation = -0.35 * dark * (1 - nv) - 0.25 * wdim
+			cc.Brightness = E.flash or 0
 			-- distance fog (the Atmosphere object would cancel it, so it is removed)
 			if atm then atm:Destroy() end
 			if current then
@@ -673,9 +968,10 @@ function E.start(remotes)
 				local finish = f.finish * dawn
 				finish = finish + (110 - finish) * night * 0.55 -- you see less at night
 				finish = finish + (85 - finish) * cave
-				Lighting.FogStart = f.start * dawn * (1 - cave * 0.8)
+				finish = finish * (1 - 0.45 * wdim)
+				Lighting.FogStart = f.start * dawn * (1 - cave * 0.8) * (1 - 0.6 * wdim)
 				Lighting.FogEnd = finish
-				Lighting.FogColor = mix(mix(f.color, Color3.fromRGB(8, 8, 14), night), Color3.new(0, 0, 0), cave)
+				Lighting.FogColor = mix(mix(mix(f.color, Color3.fromRGB(104, 110, 120), wdim * 0.7), Color3.fromRGB(8, 8, 14), night), Color3.new(0, 0, 0), cave)
 				-- a ring of fog-coloured walls right at the fog's end: nothing behind it can be seen at all
 				local cam = workspace.CurrentCamera
 				if cam then
@@ -722,7 +1018,7 @@ function E.start(remotes)
 						w = { last = hrp.Position, phase = 0, speed = 0, j = {} }
 						for _, n in ipairs({ "LeftHip", "RightHip", "LeftShoulder", "RightShoulder" }) do
 							local m = rig:FindFirstChild(n, true)
-							if m and m:IsA("Motor6D") then w.j[n] = m end
+							if m and (m:IsA("Motor6D") or m:IsA("AnimationConstraint")) then w.j[n] = m end
 						end
 						people[rig] = w
 					end

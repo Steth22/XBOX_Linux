@@ -1398,6 +1398,7 @@ local CAVE_MOBS = {
 	wide = { bat = 4, crawler = 3, ghoul = 3 },
 }
 local caveBoss = {}
+local caveNext = {} -- [cavern] = clock before which it won't spawn again
 CAVE_MOBS.bandit = { bandit = 4 }
 CAVE_MOBS.under_forest = { bat = 3, crawler = 2, ghoul = 2 }
 CAVE_MOBS.under_hills = { bat = 3, crawler = 2, ghoul = 2 }
@@ -1439,9 +1440,18 @@ local function cavePopulate()
 				end
 				local options = {}
 				for kind, cap in pairs(list) do
-					if (counts[kind] or 0) < cap then table.insert(options, kind) end
+					if (counts[kind] or 0) < math.ceil(cap / 2) then table.insert(options, kind) end
 				end
+				-- calm caves: few creatures around a player at once, and a pause between arrivals
+				local around = 0
+				if r then
+					for _, st in pairs(mobs) do
+						if st.caveId and not st.dead and st.hrp and (st.hrp.Position - r.Position).Magnitude < 120 then around += 1 end
+					end
+				end
+				if around >= 3 or os.clock() < (caveNext[cave] or 0) then options = {} end
 				if #options > 0 and r then
+					caveNext[cave] = os.clock() + rng:NextNumber(30, 50)
 					local cand = {}
 					for _, sp in ipairs(spots) do
 						local d = (sp.Position - r.Position).Magnitude

@@ -46,6 +46,9 @@ def fixcabins():
 def fixcabindoors():
     return go("fixcabindoors", g("fixcabindoors.lua"))
 
+def terrainmap():
+    return go("terrainmap", g("terrainmap.lua"))
+
 def vegetation():
     ok = True
     for part in (1, 2):
@@ -61,5 +64,6 @@ if __name__ == "__main__":
     if what in ("all", "villages"): villages()
     if what in ("all", "caves"): caves()
     if what in ("all", "vegetation"): vegetation()
+    if what in ("all", "terrainmap"): terrainmap()
     if what in ("all", "fixcabins"): fixcabins()
     if what == "fixcabindoors": fixcabindoors()

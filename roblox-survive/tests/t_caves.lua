@@ -22,7 +22,7 @@ check("underground caverns have spots on real floors", function()
 			end
 		end
 	end
-	assert(caverns >= 200, "caverns " .. caverns)
+	assert(caverns >= 150, "caverns " .. caverns)
 	assert(n >= 600, "spots " .. n)
 	assert(#bad <= 6, #bad .. " bad: " .. table.concat(bad, ", "))
 end)

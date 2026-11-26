@@ -246,7 +246,7 @@ function F.move(player, room, a, b)
 	if not part or not hrp or (hrp.Position - part.Position).Magnitude > 16 then return false end
 	local bx = box(player, fid)
 	local inv = room.inv
-	local function slotOk(i) return i and i >= 1 and i <= Config.HOTBAR + Config.BAG and Inventory.usable(inv, i) end
+	local function slotOk(i) return i and i >= 1 and i <= Config.HOTBAR + Config.BIG_BAG and Inventory.usable(inv, i) end
 	local key = { [IN] = "input", [FUEL] = "fuel", [OUT] = "out" }
 	if key[b] and slotOk(a) then
 		-- bag -> furnace (the whole stack, or as much as fits)

@@ -103,110 +103,199 @@ local function inCrater(x, z)
 end
 
 ---------------------------------------------------------------- the underground layer
--- A grid of caverns under the whole map, joined by wide winding tunnels (every cavern can reach every other),
--- straight mine lines with rails, ramps down from the surface and ladder shafts. Shared by the terrain writer
--- (to carve it) and the content script (to furnish it). Deterministic.
+-- Caves like a real underground (Minecraft style): caverns of very different sizes scattered at random,
+-- each made of a few overlapping blobs so no two look alike, joined by winding worm tunnels whose width
+-- changes as they go. A spanning tree guarantees every cavern can reach every other; extra links make
+-- loops. The mines are dug by people, so they run almost straight along four lines with rails.
+-- Shared by the terrain writer (to carve it) and the content script (to furnish it). Deterministic.
 local UG = { caverns = {}, tunnels = {}, lines = {}, entrances = {}, shafts = {} }
 UG.TOP, UG.BOTTOM = -30, -140
 local urng = Random.new(9090)
-local SP, NG = 190, 15
-local grid = {}
-for i = 1, NG do
-	grid[i] = {}
-	for j = 1, NG do
-		local grand = urng:NextNumber() < 0.12
-		local c = {
-			x = -SP * (NG - 1) / 2 + (i - 1) * SP + urng:NextNumber(-45, 45),
-			z = -SP * (NG - 1) / 2 + (j - 1) * SP + urng:NextNumber(-45, 45),
-			rx = grand and urng:NextNumber(55, 72) or urng:NextNumber(26, 42),
-			rz = grand and urng:NextNumber(55, 72) or urng:NextNumber(26, 42),
-			ry = grand and urng:NextNumber(24, 30) or urng:NextNumber(13, 19),
-			grand = grand, i = i, j = j,
-		}
-		c.y = grand and urng:NextNumber(-98, -72) or urng:NextNumber(-94, -54)
-		if c.y + c.ry > UG.TOP then c.y = UG.TOP - c.ry end
-		c.floor = c.y - c.ry * 0.55
-		c.region = Biomes.at(c.x, c.z)
-		c.lake = not grand and urng:NextNumber() < 0.12
-		c.lava = (c.region == "volcano" and urng:NextNumber() < 0.6) or (not c.lake and urng:NextNumber() < 0.04)
-		if c.lake then c.water = c.y - c.ry * 0.25 end
-		if c.lava then c.pool = { x = c.x + urng:NextNumber(-0.3, 0.3) * c.rx, z = c.z + urng:NextNumber(-0.3, 0.3) * c.rz, r = math.min(c.rx, c.rz) * 0.38 } end
-		c.id = #UG.caverns + 1
-		table.insert(UG.caverns, c)
-		grid[i][j] = c
+local LIM = HALF - 170
+local function newCavern(x, z, size)
+	-- size: "small" | "mid" | "grand"
+	local rx, rz, ry
+	if size == "grand" then rx, rz, ry = urng:NextNumber(58, 86), urng:NextNumber(50, 80), urng:NextNumber(24, 32)
+	elseif size == "mid" then rx, rz, ry = urng:NextNumber(32, 50), urng:NextNumber(28, 46), urng:NextNumber(15, 21)
+	else rx, rz, ry = urng:NextNumber(16, 28), urng:NextNumber(15, 26), urng:NextNumber(11, 15) end
+	local c = { x = x, z = z, rx = rx, rz = rz, ry = ry, grand = size == "grand", size = size }
+	c.y = size == "grand" and urng:NextNumber(-100, -74) or urng:NextNumber(-96, -50)
+	if c.y + c.ry > UG.TOP then c.y = UG.TOP - c.ry end
+	c.floor = c.y - c.ry * 0.55
+	-- the main blob plus a few side blobs: irregular outlines
+	c.blobs = { { x = x, z = z, rx = rx, rz = rz, ry = ry } }
+	local extra = size == "grand" and urng:NextInteger(3, 5) or size == "mid" and urng:NextInteger(2, 3) or urng:NextInteger(0, 2)
+	for _ = 1, extra do
+		local a = urng:NextNumber(0, math.pi * 2)
+		local d = urng:NextNumber(0.45, 0.85)
+		local s = urng:NextNumber(0.4, 0.75)
+		table.insert(c.blobs, { x = x + math.cos(a) * rx * d, z = z + math.sin(a) * rz * d, rx = rx * s, rz = rz * s, ry = ry * urng:NextNumber(0.6, 0.95) })
 	end
+	-- bounds of all blobs (other code reads rx / rz as the cavern's reach)
+	local mx, mz = 0, 0
+	for _, bl in ipairs(c.blobs) do
+		mx = math.max(mx, math.abs(bl.x - x) + bl.rx)
+		mz = math.max(mz, math.abs(bl.z - z) + bl.rz)
+	end
+	c.reachX, c.reachZ = mx, mz
+	c.region = Biomes.at(x, z)
+	c.id = #UG.caverns + 1
+	table.insert(UG.caverns, c)
+	return c
 end
-UG.grid = grid
+-- the four mine lines first: caverns every ~300 studs along x = +-760 and z = +-760
+local MINE = 760
+local lineCaverns = {}
+for li, def in ipairs({ { "z", -MINE }, { "z", MINE }, { "x", -MINE }, { "x", MINE } }) do
+	local list = {}
+	for t = -LIM + 40, LIM - 40, 300 do
+		local x, z
+		if def[1] == "z" then x, z = t, def[2] else x, z = def[2], t end
+		-- reuse a cavern where two lines cross
+		local found
+		for _, c in ipairs(UG.caverns) do
+			if (c.x - x) ^ 2 + (c.z - z) ^ 2 < 60 ^ 2 then found = c end
+		end
+		local c = found or newCavern(x + urng:NextNumber(-20, 20), z + urng:NextNumber(-20, 20), urng:NextNumber() < 0.3 and "grand" or "mid")
+		c.mine = true
+		table.insert(list, c)
+	end
+	lineCaverns[li] = list
+end
+-- the rest: scattered caverns of every size, never too close to each other
+local tries = 0
+while #UG.caverns < 190 and tries < 20000 do
+	tries += 1
+	local roll = urng:NextNumber()
+	local size = roll < 0.12 and "grand" or roll < 0.5 and "mid" or "small"
+	local x, z = urng:NextNumber(-LIM, LIM), urng:NextNumber(-LIM, LIM)
+	local ok = true
+	local need = size == "grand" and 190 or size == "mid" and 130 or 95
+	for _, c in ipairs(UG.caverns) do
+		local gap = need + (c.grand and 60 or 0)
+		if (c.x - x) ^ 2 + (c.z - z) ^ 2 < gap * gap then ok = false break end
+	end
+	if ok then newCavern(x, z, size) end
+end
+for _, c in ipairs(UG.caverns) do
+	c.lake = not c.mine and not c.grand and urng:NextNumber() < 0.12
+	c.lava = not c.mine and ((c.region == "volcano" and urng:NextNumber() < 0.6) or (not c.lake and urng:NextNumber() < 0.04))
+	if c.lake then c.water = c.y - c.ry * 0.25 end
+	if c.lava then c.pool = { x = c.x + urng:NextNumber(-0.3, 0.3) * c.rx, z = c.z + urng:NextNumber(-0.3, 0.3) * c.rz, r = math.min(c.rx, c.rz) * 0.38 } end
+end
 
 local function smooth01(t) return t * t * (3 - 2 * t) end
--- a tunnel from cavern a to cavern b, following the floors, optionally winding
+-- a tunnel from a to b. Worm tunnels wander sideways (two noise waves) and change width; mines run straight.
 local function tunnel(a, b, r, wiggle, kind)
-	local pts = {}
+	local pts, radii = {}, {}
 	local dx, dz = b.x - a.x, b.z - a.z
-	local len = math.sqrt(dx * dx + dz * dz)
+	local len = math.max(1, math.sqrt(dx * dx + dz * dz))
 	local px, pz = -dz / len, dx / len
 	local n = math.max(2, math.floor(len / 6))
 	local ph = urng:NextNumber(0, 100)
 	for k = 0, n do
 		local t = k / n
-		local off = wiggle * math.sin(math.pi * t) + (wiggle ~= 0 and math.noise(t * 3, ph) * 10 or 0)
+		local env = math.sin(math.pi * t) -- no wandering at the ends, so they meet the caverns
+		local off = 0
+		if wiggle ~= 0 then
+			off = env * (wiggle * math.noise(t * 2.2, ph) * 2 + 14 * math.noise(t * 7, ph + 7))
+		end
 		local fl = a.floor + (b.floor - a.floor) * smooth01(t)
-		table.insert(pts, Vector3.new(a.x + dx * t + px * off, fl + r * 0.6, a.z + dz * t + pz * off))
+		if wiggle ~= 0 then fl += env * 3 * math.noise(t * 5, ph + 3) end
+		local rr = r
+		if wiggle ~= 0 then rr = math.max(6, r * (1 + 0.3 * math.noise(t * 6, ph + 11))) end
+		table.insert(pts, Vector3.new(a.x + dx * t + px * off, fl + rr * 0.6, a.z + dz * t + pz * off))
+		table.insert(radii, rr)
 	end
-	local tn = { pts = pts, r = r, kind = kind or "tunnel", a = a, b = b, id = #UG.tunnels + 1 }
+	local tn = { pts = pts, radii = radii, r = r, kind = kind or "tunnel", a = a, b = b, id = #UG.tunnels + 1 }
 	table.insert(UG.tunnels, tn)
 	return tn
 end
--- mine lines: two rows and two columns of the grid
-local mineEdge = {}
-for _, j in ipairs({ 4, 12 }) do for i = 1, NG - 1 do mineEdge[i .. "," .. j .. ">" .. (i + 1) .. "," .. j] = true end end
-for _, i in ipairs({ 4, 12 }) do for j = 1, NG - 1 do mineEdge[i .. "," .. j .. ">" .. i .. "," .. (j + 1)] = true end end
-local edgeTunnel = {}
-for i = 1, NG do
-	for j = 1, NG do
-		local a = grid[i][j]
-		for _, d in ipairs({ { 1, 0 }, { 0, 1 } }) do
-			local b = grid[i + d[1]] and grid[i + d[1]][j + d[2]]
-			if b then
-				local key = i .. "," .. j .. ">" .. (i + d[1]) .. "," .. (j + d[2])
-				local t
-				if mineEdge[key] then
-					t = tunnel(a, b, 6.5, 0, "mine")
-				else
-					local big = urng:NextNumber() < 0.12
-					t = tunnel(a, b, big and urng:NextNumber(9, 11) or urng:NextNumber(6, 8), urng:NextNumber(-30, 30))
-					if urng:NextNumber() < 0.06 then t.gas = true end
-				end
-				edgeTunnel[key] = t
-			end
+-- the mine tunnels along each line (straight, rails later)
+local lineTunnels = {}
+local linked = {}
+local function key(a, b) return math.min(a.id, b.id) .. ":" .. math.max(a.id, b.id) end
+for li, list in ipairs(lineCaverns) do
+	lineTunnels[li] = {}
+	for k = 1, #list - 1 do
+		table.insert(lineTunnels[li], tunnel(list[k], list[k + 1], 6.5, 0, "mine"))
+		linked[key(list[k], list[k + 1])] = true
+	end
+end
+-- every cavern joined: a spanning tree over the nearest neighbours (Prim), then some extra loops
+local inTree = { [UG.caverns[1]] = true }
+local treeN = 1
+local bestLink = {}
+local function relax(c)
+	for _, o in ipairs(UG.caverns) do
+		if not inTree[o] then
+			local d = (o.x - c.x) ^ 2 + (o.z - c.z) ^ 2
+			if not bestLink[o] or d < bestLink[o][2] then bestLink[o] = { c, d } end
 		end
 	end
 end
--- no lakes or lava pools on the rail lines
-for _, t in ipairs(UG.tunnels) do
-	if t.kind == "mine" then
-		for _, c in ipairs({ t.a, t.b }) do c.lake, c.water, c.lava, c.pool = false, nil, false, nil end
+relax(UG.caverns[1])
+-- the mine caverns are already joined to each other along their lines
+for _, list in ipairs(lineCaverns) do for _, c in ipairs(list) do if not inTree[c] then inTree[c] = true treeN += 1 relax(c) end end end
+local function worm(a, b)
+	if linked[key(a, b)] then return end
+	linked[key(a, b)] = true
+	local big = urng:NextNumber() < 0.15
+	local t = tunnel(a, b, big and urng:NextNumber(9, 12) or urng:NextNumber(6.5, 8.5), urng:NextNumber(18, 40))
+	if urng:NextNumber() < 0.06 then t.gas = true end
+end
+while treeN < #UG.caverns do
+	local pick, pd
+	for o, bl in pairs(bestLink) do
+		if not inTree[o] and (not pd or bl[2] < pd) then pick, pd = o, bl[2] end
+	end
+	if not pick then break end
+	worm(bestLink[pick][1], pick)
+	inTree[pick] = true
+	treeN += 1
+	bestLink[pick] = nil
+	relax(pick)
+end
+for _, c in ipairs(UG.caverns) do
+	if urng:NextNumber() < 0.35 then
+		local best, bd
+		for _, o in ipairs(UG.caverns) do
+			if o ~= c and not linked[key(c, o)] then
+				local d = (o.x - c.x) ^ 2 + (o.z - c.z) ^ 2
+				if d < 330 ^ 2 and (not bd or d < bd) then best, bd = o, d end
+			end
+		end
+		if best then worm(c, best) end
+	end
+end
+-- a few dead-end side passages that wander off and stop
+for _ = 1, 40 do
+	local c = UG.caverns[urng:NextInteger(1, #UG.caverns)]
+	local a = urng:NextNumber(0, math.pi * 2)
+	local d = urng:NextNumber(70, 140)
+	local ex, ez = c.x + math.cos(a) * d, c.z + math.sin(a) * d
+	if math.abs(ex) < LIM and math.abs(ez) < LIM then
+		local stub = { x = ex, z = ez, floor = c.floor + urng:NextNumber(-6, 6) }
+		tunnel(c, stub, urng:NextNumber(6, 7.5), urng:NextNumber(10, 25), "stub")
 	end
 end
 -- the rail lines: the mine tunnels joined end to end (they pass through each cavern's centre)
-local function addLine(list)
+for li = 1, #lineTunnels do
 	local pts = {}
-	for k, t in ipairs(list) do
+	for k, t in ipairs(lineTunnels[li]) do
 		for m, p in ipairs(t.pts) do
 			if not (k > 1 and m == 1) then table.insert(pts, Vector3.new(p.X, p.Y - t.r * 0.6, p.Z)) end
 		end
 	end
 	table.insert(UG.lines, pts)
 end
-for _, j in ipairs({ 4, 12 }) do
-	local l = {}
-	for i = 1, NG - 1 do table.insert(l, edgeTunnel[i .. "," .. j .. ">" .. (i + 1) .. "," .. j]) end
-	addLine(l)
-end
-for _, i in ipairs({ 4, 12 }) do
-	local l = {}
-	for j = 1, NG - 1 do table.insert(l, edgeTunnel[i .. "," .. j .. ">" .. i .. "," .. (j + 1)]) end
-	addLine(l)
+local function nearestTo(x, z, filter)
+	local best, bd
+	for _, c in ipairs(UG.caverns) do
+		local d = (c.x - x) ^ 2 + (c.z - z) ^ 2
+		if (not filter or filter(c)) and (not bd or d < bd) then best, bd = c, d end
+	end
+	return best
 end
 
 -- surface places to keep entrances away from
@@ -270,11 +359,11 @@ local function claim(c, tag) if c then used[c] = true c.tag = tag end return c e
 UG.bossLairs = {
 	spiderqueen = claim(pick(function(c) return not used[c] and not c.lake and (c.region == "jungle" or c.region == "forest") and c.grand end) or pick(function(c) return not used[c] and c.region == "jungle" end), "spiderqueen"),
 	giantworm = claim(pick(function(c) return not used[c] and not c.lake and c.region == "desert" end), "giantworm"),
-	mineguardian = claim(grid[12][12], "mineguardian"),
+	mineguardian = claim(nearestTo(MINE, MINE, function(c) return c.mine end), "mineguardian"),
 	golem = claim(pick(function(c) return not used[c] and not c.lake and c.grand end), "golem"),
 }
 UG.ruins = claim(pick(function(c) return not used[c] and c.grand and not c.lake and not c.lava end), "ruins")
-UG.dwarves = { claim(grid[4][4], "dwarf"), claim(grid[12][4], "dwarf") }
+UG.dwarves = { claim(nearestTo(-MINE, -MINE, function(c) return c.mine and not used[c] end), "dwarf"), claim(nearestTo(MINE, -MINE, function(c) return c.mine and not used[c] end), "dwarf") }
 UG.camps = {}
 for _ = 1, 6 do table.insert(UG.camps, claim(pick(function(c) return not used[c] and not c.lake and not c.lava end), "camp")) end
 UG.rockfall = {}
@@ -294,14 +383,17 @@ local function hadd(x0, z0, x1, z1, shape)
 	end
 end
 for _, c in ipairs(UG.caverns) do
-	hadd(c.x - c.rx - 4, c.z - c.rz - 4, c.x + c.rx + 4, c.z + c.rz + 4, { cav = c })
+	for _, bl in ipairs(c.blobs) do
+		hadd(bl.x - bl.rx - 4, bl.z - bl.rz - 4, bl.x + bl.rx + 4, bl.z + bl.rz + 4, { cav = c, blob = bl })
+	end
 end
 for _, t in ipairs(UG.tunnels) do
 	for k = 1, #t.pts - 1 do
 		local a, b = t.pts[k], t.pts[k + 1]
-		local m = t.r + 4
+		local r = math.max(t.radii and t.radii[k] or t.r, t.radii and t.radii[k + 1] or t.r)
+		local m = r + 4
 		hadd(math.min(a.X, b.X) - m, math.min(a.Z, b.Z) - m, math.max(a.X, b.X) + m, math.max(a.Z, b.Z) + m,
-			{ a = a, b = b, r = t.r, rough = (t.kind == "mine") and 0 or 1.4, floor = true })
+			{ a = a, b = b, r = r, rough = (t.kind == "mine") and 0 or 1.4, floor = true })
 	end
 end
 for _, s in ipairs(UG.shafts) do
@@ -316,8 +408,8 @@ local function ugColumn(x, z)
 	local out = {}
 	for _, sh in ipairs(l) do
 		if sh.cav then
-			local c = sh.cav
-			if math.abs(x - c.x) < c.rx + 4 and math.abs(z - c.z) < c.rz + 4 then table.insert(out, sh) end
+			local bl = sh.blob
+			if math.abs(x - bl.x) < bl.rx + 4 and math.abs(z - bl.z) < bl.rz + 4 then table.insert(out, sh) end
 		else
 			local m = sh.r + 4
 			if x > math.min(sh.a.X, sh.b.X) - m and x < math.max(sh.a.X, sh.b.X) + m and z > math.min(sh.a.Z, sh.b.Z) - m and z < math.max(sh.a.Z, sh.b.Z) + m then table.insert(out, sh) end
@@ -331,9 +423,9 @@ local function ugField(x, y, z, shapes)
 	for _, sh in ipairs(shapes) do
 		local f
 		if sh.cav then
-			local c = sh.cav
-			local e = math.sqrt(((x - c.x) / c.rx) ^ 2 + ((y - c.y) / c.ry) ^ 2 + ((z - c.z) / c.rz) ^ 2)
-			f = (1 - e) * math.min(c.rx, c.ry, c.rz) * 0.9
+			local c, bl = sh.cav, sh.blob
+			local e = math.sqrt(((x - bl.x) / bl.rx) ^ 2 + ((y - c.y) / bl.ry) ^ 2 + ((z - bl.z) / bl.rz) ^ 2)
+			f = (1 - e) * math.min(bl.rx, bl.ry, bl.rz) * 0.9
 			if not c.lake then f = math.min(f, y - c.floor) end
 			f += math.noise(x / 14, y / 14, z / 14) * 3
 			if f > best then best, cav = f, c end

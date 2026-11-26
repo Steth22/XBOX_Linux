@@ -103,7 +103,7 @@ end)
 check("world map data", function()
 	local W = require(SSS.Services.World)
 	local Config = require(RS.Shared.Config)
-	assert(Config.MAP_CELLS == 48)
+	assert(Config.MAP_CELLS == 96)
 	-- map places exist for the explored check
 	local n = 0
 	for _, f in ipairs({ "Villages", "Outposts", "Caves" }) do n += #workspace[f]:GetChildren() end

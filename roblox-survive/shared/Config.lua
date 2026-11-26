@@ -2,6 +2,10 @@ local C = {}
 C.HOTBAR = 5
 C.BAG = 15
 C.BAG_PRICE = 150
+C.BIG_BAG = 30 -- the dwarves' big bag
+C.BIG_BAG_PRICE = 1500
+-- bag slots for a bag state (false / true / "big")
+function C.bagSlots(bag) return bag == "big" and C.BIG_BAG or (bag and C.BAG or 0) end
 C.MAX_PLAYERS = 16
 C.ROOM_TTL = 72 * 3600
 C.START_COINS = 50
@@ -27,7 +31,7 @@ C.SKILL_DROP_CHANCE = 0.01
 C.STASH_BASE = 10 -- storage slots at level 1
 C.STASH_STEP = 10 -- extra slots per upgrade
 C.STASH_MAX_LVL = 6
-C.MAP_CELLS = 48
+C.MAP_CELLS = 96
 C.ADMINS = { [4402005457] = true } -- accounts with the admin tools -- the world map is a 48 x 48 grid of cells that get revealed as you explore
 function C.stashCost(lvl) -- price to go from lvl to lvl + 1
 	return math.floor(150 * lvl ^ 1.6 / 10) * 10

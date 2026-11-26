@@ -49,6 +49,9 @@ function S.envTemp(pos, wet, heat, armorId)
 	if armor and armor.cool and t > 22 then t = math.max(22, t - armor.cool) end
 	if wet then t -= 6 end
 	if heat then t += 18 end
+	-- rain, storms and wind chill you (not under a roof of rock)
+	local okW, W = pcall(require, script.Parent.Weather)
+	if okW then t -= W.chill() end
 	return t
 end
 

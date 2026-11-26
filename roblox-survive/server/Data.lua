@@ -162,6 +162,24 @@ function Data.loadRoom(player, code)
 		if type(res.pos) == "table" and tonumber(res.pos[1]) and tonumber(res.pos[2]) and tonumber(res.pos[3]) then
 			r.pos = { tonumber(res.pos[1]), tonumber(res.pos[2]), tonumber(res.pos[3]) }
 		end
+		-- the map grid got finer (48 -> 96): each old cell becomes 2 x 2 new ones
+		local function upscale(ex)
+			if type(ex) ~= "string" or ex:find("[^01]") then return nil end
+			local N = Config.MAP_CELLS
+			if #ex == N * N then return ex end
+			if #ex ~= (N // 2) * (N // 2) then return nil end
+			local rows = table.create(N)
+			for z = 0, N - 1 do
+				local row = table.create(N)
+				for x = 0, N - 1 do
+					local k = (z // 2) * (N // 2) + (x // 2) + 1
+					row[x + 1] = ex:sub(k, k)
+				end
+				rows[z + 1] = table.concat(row)
+			end
+			return table.concat(rows)
+		end
+		res.explored, res.explored2 = upscale(res.explored), upscale(res.explored2)
 		if type(res.explored) == "string" and #res.explored == Config.MAP_CELLS * Config.MAP_CELLS and not res.explored:find("[^01]") then
 			r.explored = res.explored
 		end

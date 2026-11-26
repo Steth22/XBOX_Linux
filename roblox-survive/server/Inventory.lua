@@ -4,7 +4,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Items = require(ReplicatedStorage.Shared.Items)
 
 local Inv = {}
-local TOTAL = Config.HOTBAR + Config.BAG
+local TOTAL = Config.HOTBAR + Config.BIG_BAG
 
 function Inv.new()
 	local slots = {}
@@ -41,18 +41,18 @@ function Inv.fix(inv)
 		local d = Items.get(inv.off.id)
 		if d and d.kind == "light" then off = { id = inv.off.id, n = 1, d = d.dur and math.clamp(tonumber(inv.off.d) or d.dur, 1, d.dur) or nil } end
 	end
-	return { slots = s, bag = inv.bag == true, armor = armor, off = off }
+	return { slots = s, bag = (inv.bag == "big" and "big") or inv.bag == true, armor = armor, off = off }
 end
 
 function Inv.usable(inv, i)
 	if type(i) ~= "number" or i ~= math.floor(i) or i < 1 or i > TOTAL then
 		return false
 	end
-	return i <= Config.HOTBAR or inv.bag == true
+	return i <= Config.HOTBAR + Config.bagSlots(inv.bag)
 end
 
 local function limit(inv)
-	return inv.bag and TOTAL or Config.HOTBAR
+	return Config.HOTBAR + Config.bagSlots(inv.bag)
 end
 
 -- how many more of `id` fit
