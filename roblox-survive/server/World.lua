@@ -183,6 +183,7 @@ local function snapshot(player)
 		skills = room.skills, night = ReplicatedStorage:GetAttribute("Night") == true, clock = Lighting.ClockTime,
 		day = ReplicatedStorage:GetAttribute("Day") or 1,
 		armor = room.inv.armor or false,
+		off = room.inv.off or false,
 		buffs = (function()
 			local out = {}
 			for k, t in pairs(buffs[player] or {}) do
@@ -192,7 +193,7 @@ local function snapshot(player)
 			return out
 		end)(),
 		sleeping = sleeping[player] ~= nil,
-		lamp = lamp[player] or 0,
+		lamp = 0,
 		death = (deathBag[player] and deathBag[player][1].Parent) and { deathBag[player][2], deathBag[player][3], deathBag[player][4] } or nil,
 		dex = room.dex,
 		isOwner = serverRec ~= nil and serverRec.owner == player.UserId,
@@ -621,8 +622,20 @@ function select(player, index)
 		local sl = i and room.inv.slots[i]
 		local d = sl and Items.get(sl.id)
 		if d and d.kind == "light" and i >= 1 and i <= Config.HOTBAR then
-			if lamp[player] == i then lamp[player] = nil else lamp[player] = i end
-			setLamp(player, lamp[player] ~= nil)
+			-- a light goes into the off hand (swapping with whatever was there)
+			local prev = room.inv.off
+			room.inv.off = { id = sl.id, n = 1, d = sl.d }
+			if sl.n > 1 then
+				sl.n -= 1
+				if prev then
+					local rest = Inventory.add(room.inv, prev.id, 1, prev.d)
+					if rest > 0 then room.inv.off = prev sl.n += 1 notify(player, "bagFull") push(player) return end
+				end
+			else
+				room.inv.slots[i] = prev and { id = prev.id, n = 1, d = prev.d } or false
+			end
+			lamp[player] = true
+			setLamp(player, true)
 			push(player)
 			return
 		end
@@ -783,7 +796,6 @@ local function onCharacter(player, char)
 	end
 	placedOnce[player] = true
 	selected[player] = 0
-	lamp[player] = nil
 	Survival.reset(player)
 	local room = Data.room(player)
 	if room then
@@ -793,6 +805,10 @@ local function onCharacter(player, char)
 	if room and room.inv.armor then
 		local ad = Items.get(room.inv.armor)
 		if ad then Appearance.armor(char, ad.color, ad.mat, room.inv.armor) end
+	end
+	if room and room.inv.off then
+		lamp[player] = true
+		task.defer(setLamp, player, true)
 	end
 	task.defer(wearNecklace, player)
 	hum.BreakJointsOnDeath = false
@@ -973,29 +989,27 @@ end
 local function lightAndBuffs(player)
 	local room = Data.room(player)
 	if not room then return end
-	local li = lamp[player]
-	if li then
-		local slot = room.inv.slots[li]
-		if not slot or slot.id ~= "lantern" then
-			-- the lantern was moved: follow it, or put the light out if it left the inventory
-			li = nil
-			for i, sl in ipairs(room.inv.slots) do
-				if sl and sl.id == "lantern" then li = i break end
-			end
-			lamp[player] = li
-			if not li then setLamp(player, false) end
-		end
-		if li then
-			slot = room.inv.slots[li]
-			local def = Items.get("lantern")
-			slot.d = (slot.d or def.dur) - 1
-			if slot.d <= 0 then
-				room.inv.slots[li] = false
+	-- the light in the off hand burns down
+	local off = room.inv.off
+	if off and not lamp[player] and player.Character then
+		lamp[player] = true
+		setLamp(player, true)
+	end
+	if off then
+		local def = Items.get(off.id)
+		if def and def.dur then
+			off.d = (off.d or def.dur) - 1
+			if off.d <= 0 then
+				room.inv.off = false
 				lamp[player] = nil
 				setLamp(player, false)
 				notify(player, "lanternDead")
+				push(player)
 			end
 		end
+	elseif lamp[player] then
+		lamp[player] = nil
+		setLamp(player, false)
 	end
 	local pz = poisoned[player]
 	if pz then
@@ -1376,6 +1390,7 @@ function actions.adminActivate(player, room)
 	if not canAdmin(player) or not serverRec or serverRec.admin then return end
 	serverRec.admin = true
 	serverRec.adminBy = player.DisplayName
+	Data.unranked = true
 	if serverCode and serverCode ~= "TEST00" then
 		Rooms.update(serverCode, function(rec) rec.admin = true rec.adminBy = player.DisplayName end)
 	end
@@ -1453,6 +1468,17 @@ function actions.stashUpgrade(player, room)
 	push(player)
 end
 
+function actions.unequipOff(player, room)
+	local off = room.inv.off
+	if not off then return end
+	if Inventory.space(room.inv, off.id) < 1 then notify(player, "bagFull") return end
+	room.inv.off = false
+	Inventory.add(room.inv, off.id, 1, off.d)
+	lamp[player] = nil
+	setLamp(player, false)
+	push(player)
+end
+
 function actions.unequipArmor(player, room)
 	local id = room.inv.armor
 	if not id then return end
@@ -1492,6 +1518,7 @@ local function onJoin(player)
 		if not rec then Rooms.toLobby(player, "expired") return end
 		if not serverCode then Rooms.touch(code) end
 		serverRec = rec
+		Data.unranked = rec.admin == true
 		if (rec.day or 1) > (ReplicatedStorage:GetAttribute("Day") or 1) then ReplicatedStorage:SetAttribute("Day", rec.day) end
 		-- the room keeps its time of day between visits (a fresh server would start in the morning)
 		if not serverCode and type(rec.clock) == "number" then

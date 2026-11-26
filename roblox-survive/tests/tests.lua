@@ -81,6 +81,9 @@ check("WorldUI build", function()
 	state.bag = false; for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end api.bagModal() api.shopModal()
 	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
 	-- owner with the admin pass, admin not on yet, a moderator in the list
+	state.armor = "iron_armor"; state.off = { id = "lantern", n = 1, d = 500 }; state.bag = true
+	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
+	api.bagModal()
 	state.isOwner = true; state.canAdmin = true; state.adminOn = false; state.ownerId = 1; state.mods = { ["2"] = true }
 	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
 	api.menuModal() api.adminWarnModal()

@@ -11,7 +11,7 @@ function Inv.new()
 	for i = 1, TOTAL do
 		slots[i] = false
 	end
-	return { slots = slots, bag = false, armor = false }
+	return { slots = slots, bag = false, armor = false, off = false }
 end
 
 -- sanitize data loaded from DataStore
@@ -35,7 +35,13 @@ function Inv.fix(inv)
 		local d = Items.get(inv.armor)
 		if d and d.kind == "armor" then armor = inv.armor end
 	end
-	return { slots = s, bag = inv.bag == true, armor = armor }
+	-- the off hand (left hand) holds a light such as the lantern
+	local off = false
+	if type(inv.off) == "table" and type(inv.off.id) == "string" then
+		local d = Items.get(inv.off.id)
+		if d and d.kind == "light" then off = { id = inv.off.id, n = 1, d = d.dur and math.clamp(tonumber(inv.off.d) or d.dur, 1, d.dur) or nil } end
+	end
+	return { slots = s, bag = inv.bag == true, armor = armor, off = off }
 end
 
 function Inv.usable(inv, i)
@@ -207,6 +213,10 @@ function Inv.takeAll(inv)
 			table.insert(out, { id = s.id, n = s.n, d = s.d })
 			inv.slots[i] = false
 		end
+	end
+	if inv.off then
+		table.insert(out, { id = inv.off.id, n = 1, d = inv.off.d })
+		inv.off = false
 	end
 	return out
 end

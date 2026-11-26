@@ -11,7 +11,7 @@ local Data = {}
 
 local profileStore = DataStoreService:GetDataStore("Profiles_v1")
 local roomStore = DataStoreService:GetDataStore("RoomPlayers_v1")
-local board = DataStoreService:GetOrderedDataStore("GlobalXP_v1")
+local board = DataStoreService:GetOrderedDataStore("GlobalXP_v2")
 
 local profiles = {} -- [Player] = profile
 local rooms = {} -- [Player] = room data
@@ -53,7 +53,8 @@ function Data.loadProfile(player)
 	if ok and type(res) == "table" then
 		p.lang = (res.lang == "en") and "en" or "ar"
 		p.look = Appearance.sanitize(res.look)
-		p.lifeXp = math.max(0, tonumber(res.lifeXp) or 0)
+		-- a new season starts everyone's ranking XP from zero
+		p.lifeXp = res.season == Config.XP_SEASON and math.max(0, tonumber(res.lifeXp) or 0) or 0
 		if type(res.owned) == "table" then
 			for _, c in ipairs(res.owned) do
 				if type(c) == "string" and #p.owned < 5 then table.insert(p.owned, c) end
@@ -92,7 +93,7 @@ end
 function Data.saveProfile(player)
 	local p = profiles[player]
 	if not p or p._noSave then return end
-	local copy = { lang = p.lang, look = p.look, lifeXp = p.lifeXp, rooms = p.rooms, owned = p.owned }
+	local copy = { lang = p.lang, look = p.look, lifeXp = p.lifeXp, season = Config.XP_SEASON, rooms = p.rooms, owned = p.owned }
 	try(function()
 		profileStore:SetAsync("p_" .. player.UserId, copy)
 	end)
@@ -198,8 +199,11 @@ function Data.addXp(player, n)
 	if not r or not p then return 0, 1 end
 	local before = Config.levelFromXp(r.xp)
 	r.xp += n
-	p.lifeXp += n
-	boardDirty[player] = true
+	-- XP earned in a room with admin switched on doesn't count for the ranking
+	if not Data.unranked then
+		p.lifeXp += n
+		boardDirty[player] = true
+	end
 	local after = Config.levelFromXp(r.xp)
 	local gained = after - before
 	if gained > 0 then r.sp += gained end

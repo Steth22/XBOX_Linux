@@ -391,7 +391,7 @@ function M.start(gui, remotes)
 	local bagW, bagInfo, bagShape = {}, nil, ""
 	local refreshBag
 	local function bagModal()
-		local content, panel = openModal("bag", T("bag"), UDim2.fromOffset(500, 560))
+		local content, panel = openModal("bag", T("bag"), UDim2.fromOffset(500, 520))
 		bagPanel, bagW = panel, {}
 		bagShape = tostring(state.bag) .. tostring(state.armor)
 		UI.text({ Text = T("dropOutside"), Size = UDim2.new(1, 0, 0, 22), TextSize = 14, TextColor3 = c.dim, ZIndex = 53, Parent = content })
@@ -407,19 +407,19 @@ function M.start(gui, remotes)
 			end
 			refreshBag()
 		end
-		local hb = UI.frame({ Size = UDim2.new(1, 0, 0, 72), Position = UDim2.fromOffset(0, 28), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		local hb = UI.frame({ Size = UDim2.new(1, 0, 0, 62), Position = UDim2.fromOffset(0, 26), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
 		UI.list(hb, 8, Enum.FillDirection.Horizontal)
 		for i = 1, Config.HOTBAR do
-			local w = slotWidget(hb, 66, i)
+			local w = slotWidget(hb, 60, i)
 			w.button.ZIndex = 54
 			register(w, i, function() tap(i) end)
 			bagW[i] = w
 		end
-		local grid = UI.frame({ Size = UDim2.new(1, 0, 0, 3 * 74), Position = UDim2.fromOffset(0, 114), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
-		UI.new("UIGridLayout", { CellSize = UDim2.fromOffset(66, 66), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = grid })
+		local grid = UI.frame({ Size = UDim2.new(1, 0, 0, 3 * 66), Position = UDim2.fromOffset(0, 98), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		UI.new("UIGridLayout", { CellSize = UDim2.fromOffset(60, 60), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = grid })
 		for k = 1, Config.BAG do
 			local i = Config.HOTBAR + k
-			local w = slotWidget(grid, 66, k)
+			local w = slotWidget(grid, 60, k)
 			if state.bag then
 				register(w, i, function() tap(i) end)
 				bagW[i] = w
@@ -429,7 +429,7 @@ function M.start(gui, remotes)
 				Icons.draw("lock", shade, 22, c.dim, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 			end
 		end
-		bagInfo = UI.frame({ Size = UDim2.new(1, 0, 0, 120), Position = UDim2.fromOffset(0, 114 + 3 * 74 + 4), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		bagInfo = UI.frame({ Size = UDim2.new(1, 0, 0, 136), Position = UDim2.fromOffset(0, 98 + 3 * 66 + 6), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
 		refreshBag()
 	end
 
@@ -440,31 +440,52 @@ function M.start(gui, remotes)
 		end
 		if not bagInfo or not bagInfo.Parent then return end
 		bagInfo:ClearAllChildren()
+		local ar = lang == "ar"
+		-- equipment: the armor you wear and what your off hand (left hand) holds
+		local equip = UI.frame({ Size = UDim2.new(1, 0, 0, 68), BackgroundTransparency = 1, ZIndex = 53, Parent = bagInfo })
+		local function equipBox(order, title, id, sub, onTake)
+			local box = UI.frame({ Size = UDim2.new(0.5, -5, 1, 0), Position = UDim2.new(order == 1 and (ar and 0.5 or 0) or (ar and 0 or 0.5), order == 1 and (ar and 5 or 0) or (ar and 0 or 5), 0, 0), BackgroundColor3 = c.card, ZIndex = 53, Parent = equip })
+			UI.corner(box, 12)
+			UI.stroke(box, id and c.gold or c.card2, 1.5)
+			local slot = UI.frame({ Size = UDim2.fromOffset(56, 56), AnchorPoint = Vector2.new(ar and 1 or 0, 0.5), Position = UDim2.new(ar and 1 or 0, ar and -6 or 6, 0.5, 0), BackgroundColor3 = c.bg, ZIndex = 54, Parent = box })
+			UI.corner(slot, 10)
+			if id then
+				ItemView.new(slot, id, UDim2.fromScale(1, 1), nil, 55)
+			else
+				Icons.draw(order == 1 and "shield" or "flame", slot, 26, c.card2, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+			end
+			local tx = ar and -68 or 68
+			UI.text({ Text = title, Size = UDim2.new(1, -150, 0, 18), Position = UDim2.new(ar and 1 or 0, tx, 0, 8), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 13, TextColor3 = c.dim, ZIndex = 54, Parent = box })
+			UI.text({ Text = id and Items.name(id, lang) or T("empty"), Size = UDim2.new(1, -150, 0, 20), Position = UDim2.new(ar and 1 or 0, tx, 0, 26), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextTruncate = Enum.TextTruncate.AtEnd, TextSize = 15, TextColor3 = id and c.text or c.dim, ZIndex = 54, Parent = box })
+			if sub then
+				UI.text({ Text = sub, Size = UDim2.new(1, -150, 0, 16), Position = UDim2.new(ar and 1 or 0, tx, 0, 46), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 12, TextColor3 = c.gold, ZIndex = 54, Parent = box })
+			end
+			if id then
+				UI.button({ Text = T("unequip"), Size = UDim2.fromOffset(72, 34), AnchorPoint = Vector2.new(ar and 0 or 1, 0.5), Position = UDim2.new(ar and 0 or 1, ar and 6 or -6, 0.5, 0), BackgroundColor3 = c.card2, TextColor3 = c.text, TextSize = 13, ZIndex = 55, Parent = box }, onTake)
+			end
+		end
+		local armorDef = state.armor and Items.get(state.armor)
+		equipBox(1, T("armorLbl"), state.armor or nil, armorDef and armorDef.reduce and (T("st_armor") .. " " .. math.floor(armorDef.reduce * 100) .. "%") or nil, function() act("unequipArmor") end)
+		local off = state.off
+		equipBox(2, T("offhand"), off and off.id or nil, off and off.d and string.format("%d:%02d", off.d // 60, off.d % 60) or nil, function() act("unequipOff") end)
 		local d = pending and state.slots[pending]
 		if pending and not d then pending = nil end
+		local below = UI.frame({ Size = UDim2.new(1, 0, 0, 60), Position = UDim2.fromOffset(0, 76), BackgroundTransparency = 1, ZIndex = 53, Parent = bagInfo })
 		if d then
-			UI.text({ Text = Items.name(d.id, lang) .. (d.n > 1 and ("  x" .. d.n) or ""), Size = UDim2.new(1, 0, 0, 32), TextSize = 19, TextColor3 = c.gold, ZIndex = 53, Parent = bagInfo })
-			local row = UI.frame({ Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 36), BackgroundTransparency = 1, ZIndex = 53, Parent = bagInfo })
+			local row = UI.frame({ Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 8), BackgroundTransparency = 1, ZIndex = 53, Parent = below })
 			UI.list(row, 8, Enum.FillDirection.Horizontal)
 			local idx = pending
 			local function btn(text, color, cb)
-				UI.button({ Text = text, Size = UDim2.fromOffset(140, 44), BackgroundColor3 = color, TextColor3 = c.text, TextSize = 17, ZIndex = 54, Parent = row }, cb)
+				UI.button({ Text = text, Size = UDim2.fromOffset(112, 44), BackgroundColor3 = color, TextColor3 = c.text, TextSize = 16, ZIndex = 54, Parent = row }, cb)
 			end
+			UI.text({ Text = Items.name(d.id, lang) .. (d.n > 1 and ("  x" .. d.n) or ""), Size = UDim2.fromOffset(110, 44), TextWrapped = true, TextSize = 15, TextColor3 = c.gold, ZIndex = 54, Parent = row })
 			btn(T("drop1"), c.card2, function() act("discard", idx, 1) end)
 			if d.n > 1 then
 				btn(T("dropAll"), c.danger, function() act("discard", idx) pending = nil end)
 				btn(T("split"), c.blue, function() act("split", idx) end)
 			end
-		elseif state.armor then
-			local ar = UI.frame({ Size = UDim2.new(1, 0, 0, 52), BackgroundColor3 = c.card, ZIndex = 53, Parent = bagInfo })
-			UI.corner(ar, 12)
-			ItemView.new(ar, state.armor, UDim2.fromOffset(46, 46), UDim2.fromOffset(4, 3), 55)
-			UI.text({ Text = T("armorLbl") .. ": " .. Items.name(state.armor, lang), Size = UDim2.new(1, -170, 1, 0), Position = UDim2.fromOffset(58, 0), TextXAlignment = Enum.TextXAlignment.Left, TextSize = 16, ZIndex = 54, Parent = ar })
-			UI.button({ Text = T("unequip"), Size = UDim2.fromOffset(100, 38), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), BackgroundColor3 = c.card2, TextColor3 = c.text, TextSize = 15, ZIndex = 55, Parent = ar }, function()
-				act("unequipArmor")
-			end)
 		elseif not state.bag then
-			UI.text({ Text = T("vendorTip") .. "  -  " .. Locale.f(lang, "buyBag", Config.BAG) .. "  " .. Format.number(state.bagPrice), Size = UDim2.new(1, 0, 0, 44), TextSize = 16, TextColor3 = c.gold, ZIndex = 53, Parent = bagInfo })
+			UI.text({ Text = T("vendorTip") .. "  -  " .. Locale.f(lang, "buyBag", Config.BAG) .. "  " .. Format.number(state.bagPrice), Size = UDim2.fromScale(1, 1), TextWrapped = true, TextSize = 15, TextColor3 = c.gold, ZIndex = 53, Parent = below })
 		end
 	end
 
@@ -1910,7 +1931,7 @@ function M.start(gui, remotes)
 			Icons.draw(s.night and "moon" or "sun", clockIcon, 22, s.night and Color3.fromRGB(200, 210, 255) or c.gold, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5), c.card)
 		end
 		-- slots: only rebuild what changed
-		local parts = { tostring(s.sel), tostring(s.bag), tostring(s.armor), tostring(s.lamp) }
+		local parts = { tostring(s.sel), tostring(s.bag), tostring(s.armor), tostring(s.off and (s.off.id .. ":" .. tostring(s.off.d))) }
 		for i, sl in ipairs(s.slots) do parts[#parts + 1] = sl and (sl.id .. ":" .. sl.n .. ":" .. tostring(sl.d)) or "-" end
 		local sig = table.concat(parts, "|")
 		local sk = {}
