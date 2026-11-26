@@ -548,6 +548,10 @@ function handlers.explode(pos)
 		end)
 	end
 end
+function handlers.craft(pos)
+	E.play("place", pos, 0.9, 0.7)
+	E.dust(pos, Color3.fromRGB(170, 130, 80), 10, 1)
+end
 function handlers.cook(pos)
 	E.play("eat", pos, 0.4, 0.6)
 	E.dust(pos + Vector3.new(0, 2, 0), Color3.fromRGB(120, 120, 120), 10, 1)

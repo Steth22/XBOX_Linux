@@ -42,8 +42,10 @@ function M.start(gui, remotes)
 	local pending = nil
 	local refreshModal
 	local furnaceData, refreshFurnace, furnaceModal -- the furnace window (built further down)
+	local craftData, refreshCraft, craftModal -- the crafting table window
 	local achModal -- the achievements window
 	local furnaceBagSize = ""
+	local craftBagSize = ""
 	local lastSig = ""
 	local lastMsig = nil
 	local lastDsig = nil
@@ -134,7 +136,7 @@ function M.start(gui, remotes)
 		return p.X >= a.X and p.X <= a.X + s.X and p.Y >= a.Y and p.Y <= a.Y + s.Y
 	end
 	local function targetAt(p)
-		if modalKind ~= "bag" then return nil end
+		if modalKind ~= "bag" and modalKind ~= "furnace" and modalKind ~= "craft" then return nil end
 		for btn, reg in pairs(slotsReg) do
 			if btn.Parent and btn:IsDescendantOf(root) and inside(btn, p) then return btn, reg end
 		end
@@ -214,7 +216,9 @@ function M.start(gui, remotes)
 			if not press.dragging and (pos - press.start).Magnitude > 12 then
 				local fd = furnaceData or {}
 				local data = state and (press.index == 100 and state.armor and { id = state.armor, n = 1 } or press.index == 101 and state.off
-					or press.index == 201 and fd.input or press.index == 202 and fd.fuel or press.index == 203 and fd.out or state.slots[press.index])
+					or press.index == 201 and fd.input or press.index == 202 and fd.fuel or press.index == 203 and fd.out
+					or (press.index >= 301 and press.index <= 309 and craftData and craftData.cells[press.index - 300])
+					or (press.index == 310 and craftData and craftData.out) or state.slots[press.index])
 				if not data then press = nil return end
 				startDrag(data)
 			end
@@ -399,6 +403,7 @@ function M.start(gui, remotes)
 			end
 			if thisKind == "shop" and not rebuilding then cinematic(false) end
 			if thisKind == "furnace" then act("closeFurnace") end
+			if thisKind == "craft" then act("closeCraft") end
 		end)
 		closeModal = close
 		return content, panel
@@ -2217,6 +2222,153 @@ function M.start(gui, remotes)
 		refreshFurnace()
 	end
 
+	---------------------------------------------------------------- crafting table (bag on the left, 3x3 grid on the right)
+	local craftW, craftBag, craftGhost, craftRecipe = {}, {}, {}, nil
+	function refreshCraft()
+		if modalKind ~= "craft" or not state or not craftData then return end
+		for i, w in pairs(craftBag) do if w.button.Parent then w.set(state.slots[i], pending == i) end end
+		for k = 1, 9 do
+			local w = craftW[300 + k]
+			if w then w.set(craftData.cells[k] or nil, false) end
+		end
+		if craftW[310] then craftW[310].set(craftData.out or nil, false) end
+		-- a chosen recipe shows faded items in the empty cells
+		for k = 1, 9 do
+			local gh = craftGhost[k]
+			if gh then
+				local want = nil
+				if craftRecipe and not craftData.cells[k] then
+					local x, y = (k - 1) % 3 + 1, (k - 1) // 3 + 1
+					local row = craftRecipe.grid[y]
+					want = row and row[x] or nil
+				end
+				if gh:GetAttribute("Id") ~= (want or "") then
+					gh:SetAttribute("Id", want or "")
+					for _, ch in ipairs(gh:GetChildren()) do ch:Destroy() end
+					if want then
+						local v = ItemView.new(gh, want, UDim2.new(1, -14, 1, -14), UDim2.fromOffset(7, 7), 3)
+						v.ImageTransparency = 0.65
+					end
+				end
+			end
+		end
+	end
+	function craftModal()
+		local content = openModal("craft", T("craft"), UDim2.fromOffset(900, 520))
+		craftW, craftBag, craftGhost = {}, {}, {}
+		craftBagSize = tostring(state.bag)
+		-- tap a bag item to pick it, then tap a cell to put one there
+		local function tapBag(i)
+			if not state.slots[i] then return end
+			pending = (pending == i) and nil or i
+			Effects.ui("click")
+			refreshCraft()
+		end
+		-- left: the bag
+		local left = UI.frame({ Size = UDim2.new(0, 452, 1, 0), BackgroundColor3 = c.card, BackgroundTransparency = 0.5, ZIndex = 53, Parent = content })
+		UI.corner(left, 14)
+		UI.text({ Text = T("yourItems"), Size = UDim2.new(1, -24, 0, 30), Position = UDim2.fromOffset(12, 6), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = c.dim, ZIndex = 54, Parent = left })
+		local hb = UI.frame({ Size = UDim2.new(1, 0, 0, 60), Position = UDim2.fromOffset(0, 42), BackgroundTransparency = 1, ZIndex = 54, Parent = left })
+		UI.list(hb, 8, Enum.FillDirection.Horizontal)
+		for i = 1, Config.HOTBAR do
+			local w = slotWidget(hb, 60, i)
+			w.button.ZIndex = 55
+			register(w, i, function() tapBag(i) end)
+			craftBag[i] = w
+		end
+		UI.frame({ Size = UDim2.new(1, -40, 0, 2), Position = UDim2.fromOffset(20, 112), BackgroundColor3 = c.card2, BackgroundTransparency = 0.4, ZIndex = 54, Parent = left })
+		local bigF = state.bag == "big"
+		local cell = bigF and 40 or 60
+		local grid = UI.frame({ Size = UDim2.new(1, 0, 0, 3 * (cell + 6)), Position = UDim2.fromOffset(0, 124), BackgroundTransparency = 1, ZIndex = 54, Parent = left })
+		UI.new("UIGridLayout", { CellSize = UDim2.fromOffset(cell, cell), CellPadding = UDim2.fromOffset(bigF and 4 or 6, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = grid })
+		for k = 1, bigF and Config.BIG_BAG or Config.BAG do
+			local i = Config.HOTBAR + k
+			local w = slotWidget(grid, cell, k)
+			if state.bag then
+				register(w, i, function() tapBag(i) end)
+				craftBag[i] = w
+			else
+				local shade = UI.frame({ Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, ZIndex = 8, Parent = w.button })
+				UI.corner(shade, 12)
+				Icons.draw("lock", shade, 22, c.dim, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+			end
+		end
+		UI.text({ Text = T("craftTip"), Size = UDim2.new(1, -24, 0, 54), Position = UDim2.new(0, 12, 1, -60), TextWrapped = true, TextSize = 14, TextColor3 = c.dim, TextXAlignment = UI.align(lang), ZIndex = 54, Parent = left })
+
+		-- right: the 3x3 grid, an arrow and the result (left to right in both languages, like Minecraft)
+		local right = UI.frame({ Size = UDim2.new(1, -468, 1, 0), Position = UDim2.fromOffset(468, 0), BackgroundColor3 = c.card, ZIndex = 53, Parent = content })
+		UI.corner(right, 14)
+		UI.stroke(right, c.card2, 1.5)
+		local CELL = 60
+		local area = UI.frame({ Size = UDim2.fromOffset(3 * (CELL + 6) + 150, 3 * (CELL + 6)), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 14), BackgroundTransparency = 1, ZIndex = 54, Parent = right })
+		for k = 1, 9 do
+			local x, y = (k - 1) % 3, (k - 1) // 3
+			local holder = UI.frame({ Size = UDim2.fromOffset(CELL, CELL), Position = UDim2.fromOffset(x * (CELL + 6), y * (CELL + 6)), BackgroundTransparency = 1, ZIndex = 54, Parent = area })
+			local w = slotWidget(holder, CELL, 0)
+			w.button.ZIndex = 55
+			local gh = UI.frame({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 3, Parent = w.button })
+			craftGhost[k] = gh
+			local base = w.set
+			w.set = function(data, sel) base(data, sel) gh.Visible = data == nil end
+			local idx = 300 + k
+			register(w, idx, function()
+				if pending and state.slots[pending] then
+					act("craftOne", pending, idx)
+					if state.slots[pending].n <= 1 then pending = nil end
+				elseif craftData and craftData.cells[k] then
+					act("move", idx, 0)
+				end
+			end)
+			craftW[idx] = w
+		end
+		-- the arrow: a bar and a head
+		local ax = 3 * (CELL + 6) + 10
+		local arrow = UI.frame({ Size = UDim2.fromOffset(48, 30), Position = UDim2.fromOffset(ax, 3 * (CELL + 6) / 2 - 18), BackgroundTransparency = 1, ZIndex = 54, Parent = area })
+		local bar = UI.frame({ Size = UDim2.fromOffset(34, 8), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromScale(0, 0.5), BackgroundColor3 = c.gold, ZIndex = 55, Parent = arrow })
+		UI.corner(bar, 4)
+		for _, rot in ipairs({ 40, -40 }) do
+			local h = UI.frame({ Size = UDim2.fromOffset(20, 8), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -2, 0.5, rot > 0 and -6 or 6), Rotation = rot, BackgroundColor3 = c.gold, ZIndex = 55, Parent = arrow })
+			UI.corner(h, 4)
+		end
+		local outHolder = UI.frame({ Size = UDim2.fromOffset(84, 106), Position = UDim2.fromOffset(ax + 58, 3 * (CELL + 6) / 2 - 48), BackgroundTransparency = 1, ZIndex = 54, Parent = area })
+		local ow = slotWidget(outHolder, 84, 0)
+		ow.button.ZIndex = 55
+		ow.stroke.Color = c.gold
+		UI.text({ Text = T("fOut"), Size = UDim2.new(1, 20, 0, 18), Position = UDim2.new(0, -10, 0, 87), TextSize = 13, TextColor3 = c.dim, ZIndex = 55, Parent = outHolder })
+		register(ow, 310, function() act("move", 310, 0) end)
+		craftW[310] = ow
+
+		-- the recipe book: tap one to see its shape in the grid
+		local book = UI.frame({ Size = UDim2.new(1, -24, 1, -232), Position = UDim2.fromOffset(12, 222), BackgroundColor3 = c.bg, BackgroundTransparency = 0.3, ZIndex = 54, Parent = right })
+		UI.corner(book, 10)
+		UI.text({ Text = T("recipes"), Size = UDim2.new(1, -16, 0, 24), Position = UDim2.fromOffset(8, 4), TextXAlignment = UI.align(lang), TextSize = 14, TextColor3 = c.gold, ZIndex = 55, Parent = book })
+		local nameL = UI.text({ Text = T("pickRecipe"), Size = UDim2.new(1, -16, 0, 22), Position = UDim2.new(0, 8, 1, -26), TextXAlignment = UI.align(lang), TextSize = 15, TextColor3 = c.dim, ZIndex = 55, Parent = book })
+		local list = UI.scroll({ Size = UDim2.new(1, -12, 1, -60), Position = UDim2.fromOffset(6, 30), ZIndex = 55, Parent = book })
+		UI.new("UIGridLayout", { CellSize = UDim2.fromOffset(48, 48), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = list })
+		local recBtns = {}
+		local function showName()
+			for r2, bb in pairs(recBtns) do bb.BackgroundColor3 = (craftRecipe == r2) and c.card2 or c.card end
+			if craftRecipe then
+				nameL.Text = Items.name(craftRecipe.out, lang) .. (craftRecipe.n > 1 and (" x" .. craftRecipe.n) or "")
+				nameL.TextColor3 = c.text
+			else
+				nameL.Text = T("pickRecipe")
+				nameL.TextColor3 = c.dim
+			end
+		end
+		for n, rc in ipairs(Items.recipes) do
+			local b = UI.button({ Text = "", Size = UDim2.fromOffset(48, 48), BackgroundColor3 = c.card, LayoutOrder = n, ZIndex = 56, Parent = list }, function()
+				craftRecipe = (craftRecipe == rc) and nil or rc
+				showName()
+				refreshCraft()
+			end)
+			ItemView.new(b, rc.out, UDim2.new(1, -8, 1, -8), UDim2.fromOffset(4, 4), 57)
+			recBtns[rc] = b
+		end
+		showName()
+		refreshCraft()
+	end
+
 	function refreshModal(force)
 		if modalKind == "bag" then
 			if bagShape ~= (tostring(state.bag) .. tostring(state.armor)) then bagModal() else refreshBag() end
@@ -2231,7 +2383,9 @@ function M.start(gui, remotes)
 			shopModal()
 			rebuilding = false
 		elseif modalKind == "skills" and force then skillsModal()
-		elseif modalKind == "furnace" then refreshFurnace() end
+		elseif modalKind == "furnace" then refreshFurnace()
+		elseif modalKind == "craft" and force and craftBagSize ~= tostring(state.bag) then craftModal()
+		elseif modalKind == "craft" then refreshCraft() end
 	end
 
 	local half = (Config.HOTBAR * 74) / 2 + 42
@@ -2658,6 +2812,12 @@ function M.start(gui, remotes)
 			end
 			return
 		end
+		if key == "openCraft" or key == "craft" then
+			craftData = a
+			if key == "openCraft" and state then pending = nil craftModal()
+			elseif modalKind == "craft" then refreshCraft() end
+			return
+		end
 		if key == "openFurnace" or key == "furnace" then
 			furnaceData = a
 			if key == "openFurnace" and state then pending = nil furnaceModal()
@@ -2699,6 +2859,7 @@ function M.start(gui, remotes)
 		elseif key == "weakHit" then text = T("weakHit") Effects.ui("skill")
 		elseif key == "adminDone" then text = Locale.f(lang, "adminDone", a or 0)
 		elseif key == "drank" then text = Locale.f(lang, "drank", Items.name(a, lang)) Effects.ui("skill")
+		elseif key == "crafted" then text = Locale.f(lang, "crafted", Items.name(a, lang) .. ((b or 1) > 1 and (" x" .. b) or "")) Effects.ui("pop")
 		elseif key == "buffEnd" then text = Locale.f(lang, "buffEnd", T("buff_" .. tostring(a)))
 		elseif key == "sleepCount" then
 			sleepText.Text = Locale.f(lang, "sleeping", a or 0, b or 1)

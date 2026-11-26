@@ -70,7 +70,31 @@ check2("Effects handlers", function()
 	fire("hitTree", tree:GetPivot().Position, tree) fire("treeFall", tree) fire("hitRock", p) fire("rockBreak", p) fire("pick", p)
 	fire("hitMob", p, "wolf") fire("mobDie", p, "guardian") fire("mobAttack", p, "zombie") fire("hurt", rig)
 	fire("shoot", p, p + Vector3.new(30, 0, 0), "arrow") fire("shoot", p, p + Vector3.new(30, 0, 0), "ammo")
-	fire("levelUp", rig) fire("cook", p) fire("place", p) fire("crate", p)
+	fire("levelUp", rig) fire("cook", p) fire("craft", p) fire("place", p) fire("crate", p)
 	task.wait(2.5)
+end)
+check2("crafting recipes", function()
+	local Items = require(game:GetService("ReplicatedStorage").Shared.Items)
+	local function g(rows)
+		local cells = {}
+		for y = 1, 3 do for x = 1, 3 do
+			local ch = (rows[y] or "..."):sub(x, x)
+			cells[(y - 1) * 3 + x] = ({ W = "wood", S = "stick", T = "stone", I = "iron", H = "hide" })[ch] or false
+		end end
+		return cells
+	end
+	assert(Items.craft(g({ "W..", "W..", "..." })).out == "stick", "stick")
+	assert(Items.craft(g({ "..W", "..W", "..." })).out == "stick", "stick moved")
+	assert(Items.craft(g({ "TT.", "TS.", ".S." })).out == "stone_axe", "axe")
+	assert(Items.craft(g({ ".TT", ".ST", ".S." })).out == "stone_axe", "axe mirrored")
+	assert(Items.craft(g({ "III", ".S.", ".S." })).out == "iron_pickaxe", "pickaxe")
+	assert(Items.craft(g({ "H.H", "HHH", "HHH" })).out == "leather_armor", "armor")
+	assert(Items.craft(g({ "W..", "...", "..." })) == nil, "no recipe")
+	for _, rc in ipairs(Items.recipes) do
+		assert(Items.get(rc.out), "unknown output " .. rc.out)
+		assert(Items.model(rc.out), "no model " .. rc.out)
+		for _, row in ipairs(rc.grid) do for _, id in pairs(row) do if id then assert(Items.get(id), "unknown input " .. tostring(id)) end end end
+	end
+	require(SSS2.Services.Crafting)
 end)
 return { results, results2 }
