@@ -12,7 +12,7 @@ local Lobby = {}
 
 local lastCall = {} -- [Player] = { [action] = clock }
 local COOLDOWN = {
-	create = 4, join = 3, quick = 4, solo = 4, joinFriend = 3, friends = 5, board = 5, setLook = 1, setLang = 0.5,
+	create = 4, join = 3, quick = 4, renameRoom = 2, solo = 4, joinFriend = 3, friends = 5, board = 5, setLook = 1, setLang = 0.5,
 	roomSettings = 1, deleteRoom = 2, buyRooms = 2,
 }
 
@@ -71,7 +71,7 @@ local function ownedRooms(player, profile)
 		if rec then
 			table.insert(keep, code)
 			local left = math.max(0, Config.ROOM_TTL - (os.time() - (rec.last or 0)))
-			table.insert(out, { code = code, maxPlayers = rec.maxPlayers or 8, access = Rooms.access(rec), hours = math.ceil(left / 3600) })
+			table.insert(out, { code = code, name = type(rec.name) == "string" and rec.name or nil, maxPlayers = rec.maxPlayers or 8, access = Rooms.access(rec), hours = math.ceil(left / 3600) })
 		elseif why == "error" then
 			table.insert(keep, code)
 		end
@@ -113,10 +113,10 @@ function actions.setLook(player, profile, look)
 	return { ok = true, look = profile.look }
 end
 
-local function createOwned(player, profile)
+local function createOwned(player, profile, public)
 	local owned = ownedRooms(player, profile)
 	if #owned >= roomLimit(player) then return nil, "roomLimit" end
-	local rec = Rooms.create(player.UserId, false)
+	local rec = Rooms.create(player.UserId, public == true)
 	if not rec then return nil, "busy" end
 	table.insert(profile.owned, rec.code)
 	task.spawn(Data.saveProfile, player)
@@ -170,11 +170,46 @@ function actions.join(player, profile, code)
 	return { ok = false, err = "requestSent" }
 end
 
+-- quick play: join someone's public room; if there is none, open one of your own (it counts towards your limit),
+-- and if you already have all your rooms, go to your own room. Rooms without an owner are never made.
 function actions.quick(player, profile)
 	local rec = Rooms.findPublic()
-	if not rec then rec = Rooms.create(0, true) end
+	if rec then return enterRoom(player, rec) end
+	local owned = ownedRooms(player, profile)
+	if #owned < roomLimit(player) then
+		local err
+		rec, err = createOwned(player, profile, true)
+		if not rec then return { ok = false, err = err } end
+		return enterRoom(player, rec)
+	end
+	rec = Rooms.get(owned[1].code)
 	if not rec then return { ok = false, err = "busy" } end
 	return enterRoom(player, rec)
+end
+
+-- rename one of your rooms (filtered like any text other players can see)
+local TextService = game:GetService("TextService")
+function actions.renameRoom(player, profile, code, name)
+	if type(code) ~= "string" or type(name) ~= "string" then return { ok = false, err = "notFound" } end
+	local owns = false
+	for _, c in ipairs(profile.owned) do if c == code then owns = true end end
+	if not owns then return { ok = false, err = "notFound" } end
+	name = name:gsub("[%c]", ""):gsub("^%s+", ""):gsub("%s+$", "")
+	name = utf8.len(name) and name or ""
+	if (utf8.len(name) or 0) > 24 then name = name:sub(1, utf8.offset(name, 25) - 1) end
+	local final = nil
+	if #name > 0 then
+		local ok, res = pcall(function()
+			return TextService:FilterStringAsync(name, player.UserId):GetNonChatStringForBroadcastAsync()
+		end)
+		if not ok or not res or res:find("#") then return { ok = false, err = "nameBad" } end
+		final = res
+	end
+	local ok = Rooms.update(code, function(rec)
+		if rec.owner ~= player.UserId then return end
+		rec.name = final
+	end)
+	return { ok = ok == true, owned = ownedRooms(player, profile) }
 end
 
 function actions.friends(player)

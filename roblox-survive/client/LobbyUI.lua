@@ -14,7 +14,7 @@ local c = UI.c
 local M = {}
 
 local ERR = { expired = "expired", notFound = "notFound", full = "full", busy = "busy", wait = "wait",
-	roomLimit = "roomLimit", friendsOnly = "friendsOnly", ownerOffline = "ownerOffline", requestSent = "requestSent", passMissing = "passMissing" }
+	roomLimit = "roomLimit", nameBad = "nameBad", friendsOnly = "friendsOnly", ownerOffline = "ownerOffline", requestSent = "requestSent", passMissing = "passMissing" }
 
 local function newRig()
 	local ok, m = pcall(function()
@@ -288,8 +288,20 @@ function M.start(gui, remotes)
 
 	local roomsModal
 	local function settingsModal(room)
-		local content = openModal(T("roomSettings") .. "  " .. room.code, UDim2.fromOffset(560, 420))
+		local content = openModal(T("roomSettings") .. "  " .. room.code, UDim2.fromOffset(560, 510))
 		local sel = { maxPlayers = room.maxPlayers or 8, access = room.access or "friends" }
+		-- the room's name
+		UI.text({ Text = T("roomName"), Size = UDim2.new(1, 0, 0, 30), TextXAlignment = UI.align(lang), TextSize = 20, TextColor3 = c.dim, ZIndex = 53, Parent = content })
+		local nameBox = UI.new("TextBox", {
+			Size = UDim2.new(1, 0, 0, 50), Position = UDim2.fromOffset(0, 34), BackgroundColor3 = c.card, TextColor3 = c.text,
+			PlaceholderText = room.defaultName or "", PlaceholderColor3 = c.dim, Font = UI.font, TextSize = 22, ClearTextOnFocus = false,
+			Text = room.name or "", TextXAlignment = UI.align(lang), ZIndex = 54, Parent = content,
+		})
+		UI.corner(nameBox, 10)
+		UI.stroke(nameBox, c.card2, 2)
+		UI.new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = nameBox })
+		local holder = UI.frame({ Size = UDim2.new(1, 0, 1, -96), Position = UDim2.fromOffset(0, 96), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		content = holder
 		UI.text({ Text = T("maxPlayers"), Size = UDim2.new(1, 0, 0, 30), TextXAlignment = UI.align(lang), TextSize = 20, TextColor3 = c.dim, ZIndex = 53, Parent = content })
 		local row = UI.frame({ Size = UDim2.new(1, 0, 0, 56), Position = UDim2.fromOffset(0, 34), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
 		UI.list(row, 12, Enum.FillDirection.Horizontal)
@@ -323,6 +335,11 @@ function M.start(gui, remotes)
 		end
 		mark()
 		UI.button({ Text = T("save"), Size = UDim2.fromOffset(240, 54), Position = UDim2.new(lang == "ar" and 1 or 0, lang == "ar" and -240 or 0, 1, -54), ZIndex = 53, Parent = content }, function()
+			local newName = nameBox.Text
+			if newName ~= (room.name or "") then
+				local rn = call("renameRoom", room.code, newName)
+				if not rn.ok then toast(T(ERR[rn.err] or "busy")) return end
+			end
 			local res = call("roomSettings", room.code, sel)
 			if res.ok then
 				info.owned = res.owned or info.owned
@@ -385,11 +402,16 @@ function M.start(gui, remotes)
 		UI.list(list, 8)
 		local n = 0
 		local ownedSet = {}
-		for _, r in ipairs(info.owned) do
+		local function header(text)
+			UI.text({ Text = text, Size = UDim2.new(1, -8, 0, 26), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = c.dim, ZIndex = 53, Parent = list })
+		end
+		if #info.owned > 0 then header(T("rooms")) end
+		for i, r in ipairs(info.owned) do
 			ownedSet[r.code] = true
 			n += 1
-			local sub = string.format("%s  |  %s %d  |  %s", T("acc_" .. r.access), T("maxPlayers"), r.maxPlayers, Locale.f(lang, "hoursLeft", r.hours))
-			local row = joinRow(list, r.code .. "   (" .. T("myRoom") .. ")", sub, function() travel("join", r.code) end)
+			r.defaultName = Locale.f(lang, "roomN", i)
+			local sub = string.format("%s  |  %s  |  %s %d  |  %s", Locale.f(lang, "codeIs", r.code), T("acc_" .. r.access), T("maxPlayers"), r.maxPlayers, Locale.f(lang, "hoursLeft", r.hours))
+			local row = joinRow(list, (r.name or r.defaultName) .. "   (" .. T("myRoom") .. ")", sub, function() travel("join", r.code) end)
 			local bx = lang == "ar" and 0 or 1
 			local gear = UI.button({ Text = "", Size = UDim2.fromOffset(44, 44), AnchorPoint = Vector2.new(bx, 0.5), Position = UDim2.new(bx, lang == "ar" and 132 or -132, 0.5, 0), BackgroundColor3 = c.card2, ZIndex = 55, Parent = row }, function()
 				settingsModal(r)
@@ -397,8 +419,10 @@ function M.start(gui, remotes)
 			Icons.draw("settings", gear, 24, c.text, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 			UI.enter(row, n * 0.05, 14)
 		end
+		local visitedHeader = false
 		for _, r in ipairs(info.rooms) do
 			if not ownedSet[r.code] then
+				if not visitedHeader then visitedHeader = true header(T("visitedRooms")) end
 				n += 1
 				local sub = string.format("%s %s   |   %s %s   |   %s", T("coins"), Format.number(r.coins), T("xp"), Format.number(r.xp), Locale.f(lang, "hoursLeft", r.hours))
 				local row = joinRow(list, r.code, sub, function() travel("join", r.code) end)
