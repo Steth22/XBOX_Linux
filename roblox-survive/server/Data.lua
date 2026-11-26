@@ -44,6 +44,23 @@ local function defaultRoom()
 	return { coins = Config.START_COINS, xp = 0, sp = 0, inv = inv, hunger = 100, thirst = 100, skills = skills, stash = Inventory.newStash(), dex = { seen = {}, kills = {}, medals = {}, neck = false }, t = os.time() }
 end
 
+local roomRecs = DataStoreService:GetDataStore("Rooms_v1")
+-- the XP a player holds in every room that is still open and never had admin switched on
+function Data.countXp(userId, p)
+	local codes, seen = {}, {}
+	for _, r in ipairs(p.rooms or {}) do if not seen[r.code] then seen[r.code] = true table.insert(codes, r.code) end end
+	for _, c in ipairs(p.owned or {}) do if not seen[c] then seen[c] = true table.insert(codes, c) end end
+	local total = 0
+	for _, code in ipairs(codes) do
+		local okR, rec = pcall(function() return roomRecs:GetAsync("room_" .. code) end)
+		if okR and type(rec) == "table" and not rec.deleted and not rec.admin and os.time() - (rec.last or 0) <= Config.ROOM_TTL then
+			local okP, rd = pcall(function() return roomStore:GetAsync("r_" .. code .. "_" .. userId) end)
+			if okP and type(rd) == "table" then total += math.max(0, math.floor(tonumber(rd.xp) or 0)) end
+		end
+	end
+	return total
+end
+
 ---------------------------------------------------------------- profile
 function Data.loadProfile(player)
 	local ok, res = try(function()
@@ -54,12 +71,7 @@ function Data.loadProfile(player)
 		p.lang = (res.lang == "en") and "en" or "ar"
 		p.look = Appearance.sanitize(res.look)
 		p.lifeXp = math.max(0, tonumber(res.lifeXp) or 0)
-		-- undo the short-lived ranking wipe (season 2): add back what the ranking held before it
-		if res.season == 2 then
-			local okB, before = pcall(function() return board:GetAsync(tostring(player.UserId)) end)
-			if okB and tonumber(before) then p.lifeXp += math.max(0, tonumber(before)) end
-			p._migrated = true
-		end
+		p._recount = res.season ~= Config.XP_SEASON
 		if type(res.owned) == "table" then
 			for _, c in ipairs(res.owned) do
 				if type(c) == "string" and #p.owned < 5 then table.insert(p.owned, c) end
@@ -76,9 +88,15 @@ function Data.loadProfile(player)
 		p._noSave = true -- never overwrite real data after a failed load
 		warn("Profile load failed for", player.UserId, res)
 	end
+	-- one-time recount: ranking XP = the XP you hold in every open room that never had admin on
+	if p._recount then
+		p._recount = nil
+		p.lifeXp = Data.countXp(player.UserId, p)
+		p._migrated = true
+	end
 	if player.Parent then
 		profiles[player] = p
-		if p.lifeXp > 0 then boardDirty[player] = true end
+		if p.lifeXp > 0 or p._migrated then boardDirty[player] = true end
 	end
 	-- write the repaired value straight away so a second server can't add it again
 	if p._migrated and player.Parent then
