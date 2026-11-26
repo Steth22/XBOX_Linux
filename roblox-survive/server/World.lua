@@ -1908,6 +1908,8 @@ function World.start(r)
 	if not okC then Debug.log("start.craft", errC) end
 	local okHm, errHm = pcall(function() Homes.start(ctx, Inventory, Data, Furnace, Crafting) end)
 	if not okHm then Debug.log("start.homes", errHm) end
+	local okSh, errSh = pcall(function() require(script.Parent.Shutters).start(vendors, ctx) end)
+	if not okSh then Debug.log("start.shutters", errSh) end
 
 	remotes.World.OnServerInvoke = function(player, action, a, b)
 		local room = Data.room(player)

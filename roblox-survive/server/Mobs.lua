@@ -1154,7 +1154,7 @@ local buildList, buildAt = nil, 0
 local function blockedBy(from, dir, len)
 	if not buildList or os.clock() - buildAt > 30 then
 		buildList = {}
-		for _, n in ipairs({ "Villages", "Cabins", "Outposts", "Camp", "BanditCamps", "BlackMarkets" }) do
+		for _, n in ipairs({ "Villages", "Cabins", "Outposts", "Camp", "BanditCamps", "BlackMarkets", "Houses", "Furnaces", "CraftingTables" }) do
 			local f = workspace:FindFirstChild(n)
 			if f then table.insert(buildList, f) end
 		end
@@ -1286,7 +1286,10 @@ function stepOne(m, s)
 					if def.boss and Mobs.bossThink and now >= (s.frozenUntil or 0) then Mobs.bossThink(m, s, tr, now) end
 					local d = (tr.Position - pos).Magnitude
 					if d > def.reach * 0.7 then s.dest = tr.Position s.pace = 1 else s.dest = nil end
-					if d <= def.reach + (def.boss and 2 or 0) and now >= s.nextAttack and now >= (s.frozenUntil or 0) then
+					-- no hitting through a wall (a player inside a house is safe)
+					local walled = d > 0.5 and blockedBy(pos, (Vector3.new(tr.Position.X, pos.Y, tr.Position.Z) - pos).Unit, d)
+					if walled then s.dest = nil end
+					if not walled and d <= def.reach + (def.boss and 2 or 0) and now >= s.nextAttack and now >= (s.frozenUntil or 0) then
 						s.nextAttack = now + (def.boss and 1.8 or 1.2)
 						ctx.fx("mobAttack", pos, s.kind)
 						ctx.hurt(s.target, s.dmg * (os.clock() < (s.enragedUntil or 0) and 1.5 or 1), s.kind)

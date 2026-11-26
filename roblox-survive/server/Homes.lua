@@ -10,9 +10,10 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local Homes = {}
 
 -- flat, free plots round the spawn (checked against the terrain, trees, rocks and buildings), nearest first
+-- { x, z, height of the levelled pad (gen/fixplots.lua flattened them in the saved place) }
 Homes.PLOTS = {
-	{ 80, 0 }, { 24, 76 }, { -65, -48 }, { 24, -77 }, { -100, 0 }, { -13, -120 }, { 12, 139 }, { -85, 111 },
-	{ -153, 49 }, { 94, -130 }, { -75, 163 }, { -75, -164 }, { 107, 168 }, { 12, 199 }, { -162, 117 }, { 12, -200 },
+	{ 80, 0, 11.5 }, { 24, 76, 12.5 }, { -65, -48, 15 }, { 24, -77, 13 }, { -100, 0, 15.5 }, { -13, -120, 14.5 }, { 12, 139, 13 }, { -85, 111, 14 },
+	{ -153, 49, 13.5 }, { 94, -130, 15.5 }, { -75, 163, 13.5 }, { -75, -164, 14 }, { 107, 168, 14 }, { 12, 199, 13 }, { -162, 117, 15 }, { 12, -200, 14.5 },
 }
 
 local ctx, Inventory, Data, Furnace, Crafting
@@ -48,6 +49,8 @@ local function baseOf(plot)
 	end
 	if hi == -math.huge then lo, hi = 12, 12 end
 	local floorY = hi + 0.3
+	-- the pad is flat at a known height: the floor sits right on it
+	if Homes.PLOTS[plot][3] then floorY = Homes.PLOTS[plot][3] + 0.3 lo = Homes.PLOTS[plot][3] end
 	local pos = Vector3.new(px, floorY, pz)
 	local face = Vector3.new(0, floorY, 0)
 	if (face - pos).Magnitude < 1 then face = pos + Vector3.new(0, 0, -1) end
@@ -109,24 +112,6 @@ local function build(player)
 	end
 	m.Name = "House_" .. player.UserId
 	m:SetAttribute("Owner", player.UserId)
-	-- no ground or grass inside the house: once the terrain is rebuilt at startup (it would undo this),
-	-- clear what pokes up and turn the tall grass round the house into short grass
-	if L then
-		local height = (m:GetAttribute("Height") or 12) + 6
-		local base = h.base
-		task.spawn(function()
-			local t0 = os.clock()
-			while not workspace:GetAttribute("TerrainReady") and os.clock() - t0 < 120 do task.wait(1) end
-			pcall(function()
-				local T = workspace.Terrain
-				T:FillBlock(base * CFrame.new(0, height / 2 - 0.4, 0), Vector3.new(L.w + 2, height, L.d + 2), Enum.Material.Air)
-				local c = base.Position
-				local half = Vector3.new(L.w / 2 + 12, 0, L.w / 2 + 12)
-				local region = Region3.new(c - half - Vector3.new(0, 24, 0), c + half + Vector3.new(0, 12, 0)):ExpandToGrid(4)
-				T:ReplaceMaterial(region, 4, Enum.Material.Grass, Enum.Material.LeafyGrass)
-			end)
-		end)
-	end
 	-- place it: the model was built round the origin
 	for _, p in ipairs(m:GetDescendants()) do
 		if p:IsA("BasePart") then p.CFrame = h.base * p.CFrame end
