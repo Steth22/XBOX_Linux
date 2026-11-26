@@ -1,7 +1,7 @@
 local L = {}
 
 L.ar = {
-	title = "الضال",
+	title = "الكائنات الضالة",
 	play = "العب", ranking = "الترتيب", rooms = "غرفي", look = "المظهر", settings = "الإعدادات",
 	solo = "فردي", quick = "سريع", friend = "صديق", roomCode = "غرفة بكود",
 	create = "إنشاء", join = "دخول", enter = "ادخل", codeHint = "أدخل الكود", code = "الكود",

@@ -4,7 +4,7 @@ local S = {}
 -- everything on the screen in one language: the player's ("ar" or "en")
 local TEXT = {
 	ar = {
-		title = "الضال",
+		title = "الكائنات الضالة",
 		loading = "جارٍ التحميل...", ready = "تجهيز اللعبة...", world = "تحميل العالم...", ground = "بناء الأرض...",
 		around = "تحميل ما حولك...", finish = "اللمسات الأخيرة...", menu = "تجهيز القائمة...", travel = "جارٍ الانتقال...",
 		tips = {

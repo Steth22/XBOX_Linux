@@ -605,7 +605,8 @@ function M.start(gui, remotes)
 		UI.new("UIGradient", { Rotation = lang == "ar" and 180 or 0, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(0.7, 0.6), NumberSequenceKeypoint.new(1, 1) }), Parent = shade })
 
 		local colX = lang == "ar" and 0.7 or 0.3
-		local title = UI.text({ Text = T("title"), Size = UDim2.new(0, 460, 0, 90), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(colX, 0, 0, 96), TextSize = 76, TextColor3 = c.gold, Parent = screen })
+		local title = UI.text({ Text = T("title"), Size = UDim2.new(0, 460, 0, 90), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(colX, 0, 0, 96), TextSize = 76, TextScaled = true, TextColor3 = c.gold, Parent = screen })
+		UI.new("UITextSizeConstraint", { MaxTextSize = 76, Parent = title })
 		UI.new("UIStroke", { Color = Color3.fromRGB(70, 40, 10), Thickness = 3, Transparency = 0.3, Parent = title })
 		UI.enter(title, 0, -20)
 

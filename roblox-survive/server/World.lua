@@ -19,6 +19,7 @@ local Survival = require(script.Parent.Survival)
 local Debug = require(script.Parent.Debug)
 local Bestiary = require(ReplicatedStorage.Shared.Bestiary)
 local Furnace = require(script.Parent.Furnace)
+local Crafting = require(script.Parent.Crafting)
 local Weather = require(script.Parent.Weather)
 local Powers = require(script.Parent.Powers)
 local Achieve = require(script.Parent.Achieve)
@@ -1173,6 +1174,10 @@ end
 function actions.move(player, room, a, b)
 	a, b = tonumber(a), tonumber(b)
 	if not a or not b then return end
+	if a >= 300 or b >= 300 then
+		if Crafting.move(player, room, a, b) then revalidate(player) end
+		return
+	end
 	if a >= 200 or b >= 200 then
 		if Furnace.move(player, room, a, b) then revalidate(player) end
 		return
@@ -1606,6 +1611,13 @@ function actions.stashUpgrade(player, room)
 end
 
 function actions.closeFurnace(player) Furnace.close(player) end
+function actions.closeCraft(player) Crafting.close(player) revalidate(player) end
+-- a tap: one item from bag slot a into grid cell b (301..309)
+function actions.craftOne(player, room, a, b)
+	a, b = tonumber(a), tonumber(b)
+	if not a or not b or b < Crafting.GRID or b >= Crafting.GRID + 9 then return end
+	if Crafting.move(player, room, a, b, true) then revalidate(player) end
+end
 -- the loading screen is done: 5 more seconds of shield, then you're on your own
 function actions.ready(player)
 	if not awaitingReady[player] then return end
@@ -1863,6 +1875,8 @@ function World.start(r)
 	if not okW then Debug.log("start.weather", errW) end
 	local okF, errF = pcall(function() Furnace.start(ctx, Inventory, Data, vendors) end)
 	if not okF then Debug.log("start.furnace", errF) end
+	local okC, errC = pcall(function() Crafting.start(ctx, Inventory, Data, Furnace, vendors) end)
+	if not okC then Debug.log("start.craft", errC) end
 
 	remotes.World.OnServerInvoke = function(player, action, a, b)
 		local room = Data.room(player)

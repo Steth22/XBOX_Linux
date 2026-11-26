@@ -34,6 +34,7 @@ I.defs = {
 	ammo = { ar = "رصاص", en = "Bullets", kind = "ammo", stack = 90, buy = 45, buyQty = 15 },
 	trap = { ar = "فخ", en = "Trap", kind = "place", stack = 5, buy = 80 },
 	campfire = { ar = "نار مخيم", en = "Campfire", kind = "place", stack = 5, buy = 30 },
+	stick = { ar = "عصا", en = "Stick", kind = "res", stack = 50, sell = 1 },
 }
 
 -- tool tiers: stone / iron / diamond versions of the axe, pickaxe and sword
@@ -176,6 +177,79 @@ I.TOKEN_COST = { { "wood", 20 }, { "stone", 20 }, { "iron", 6 }, { "gold", 4 }, 
 
 -- what the furnace turns each item into (5 wood and 3 seconds per item)
 I.smelt = { meat_raw = "meat_cooked", mushroom = "mushroom_roast" }
+
+-- the crafting table (Minecraft style 3x3). Each recipe is a shape: rows of letters, "." = empty.
+-- A shape can sit anywhere on the grid and can be mirrored left-right. Every filled cell uses 1 item.
+local K = { W = "wood", S = "stick", T = "stone", I = "iron", G = "gold", D = "diamond", H = "hide", C = "crystal", O = "obsidian" }
+I.recipes = {
+	{ out = "stick", n = 4, shape = { "W", "W" } },
+	{ out = "wood_axe", shape = { "WW", "WS", ".S" } },
+	{ out = "stone_axe", shape = { "TT", "TS", ".S" } },
+	{ out = "iron_axe", shape = { "II", "IS", ".S" } },
+	{ out = "diamond_axe", shape = { "DD", "DS", ".S" } },
+	{ out = "wood_pickaxe", shape = { "WWW", ".S.", ".S." } },
+	{ out = "stone_pickaxe", shape = { "TTT", ".S.", ".S." } },
+	{ out = "iron_pickaxe", shape = { "III", ".S.", ".S." } },
+	{ out = "diamond_pickaxe", shape = { "DDD", ".S.", ".S." } },
+	{ out = "wood_sword", shape = { "W", "W", "S" } },
+	{ out = "stone_sword", shape = { "T", "T", "S" } },
+	{ out = "iron_sword", shape = { "I", "I", "S" } },
+	{ out = "diamond_sword", shape = { "D", "D", "S" } },
+	{ out = "spear", shape = { "..I", ".S.", "S.." } },
+	{ out = "war_hammer", shape = { "III", "IOI", ".S." } },
+	{ out = "leather_armor", shape = { "H.H", "HHH", "HHH" } },
+	{ out = "iron_armor", shape = { "I.I", "III", "III" } },
+	{ out = "diamond_armor", shape = { "D.D", "DDD", "DDD" } },
+	{ out = "bow", shape = { ".SH", "S.H", ".SH" } },
+	{ out = "arrow", n = 8, shape = { "T", "S", "W" } },
+	{ out = "dynamite", n = 2, shape = { ".S.", "TCT", "TCT" } },
+	{ out = "trap", shape = { "I.I", ".I.", "WWW" } },
+	{ out = "campfire", shape = { ".S.", "SWS", "TTT" } },
+	{ out = "lantern", shape = { ".I.", "ICI", ".I." } },
+}
+-- turn each shape into a grid of item ids once
+for _, rc in ipairs(I.recipes) do
+	rc.n = rc.n or 1
+	rc.grid = {}
+	for y, row in ipairs(rc.shape) do
+		rc.grid[y] = {}
+		for x = 1, #row do
+			local ch = row:sub(x, x)
+			rc.grid[y][x] = ch ~= "." and K[ch] or false
+		end
+	end
+	rc.h, rc.w = #rc.shape, #rc.shape[1]
+end
+
+-- what a 3x3 grid makes: cells = { [1..9] = id or false } (row by row). Returns recipe or nil.
+function I.craft(cells)
+	local minX, minY, maxX, maxY = 4, 4, 0, 0
+	for i = 1, 9 do
+		if cells[i] then
+			local x, y = (i - 1) % 3 + 1, (i - 1) // 3 + 1
+			minX, minY, maxX, maxY = math.min(minX, x), math.min(minY, y), math.max(maxX, x), math.max(maxY, y)
+		end
+	end
+	if maxX == 0 then return nil end
+	local w, h = maxX - minX + 1, maxY - minY + 1
+	for _, rc in ipairs(I.recipes) do
+		if rc.w == w and rc.h == h then
+			for _, flip in ipairs({ false, true }) do
+				local ok = true
+				for y = 1, h do
+					for x = 1, w do
+						local want = rc.grid[y][flip and (w - x + 1) or x]
+						local have = cells[(minY + y - 2) * 3 + (minX + x - 1)] or false
+						if want ~= have then ok = false break end
+					end
+					if not ok then break end
+				end
+				if ok then return rc end
+			end
+		end
+	end
+	return nil
+end
 
 function I.get(id) return I.defs[id] end
 function I.stack(id) local d = I.defs[id]; return d and d.stack or 1 end
@@ -555,6 +629,8 @@ SPECS.berries = { P(Vector3.new(0.55, 0.55, 0.55), nil, Color3.fromRGB(150, 30, 
 	P(Vector3.new(0.45, 0.45, 0.45), CFrame.new(0.05, 0.4, -0.2), Color3.fromRGB(186, 50, 104), nil, BALL),
 	P(Vector3.new(0.06, 0.4, 0.06), CFrame.new(0.05, 0.75, -0.2), Color3.fromRGB(70, 110, 50)),
 	P(Vector3.new(0.5, 0.06, 0.3), CFrame.new(0.2, 0.88, -0.2) * A(0, 0, r(20)), Color3.fromRGB(70, 130, 60), Enum.Material.Grass) }
+-- stick: a thin wooden rod
+SPECS.stick = { P(Vector3.new(0.22, 0.22, 2.2), CFrame.new(0, 0, 0) * A(r(30), 0, r(20)), WOOD, Enum.Material.Wood) }
 -- token: a thick gold coin with a glowing purple gem set in it
 SPECS.token = { P(Vector3.new(0.3, 1.5, 1.5), nil, Color3.fromRGB(236, 184, 60), Enum.Material.Metal, CYL),
 	P(Vector3.new(0.34, 1.2, 1.2), nil, Color3.fromRGB(200, 150, 40), Enum.Material.Metal, CYL),
