@@ -11,8 +11,8 @@ local Homes = {}
 
 -- flat, free plots round the spawn (checked against the terrain, trees, rocks and buildings), nearest first
 Homes.PLOTS = {
-	{ 0, 50 }, { 35, -36 }, { 68, 0 }, { -45, -52 }, { -10, -68 }, { 53, 67 }, { -54, 67 }, { -86, 0 },
-	{ 9, 103 }, { 9, -104 }, { 122, 0 }, { -38, 116 }, { -117, 37 }, { -117, -38 }, { 28, 137 }, { -81, 114 },
+	{ 80, 0 }, { 24, 76 }, { -65, -48 }, { 24, -77 }, { -100, 0 }, { -13, -120 }, { 12, 139 }, { -85, 111 },
+	{ -153, 49 }, { 94, -130 }, { -75, 163 }, { -75, -164 }, { 107, 168 }, { 12, 199 }, { -162, 117 }, { 12, -200 },
 }
 
 local ctx, Inventory, Data, Furnace, Crafting
@@ -29,7 +29,8 @@ local function groundAt(x, z)
 	for iy = sy, 1, -1 do
 		local m = mats[1][iy][1]
 		if m ~= Enum.Material.Air and m ~= Enum.Material.Water and occ[1][iy][1] > 0.3 then
-			return y0 + (iy - 1) * 4 + 4 * occ[1][iy][1]
+			-- the top of that voxel: never below the real surface
+			return y0 + iy * 4
 		end
 	end
 	return nil
@@ -46,7 +47,7 @@ local function baseOf(plot)
 		end
 	end
 	if hi == -math.huge then lo, hi = 12, 12 end
-	local floorY = hi + 0.6
+	local floorY = hi + 0.3
 	local pos = Vector3.new(px, floorY, pz)
 	local face = Vector3.new(0, floorY, 0)
 	if (face - pos).Magnitude < 1 then face = pos + Vector3.new(0, 0, -1) end
@@ -108,11 +109,22 @@ local function build(player)
 	end
 	m.Name = "House_" .. player.UserId
 	m:SetAttribute("Owner", player.UserId)
-	-- clear terrain that pokes up inside the house
+	-- no ground or grass inside the house: once the terrain is rebuilt at startup (it would undo this),
+	-- clear what pokes up and turn the tall grass round the house into short grass
 	if L then
-		local height = (m:GetAttribute("Height") or 12) + 4
-		pcall(function()
-			workspace.Terrain:FillBlock(h.base * CFrame.new(0, height / 2 + 0.05, 0), Vector3.new(L.w + 3, height, L.d + 6), Enum.Material.Air)
+		local height = (m:GetAttribute("Height") or 12) + 6
+		local base = h.base
+		task.spawn(function()
+			local t0 = os.clock()
+			while not workspace:GetAttribute("TerrainReady") and os.clock() - t0 < 120 do task.wait(1) end
+			pcall(function()
+				local T = workspace.Terrain
+				T:FillBlock(base * CFrame.new(0, height / 2 - 0.4, 0), Vector3.new(L.w + 2, height, L.d + 2), Enum.Material.Air)
+				local c = base.Position
+				local half = Vector3.new(L.w / 2 + 12, 0, L.w / 2 + 12)
+				local region = Region3.new(c - half - Vector3.new(0, 24, 0), c + half + Vector3.new(0, 12, 0)):ExpandToGrid(4)
+				T:ReplaceMaterial(region, 4, Enum.Material.Grass, Enum.Material.LeafyGrass)
+			end)
 		end)
 	end
 	-- place it: the model was built round the origin
@@ -144,6 +156,32 @@ local function build(player)
 		if pl == player then ctx.notify(pl, "openHouse", Homes.info(pl)) else ctx.notify(pl, "notYourHouse") end
 	end)
 	if not L then return end
+	-- the door opens inwards and closes again
+	local door
+	for _, d in ipairs(m:GetDescendants()) do if d:IsA("BasePart") and d:GetAttribute("Door") then door = d break end end
+	if door then
+		local TweenService = game:GetService("TweenService")
+		local closed = door.CFrame
+		local hinge = closed * CFrame.new(-door.Size.X / 2, 0, 0)
+		local opened = hinge * CFrame.Angles(0, math.rad(-100), 0) * CFrame.new(door.Size.X / 2, 0, 0)
+		local kids = {}
+		for _, k in ipairs(door:GetChildren()) do if k:IsA("BasePart") then kids[k] = closed:ToObjectSpace(k.CFrame) end end
+		local isOpen = false
+		local cfv = Instance.new("CFrameValue")
+		cfv.Value = closed
+		cfv.Parent = door
+		cfv.Changed:Connect(function(v)
+			door.CFrame = v
+			for k, rel in pairs(kids) do k.CFrame = v * rel end
+		end)
+		local dp = prompt(door, "door", "door", 9)
+		dp.Triggered:Connect(function()
+			isOpen = not isOpen
+			dp:SetAttribute("Key", isOpen and "doorClose" or "door")
+			TweenService:Create(cfv, TweenInfo.new(0.45, Enum.EasingStyle.Quad), { Value = isOpen and opened or closed }):Play()
+			if ctx.fx then ctx.fx("place", door.Position) end
+		end)
+	end
 	-- the working parts
 	local inside = m:FindFirstChild("Furniture")
 	for _, d in ipairs(inside and inside:GetChildren() or {}) do

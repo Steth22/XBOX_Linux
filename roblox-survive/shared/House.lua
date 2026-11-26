@@ -7,7 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Items = require(ReplicatedStorage.Shared.Items)
 
 local H = {}
-H.FLOOR = 10 -- height of one storey
+H.FLOOR = 12 -- height of one storey
 
 local function rgb(r, g, b) return Color3.fromRGB(r, g, b) end
 local M = Enum.Material
@@ -56,12 +56,12 @@ end
 
 -- each level: footprint, storeys and the price (wood, stone)
 H.LEVELS = {
-	{ w = 14, d = 12, floors = 1, wood = 30, stone = 15 },
-	{ w = 18, d = 14, floors = 1, wood = 90, stone = 50 },
-	{ w = 18, d = 16, floors = 2, wood = 170, stone = 110 },
-	{ w = 20, d = 16, floors = 2, wood = 260, stone = 190 },
-	{ w = 22, d = 18, floors = 3, wood = 400, stone = 300 },
-	{ w = 24, d = 18, floors = 3, wood = 600, stone = 460 },
+	{ w = 20, d = 16, floors = 1, wood = 30, stone = 15 },
+	{ w = 24, d = 20, floors = 1, wood = 90, stone = 50 },
+	{ w = 26, d = 22, floors = 2, wood = 170, stone = 110 },
+	{ w = 28, d = 24, floors = 2, wood = 260, stone = 190 },
+	{ w = 30, d = 24, floors = 3, wood = 400, stone = 300 },
+	{ w = 32, d = 26, floors = 3, wood = 600, stone = 460 },
 }
 H.MAX = #H.LEVELS
 -- how many chests a house of that level has
@@ -254,8 +254,7 @@ local function spot(parent, name, cf, preview)
 			local g = newPart(parent, Vector3.new(1.8, 1.2, 0.2), cf * CFrame.new(0, 1.6, -2.25), rgb(255, 120, 30), M.Neon)
 			g.CanCollide = false
 		else
-			newPart(parent, Vector3.new(4.2, 0.5, 4.2), cf * CFrame.new(0, 3.35, 0), rgb(160, 112, 66), M.WoodPlanks)
-			newPart(parent, Vector3.new(3.6, 3.1, 3.6), cf * CFrame.new(0, 1.55, 0), DARK, M.Wood).Transparency = 0.5
+			newPart(parent, Vector3.new(4.6, 4.6, 4.6), cf * CFrame.new(0, 2.3, 0), rgb(168, 120, 72), M.WoodPlanks)
 		end
 	end
 	return p
@@ -288,47 +287,55 @@ function H.build(designKey, lvl, opts)
 	-- front steps up to the door
 	newPart(shell, Vector3.new(6, 0.6, 2), CFrame.new(0, -0.6, -hd - 2), rgb(120, 118, 112), M.Cobblestone)
 
-	-- the ladder hole in the upper floors (back right corner) and the ladder
-	local hx0, hx1, hz0, hz1 = hw - 5, hw - 1, hd - 4.5, hd - 1
+	-- the ladder: against the back wall on the right, with a wide opening above it in every upper floor
+	local lx0, lx1 = hw - 7, hw - 3.6
+	local lz = hd - 1 - 0.55
+	local hx0, hx1, hz0 = lx0 - 1.6, hw - 1, hd - 5.2
 	for f = 2, F do
 		local y = (f - 1) * FH
-		-- slab with a hole
 		newPart(shell, Vector3.new(hx0 - (-hw + 1), 0.8, D - 2), CFrame.new((-hw + 1 + hx0) / 2, y - 0.4, 0), d.floor, M.WoodPlanks)
 		newPart(shell, Vector3.new(hx1 - hx0, 0.8, hz0 - (-hd + 1)), CFrame.new((hx0 + hx1) / 2, y - 0.4, (-hd + 1 + hz0) / 2), d.floor, M.WoodPlanks)
-		-- a railing round the hole on the side facing the room
-		newPart(shell, Vector3.new(0.3, 2.6, hz1 - hz0), CFrame.new(hx0 + 0.15, y + 1.3, (hz0 + hz1) / 2), d.trim, M.Wood)
+		-- a low rail on the open side of the opening, with a gap in front of the ladder to step off
+		newPart(shell, Vector3.new(0.3, 2.4, hd - 1 - hz0), CFrame.new(hx0 + 0.15, y + 1.2, (hz0 + hd - 1) / 2), d.trim, M.Wood)
 	end
 	if F > 1 then
-		local lh = (F - 1) * FH + 3
-		local t = newPart(shell, Vector3.new(2, lh, 2), CFrame.new(hw - 2, lh / 2, hd - 2), d.trim, M.Wood, "Ladder", "TrussPart")
+		local lh = (F - 1) * FH + 4.5
+		local ladder = Instance.new("Model")
+		ladder.Name = "Ladder"
+		ladder.Parent = shell
+		for _, x in ipairs({ lx0 + 0.2, lx1 - 0.2 }) do
+			newPart(ladder, Vector3.new(0.45, lh, 0.45), CFrame.new(x, lh / 2, lz), DARK, M.Wood)
+			-- brackets that hold it off the wall
+			for y = 3, lh - 1, 6 do newPart(ladder, Vector3.new(0.35, 0.35, 0.6), CFrame.new(x, y, lz + 0.45), DARK, M.Wood) end
+		end
+		for y = 0.9, lh - 0.3, 1.15 do
+			newPart(ladder, Vector3.new(lx1 - lx0, 0.28, 0.32), CFrame.new((lx0 + lx1) / 2, y, lz), WOOD, M.Wood, "Rung")
+		end
+		-- an invisible truss right behind the rungs: Roblox characters always climb a truss
+		local th2 = math.ceil(lh / 2) * 2
+		local truss = newPart(ladder, Vector3.new(2, th2, 2), CFrame.new((lx0 + lx1) / 2, th2 / 2, hd - 2), WOOD, M.Wood, "Climb", "TrussPart")
+		truss.Transparency = 1
 	end
 
 	-- walls with the door and windows, storey by storey
 	local th = 1
 	for f = 1, F do
 		local y0, y1 = (f - 1) * FH - (f > 1 and 0.8 or 0), f * FH - 0.8
-		local wy0, wy1 = (f - 1) * FH + 3.2, (f - 1) * FH + 6.8
-		-- front
+		local wy0, wy1 = (f - 1) * FH + 3.8, (f - 1) * FH + 8.6
+		-- front: the door, and windows
 		local holes = {}
-		if f == 1 then table.insert(holes, { -2.5, 2.5, y0, (f - 1) * FH + 7.5 }) end
-		for _, x in ipairs({ -hw / 2 - 0.5, hw / 2 + 0.5 }) do
-			if f > 1 or math.abs(x) > 5 then table.insert(holes, { x - 1.5, x + 1.5, wy0, wy1 }) end
-		end
-		if f > 1 then table.insert(holes, { -1.5, 1.5, wy0, wy1 }) end
+		if f == 1 then table.insert(holes, { -2.9, 2.9, y0, 9.2 }) end
+		for _, x in ipairs({ -hw / 2 - 1, hw / 2 + 1 }) do table.insert(holes, { x - 1.8, x + 1.8, wy0, wy1 }) end
+		if f > 1 then table.insert(holes, { -1.8, 1.8, wy0, wy1 }) end
 		wallX(shell, -hd + th / 2, -hw, hw, y0, y1, th, holes, d.wall, d.wallM)
 		for _, h in ipairs(holes) do if h[3] > y0 + 0.5 then windowFill(shell, "x", -hd + th / 2, h[1], h[2], h[3], h[4], d) end end
-		-- back
-		local bh = { { -hw / 2 - 1.5, -hw / 2 + 1.5, wy0, wy1 } }
+		-- back: one window on the left half (the ladder is on the right)
+		local bh = { { -hw / 2 - 1.8, -hw / 2 + 1.8, wy0, wy1 } }
 		wallX(shell, hd - th / 2, -hw, hw, y0, y1, th, bh, d.wall, d.wallM)
 		windowFill(shell, "x", hd - th / 2, bh[1][1], bh[1][2], wy0, wy1, d)
-		-- sides
+		-- sides: two windows each
 		for _, sx in ipairs({ -1, 1 }) do
-			local sh = { { -1.5, 1.5, wy0, wy1 } }
-			if D >= 16 then sh = { { -hd / 2 - 1.5, -hd / 2 + 1.5, wy0, wy1 }, { hd / 2 - 1.5 - 1, hd / 2 + 1.5 - 1, wy0, wy1 } } end
-			if sx == 1 then
-				-- no window behind the ladder
-				for i = #sh, 1, -1 do if sh[i][2] > hz0 - 0.5 then table.remove(sh, i) end end
-			end
+			local sh = { { -hd / 2 - 1.8, -hd / 2 + 1.8, wy0, wy1 }, { hd / 2 - 2.8, hd / 2 + 0.8, wy0, wy1 } }
 			wallZ(shell, sx * (hw - th / 2), -hd + th, hd - th, y0, y1, th, sh, d.wall, d.wallM)
 			for _, h in ipairs(sh) do windowFill(shell, "z", sx * (hw - th / 2), h[1], h[2], wy0, wy1, d) end
 		end
@@ -340,18 +347,25 @@ function H.build(designKey, lvl, opts)
 			newPart(shell, Vector3.new(0.5, 0.6, D + 0.6), CFrame.new(hw + 0.1, y0 + 0.4, 0), d.trim, M.Wood)
 		end
 	end
+	-- inside the walls: a skirting board and a plaster colour a bit lighter than the outside
 	-- corner posts and the door frame
 	for _, x in ipairs({ -hw, hw }) do for _, z in ipairs({ -hd, hd }) do
 		newPart(shell, Vector3.new(1.3, top, 1.3), CFrame.new(x, top / 2 - 0.4, z), d.trim, M.Wood)
 	end end
-	newPart(shell, Vector3.new(0.6, 7.8, 1.3), CFrame.new(-2.8, 3.9, -hd + 0.5), d.trim, M.Wood)
-	newPart(shell, Vector3.new(0.6, 7.8, 1.3), CFrame.new(2.8, 3.9, -hd + 0.5), d.trim, M.Wood)
-	newPart(shell, Vector3.new(6.2, 0.6, 1.3), CFrame.new(0, 7.8, -hd + 0.5), d.trim, M.Wood)
+	newPart(shell, Vector3.new(0.6, 9.5, 1.3), CFrame.new(-3.2, 4.75, -hd + 0.5), d.trim, M.Wood)
+	newPart(shell, Vector3.new(0.6, 9.5, 1.3), CFrame.new(3.2, 4.75, -hd + 0.5), d.trim, M.Wood)
+	newPart(shell, Vector3.new(7, 0.6, 1.3), CFrame.new(0, 9.5, -hd + 0.5), d.trim, M.Wood)
+	-- the door (the server makes it open and close); hinge on its left side
+	local door = newPart(shell, Vector3.new(5.7, 9.1, 0.35), CFrame.new(0, 4.6, -hd + 0.5), d.trim:Lerp(WOOD, 0.5), M.WoodPlanks, "Door")
+	door:SetAttribute("Door", true)
+	for _, yy in ipairs({ 1.6, 7.4 }) do newPart(door, Vector3.new(5.5, 0.4, 0.5), CFrame.new(0, yy, -hd + 0.5), DARK, M.Wood, "Band") end
+	local knob = newPart(door, Vector3.new(0.45, 0.45, 0.7), CFrame.new(2.1, 4.4, -hd + 0.5), rgb(210, 170, 70), M.Metal, "Knob")
+	knob.Shape = Enum.PartType.Ball
 
 	-- the design's own touches on the outside
 	if d.timber then
 		for f = 1, F do
-			for _, yy in ipairs({ (f - 1) * FH + 2.4, (f - 1) * FH + 7.6 }) do
+			for _, yy in ipairs({ (f - 1) * FH + 2.6, (f - 1) * FH + 10.2 }) do
 				newPart(shell, Vector3.new(W, 0.45, 0.4), CFrame.new(0, yy, -hd - 0.15), d.trim, M.Wood)
 				newPart(shell, Vector3.new(W, 0.45, 0.4), CFrame.new(0, yy, hd + 0.15), d.trim, M.Wood)
 				newPart(shell, Vector3.new(0.4, 0.45, D), CFrame.new(-hw - 0.15, yy, 0), d.trim, M.Wood)
@@ -441,11 +455,11 @@ function H.build(designKey, lvl, opts)
 	end
 	-- a porch roof over the door from level 4, lanterns from level 3, a fence and flowers at level 6
 	if lvl >= 4 then
-		local p = newPart(shell, Vector3.new(8, 0.5, 3.6), CFrame.new(0, 8.6, -hd - 1.6) * CFrame.Angles(math.rad(-14), 0, 0), d.roof, d.roofM)
-		for _, x in ipairs({ -3.6, 3.6 }) do newPart(shell, Vector3.new(0.5, 8.3, 0.5), CFrame.new(x, 4.05, -hd - 3.2), d.trim, M.Wood) end
+		local p = newPart(shell, Vector3.new(9, 0.5, 3.8), CFrame.new(0, 10.6, -hd - 1.7) * CFrame.Angles(math.rad(-14), 0, 0), d.roof, d.roofM)
+		for _, x in ipairs({ -4, 4 }) do newPart(shell, Vector3.new(0.5, 10.2, 0.5), CFrame.new(x, 5.05, -hd - 3.3), d.trim, M.Wood) end
 	end
 	if lvl >= 3 then
-		for _, x in ipairs({ -3.6, 3.6 }) do lamp(shell, CFrame.new(x, 6.6, -hd - 0.1)) end
+		for _, x in ipairs({ -4.2, 4.2 }) do lamp(shell, CFrame.new(x, 8, -hd - 0.1)) end
 	end
 	if lvl >= 6 then
 		local fx, fz = hw + 4, hd + 4
@@ -464,62 +478,71 @@ function H.build(designKey, lvl, opts)
 	end
 
 	---------------------------------------------------------------- furniture
+	-- layout: the door in the middle of the front, the ladder on the back wall (right), beds along the left
+	-- wall, chests along a side wall, furnace and crafting table on the right, a table with two chairs
+	-- against the back wall facing the door.
 	local function at(f, x, z, ry) return CFrame.new(x, (f - 1) * FH, z) * CFrame.Angles(0, ry or 0, 0) end
 	local pv = opts.preview
 	local chestN = 0
-	local function addChest(f, x, z)
+	local LEFT, RIGHT = -math.pi / 2, math.pi / 2 -- a chest against the left wall faces +X, against the right wall -X
+	local function addChest(f, x, z, ry)
 		chestN += 1
-		chest(inside, at(f, x, z), chestN)
+		chest(inside, at(f, x, z, ry), chestN)
 	end
 	local rugColor = d.trim:Lerp(rgb(170, 60, 60), 0.5)
+	local chairColor = d.wall:Lerp(WOOD, 0.6)
+	local function dining(f, cx)
+		tableAt(inside, at(f, cx, hd - 4.6), 4.4, 2.6)
+		chair(inside, at(f, cx - 1.3, hd - 2.2, 0), chairColor)
+		chair(inside, at(f, cx + 1.3, hd - 2.2, 0), chairColor)
+	end
 	-- ground floor
 	if lvl <= 2 then bed(inside, at(1, -hw + 2.8, hd - 4.2, math.pi)) end
-	addChest(1, -hw + 6.2, hd - 1.9)
-	lamp(inside, at(1, 0, hd - 1, 0) * CFrame.new(0, 7.2, 0))
+	addChest(1, -hw + 1.9, hd - 9.4, LEFT)
+	dining(1, -1.5)
+	lamp(inside, at(1, -hw / 2, hd - 1, 0) * CFrame.new(0, 9, 0))
+	lamp(inside, at(1, hw / 2, -hd + 1, math.pi) * CFrame.new(0, 9, 0))
 	if lvl >= 2 then
-		addChest(1, -hw + 9.6, hd - 1.9)
-		spot(inside, "FurnaceSpot", CFrame.lookAt(Vector3.new(-hw + 3.4, 0, -hd + 3.4), Vector3.new(-hw + 4.4, 0, -hd + 3.4)), pv)
-		spot(inside, "CraftSpot", CFrame.lookAt(Vector3.new(hw - 3.4, 0, -hd + 3.4), Vector3.new(hw - 4.4, 0, -hd + 3.4)), pv)
-		rug(inside, at(1, -0.5, 0.6), 8, 6, rugColor)
-		tableAt(inside, at(1, -0.5, 0.6), 3.2, 2.2)
-		chair(inside, at(1, -0.5, -1.9, math.pi), d.wall:Lerp(WOOD, 0.6))
-		chair(inside, at(1, -0.5, 3.1, 0), d.wall:Lerp(WOOD, 0.6))
+		addChest(1, -hw + 1.9, hd - 12.8, LEFT)
+		spot(inside, "CraftSpot", CFrame.lookAt(Vector3.new(hw - 3.4, 0, -hd + 3.6), Vector3.new(hw - 4.4, 0, -hd + 3.6)), pv)
+		spot(inside, "FurnaceSpot", CFrame.lookAt(Vector3.new(hw - 3.4, 0, -hd + 9.4), Vector3.new(hw - 4.4, 0, -hd + 9.4)), pv)
+		rug(inside, at(1, -1, -1), 9, 7, rugColor)
 	end
 	if lvl >= 3 then
-		shelf(inside, at(1, -hw + 1.8, hd - 4, -math.pi / 2))
-		painting(inside, at(1, -hw + 1.1, 0, -math.pi / 2) * CFrame.new(0, 5, 0), d.glass:Lerp(rgb(60, 120, 80), 0.5))
+		shelf(inside, at(1, -hw + 1.8, hd - 3.5, LEFT))
+		painting(inside, at(1, -hw + 1.1, -hd / 2, LEFT) * CFrame.new(0, 6, 0), d.glass:Lerp(rgb(60, 120, 80), 0.5))
+		plant(inside, at(1, -4.6, -hd + 2))
+		plant(inside, at(1, 4.6, -hd + 2))
 	end
-	if lvl >= 4 then
-		plant(inside, at(1, -4.2, -hd + 2))
-		plant(inside, at(1, 4.2, -hd + 2))
-	end
-	-- first floor
+	-- first floor: the bedroom
 	if F >= 2 then
 		bed(inside, at(2, -hw + 2.8, hd - 4.2, math.pi))
-		addChest(2, -hw + 6.2, hd - 1.9)
-		rug(inside, at(2, 0, 0), 7, 5, rugColor)
-		lamp(inside, at(2, 0, hd - 1, 0) * CFrame.new(0, 7.2, 0))
-		chair(inside, at(2, hw - 3, -hd + 3, math.pi / 4), d.trim)
-		plant(inside, at(2, hw - 3, -hd + 6))
+		addChest(2, hw - 1.9, -hd + 3.2, RIGHT)
+		rug(inside, at(2, -1, 0), 9, 7, rugColor)
+		lamp(inside, at(2, -hw / 2, hd - 1, 0) * CFrame.new(0, 9, 0))
+		lamp(inside, at(2, hw / 2, -hd + 1, math.pi) * CFrame.new(0, 9, 0))
+		tableAt(inside, at(2, -hw + 4, -hd + 3.2), 3.2, 2.2)
+		chair(inside, at(2, -hw + 4, -hd + 5.4, 0), d.trim)
+		plant(inside, at(2, hw - 2.2, hd - 7))
 		if lvl >= 4 then
-			bed(inside, at(2, -hw + 2.8, hd - 10.6, math.pi))
-			addChest(2, -hw + 9.6, hd - 1.9)
-			painting(inside, at(2, 0, -hd + 1.1, math.pi) * CFrame.new(0, 5, 0), d.glass:Lerp(rgb(200, 140, 70), 0.5))
+			bed(inside, at(2, -hw + 2.8, hd - 11.2, math.pi))
+			addChest(2, hw - 1.9, -hd + 6.6, RIGHT)
+			painting(inside, at(2, 0, hd - 1.1, 0) * CFrame.new(-3, 6, 0), d.glass:Lerp(rgb(200, 140, 70), 0.5))
 		end
 	end
 	-- top floor
 	if F >= 3 then
 		bed(inside, at(3, -hw + 2.8, hd - 4.2, math.pi))
-		addChest(3, -hw + 6.2, hd - 1.9)
-		rug(inside, at(3, 0, 0), 8, 6, rugColor)
-		lamp(inside, at(3, 0, hd - 1, 0) * CFrame.new(0, 7.2, 0))
-		shelf(inside, at(3, hw - 1.8, -hd + 4, math.pi / 2))
+		addChest(3, hw - 1.9, -hd + 3.2, RIGHT)
+		rug(inside, at(3, -1, 0), 9, 7, rugColor)
+		lamp(inside, at(3, -hw / 2, hd - 1, 0) * CFrame.new(0, 9, 0))
+		lamp(inside, at(3, hw / 2, -hd + 1, math.pi) * CFrame.new(0, 9, 0))
+		shelf(inside, at(3, -hw + 1.8, -hd + 4, LEFT))
+		dining(3, -1.5)
 		if lvl >= 6 then
-			bed(inside, at(3, -hw + 2.8, hd - 10.6, math.pi))
-			addChest(3, -hw + 9.6, hd - 1.9)
-			spot(inside, "FurnaceSpot", CFrame.lookAt(Vector3.new(-hw + 3.4, 2 * FH, -hd + 3.4), Vector3.new(-hw + 4.4, 2 * FH, -hd + 3.4)), pv)
-			tableAt(inside, at(3, 0, 0), 3, 2)
-			chair(inside, at(3, 0, -2.4, math.pi), d.trim)
+			bed(inside, at(3, -hw + 2.8, hd - 11.2, math.pi))
+			addChest(3, hw - 1.9, -hd + 6.6, RIGHT)
+			spot(inside, "FurnaceSpot", CFrame.lookAt(Vector3.new(hw - 3.4, 2 * FH, -hd + 11), Vector3.new(hw - 4.4, 2 * FH, -hd + 11)), pv)
 		end
 	end
 	m.PrimaryPart = base

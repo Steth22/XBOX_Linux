@@ -2677,9 +2677,18 @@ function M.start(gui, remotes)
 	end)
 
 	---------------------------------------------------------------- localized prompts
+	local promptHooked = setmetatable({}, { __mode = "k" })
 	ProximityPromptService.PromptShown:Connect(function(prompt)
 		local key = prompt:GetAttribute("Key")
 		if key then prompt.ActionText = T("p_" .. key) end
+		-- prompts whose action changes (a door: open / close)
+		if not promptHooked[prompt] then
+			promptHooked[prompt] = true
+			prompt:GetAttributeChangedSignal("Key"):Connect(function()
+				local k = prompt:GetAttribute("Key")
+				if k then prompt.ActionText = T("p_" .. k) end
+			end)
+		end
 		local obj = prompt:GetAttribute("Obj")
 		local itemId = prompt:GetAttribute("ItemId")
 		if itemId then

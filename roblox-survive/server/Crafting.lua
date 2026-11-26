@@ -41,7 +41,7 @@ function C.push(player)
 	if open[player] then ctx.notify(player, "craft", view(player)) end
 end
 
--- a wooden workbench with a grid on top
+-- a big wooden crafting block like Minecraft's: plank sides with tools hung on them, a 3x3 grid on top
 local function build(cf, parent)
 	local m = Instance.new("Model")
 	m.Name = "CraftingTable"
@@ -56,26 +56,35 @@ local function build(cf, parent)
 		p.Parent = m
 		return p
 	end
-	local plank = Color3.fromRGB(160, 112, 66)
-	local dark = Color3.fromRGB(104, 70, 42)
-	local body = part(Vector3.new(4.2, 0.5, 4.2), CFrame.new(0, 3.35, 0), plank, Enum.Material.WoodPlanks)
+	local plank = Color3.fromRGB(168, 120, 72)
+	local dark = Color3.fromRGB(100, 66, 38)
+	local top = Color3.fromRGB(186, 136, 84)
+	local metal = Color3.fromRGB(176, 180, 188)
+	local S = 4.6
+	local body = part(Vector3.new(S, S - 0.5, S), CFrame.new(0, (S - 0.5) / 2, 0), plank, Enum.Material.WoodPlanks)
 	body.Name = "Body"
-	-- legs and a shelf
-	for _, x in ipairs({ -1.75, 1.75 }) do
-		for _, z in ipairs({ -1.75, 1.75 }) do
-			part(Vector3.new(0.55, 3.1, 0.55), CFrame.new(x, 1.55, z), dark)
-		end
-	end
-	part(Vector3.new(3.8, 0.3, 3.8), CFrame.new(0, 0.9, 0), plank, Enum.Material.WoodPlanks)
-	-- the 3x3 grid drawn on the top
+	-- dark corner posts and a thick top
+	for _, x in ipairs({ -S / 2, S / 2 }) do for _, z in ipairs({ -S / 2, S / 2 }) do
+		part(Vector3.new(0.5, S - 0.5, 0.5), CFrame.new(x * 0.98, (S - 0.5) / 2, z * 0.98), dark)
+	end end
+	part(Vector3.new(S + 0.3, 0.55, S + 0.3), CFrame.new(0, S - 0.25, 0), top, Enum.Material.WoodPlanks)
+	-- the 3x3 grid on top
 	for k = -1, 1, 2 do
-		part(Vector3.new(0.12, 0.06, 3.6), CFrame.new(k * 0.6, 3.63, 0), dark)
-		part(Vector3.new(3.6, 0.06, 0.12), CFrame.new(0, 3.63, k * 0.6), dark)
+		part(Vector3.new(0.14, 0.08, S - 0.4), CFrame.new(k * (S / 6), S + 0.06, 0), dark)
+		part(Vector3.new(S - 0.4, 0.08, 0.14), CFrame.new(0, S + 0.06, k * (S / 6)), dark)
 	end
-	-- a saw and a hammer lying on top
-	part(Vector3.new(0.9, 0.08, 0.25), CFrame.new(1.4, 3.65, -1.5) * CFrame.Angles(0, math.rad(30), 0), Color3.fromRGB(180, 184, 190), Enum.Material.Metal)
-	part(Vector3.new(0.3, 0.2, 1.1), CFrame.new(-1.45, 3.7, 1.35) * CFrame.Angles(0, math.rad(-20), 0), dark)
-	part(Vector3.new(0.6, 0.3, 0.3), CFrame.new(-1.6, 3.75, 0.85) * CFrame.Angles(0, math.rad(-20), 0), Color3.fromRGB(90, 92, 98), Enum.Material.Metal)
+	-- tools hung on the front (-Z) and the sides: a saw, a hammer, pincers
+	local f = -S / 2 - 0.06
+	part(Vector3.new(1.8, 0.7, 0.08), CFrame.new(-0.6, 2.6, f) * CFrame.Angles(0, 0, math.rad(-12)), metal, Enum.Material.Metal)
+	part(Vector3.new(0.6, 0.45, 0.12), CFrame.new(0.55, 2.85, f), dark)
+	part(Vector3.new(0.22, 1.6, 0.1), CFrame.new(1.1, 1.6, f), dark)
+	part(Vector3.new(0.8, 0.4, 0.14), CFrame.new(1.1, 2.45, f), Color3.fromRGB(90, 92, 98), Enum.Material.Metal)
+	for _, sx in ipairs({ -1, 1 }) do
+		local x = sx * (S / 2 + 0.06)
+		part(Vector3.new(0.08, 1.4, 0.22), CFrame.new(x, 2.2, -0.5) * CFrame.Angles(math.rad(20), 0, 0), Color3.fromRGB(90, 92, 98), Enum.Material.Metal)
+		part(Vector3.new(0.08, 1.4, 0.22), CFrame.new(x, 2.2, -0.1) * CFrame.Angles(math.rad(-20), 0, 0), Color3.fromRGB(90, 92, 98), Enum.Material.Metal)
+		part(Vector3.new(0.1, 0.9, 1.6), CFrame.new(x, 1.0, 0.8), dark)
+	end
 	m.PrimaryPart = body
 	m.Parent = parent
 	return m, body
