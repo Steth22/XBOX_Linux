@@ -989,7 +989,7 @@ function M.start(gui, remotes)
 	end)
 
 	---------------------------------------------------------------- on-screen markers: your dropped items and the other players (not when fighting is on)
-	local markerRoot = player:WaitForChild("PlayerGui")
+	local markerRoot = typeof(player) == "Instance" and player:WaitForChild("PlayerGui") or gui
 	local function makeMarker(color, iconName)
 		local anchor = Instance.new("Part")
 		anchor.Anchored, anchor.CanCollide, anchor.CanQuery, anchor.CanTouch = true, false, false, false
