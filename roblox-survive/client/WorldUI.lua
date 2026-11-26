@@ -721,9 +721,9 @@ function M.start(gui, remotes)
 		cam.CFrame = CFrame.lookAt(cf.Position + dir * dist, cf.Position)
 	end
 	-- region necklaces: a round medal with a picture of the region (one image sheet)
-	local MEDALS = "rbxassetid://106881920182575"
-	local MEDAL_AT = { forest = { 0, 0 }, hills = { 256, 0 }, snow = { 512, 0 }, desert = { 768, 0 }, mountains = { 1024, 0 },
-		beach = { 0, 256 }, jungle = { 256, 256 }, volcano = { 512, 256 }, caves = { 768, 256 }, bandits = { 1024, 256 } }
+	local MEDALS = "rbxassetid://96932926831657"
+	local MEDAL_AT = { forest = { 0, 0 }, hills = { 256, 0 }, snow = { 512, 0 }, desert = { 768, 0 }, mountains = { 0, 256 },
+		beach = { 256, 256 }, jungle = { 512, 256 }, volcano = { 768, 256 }, caves = { 0, 512 }, bandits = { 256, 512 } }
 	local function medalImage(parent, key, size, got, pos, anchor)
 		local at = MEDAL_AT[key] or MEDAL_AT.forest
 		local img = Instance.new("ImageLabel")
@@ -743,7 +743,7 @@ function M.start(gui, remotes)
 	local indexSel = nil -- the creature shown on the right
 	local indexSpin = nil
 	local function indexModal()
-		local content = openModal("index", T("index"), UDim2.fromOffset(980, 600))
+		local content = openModal("index", T("index"), UDim2.fromOffset(960, 560))
 		if indexSpin then indexSpin:Disconnect() indexSpin = nil end
 		local dex = state.dex or { seen = {}, kills = {}, medals = {} }
 		dex.seen, dex.kills, dex.medals = dex.seen or {}, dex.kills or {}, dex.medals or {}
@@ -757,10 +757,19 @@ function M.start(gui, remotes)
 		UI.corner(right, 14)
 
 		-- left: count, region tabs (two rows), the region's necklace, creature cards
+		-- how many creatures you have discovered: in all, and in this region
+		local regSeen = 0
+		for _, k in ipairs(reg.kinds) do if dex.seen[k] then regSeen += 1 end end
 		local head = UI.frame({ Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = c.card, ZIndex = 53, Parent = left })
 		UI.corner(head, 17)
-		Icons.draw("book", head, 20, c.gold, UDim2.new(lang == "ar" and 1 or 0, lang == "ar" and -12 or 12, 0.5, 0), Vector2.new(lang == "ar" and 1 or 0, 0.5))
-		UI.text({ Text = Locale.f(lang, "found", seenN, Bestiary.total()), Size = UDim2.new(1, -60, 1, 0), Position = UDim2.fromOffset(lang == "ar" and 10 or 44, 0), TextXAlignment = UI.align(lang), TextSize = 16, TextColor3 = c.gold, ZIndex = 54, Parent = head })
+		local ar0 = lang == "ar"
+		Icons.draw("book", head, 20, c.gold, UDim2.new(ar0 and 1 or 0, ar0 and -12 or 12, 0.5, 0), Vector2.new(ar0 and 1 or 0, 0.5))
+		UI.text({ Text = Locale.f(lang, "found", seenN, Bestiary.total()), Size = UDim2.fromOffset(190, 34), AnchorPoint = Vector2.new(ar0 and 1 or 0, 0), Position = UDim2.new(ar0 and 1 or 0, ar0 and -42 or 42, 0, 0), TextXAlignment = UI.align(lang), TextSize = 15, TextColor3 = c.gold, ZIndex = 54, Parent = head })
+		local hb = UI.frame({ Size = UDim2.new(1, -420, 0, 8), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, ar0 and -50 or 50, 0.5, 0), BackgroundColor3 = c.bg, ZIndex = 54, Parent = head })
+		UI.corner(hb, 4)
+		local hf = UI.frame({ Size = UDim2.fromScale(seenN / math.max(1, Bestiary.total()), 1), AnchorPoint = Vector2.new(ar0 and 1 or 0, 0), Position = UDim2.fromScale(ar0 and 1 or 0, 0), BackgroundColor3 = c.gold, ZIndex = 55, Parent = hb })
+		UI.corner(hf, 4)
+		UI.text({ Text = T("biome_" .. reg.key) .. "  " .. regSeen .. " / " .. #reg.kinds, Size = UDim2.fromOffset(130, 34), AnchorPoint = Vector2.new(ar0 and 0 or 1, 0), Position = UDim2.new(ar0 and 0 or 1, ar0 and 14 or -14, 0, 0), TextXAlignment = ar0 and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right, TextSize = 15, TextColor3 = regSeen == #reg.kinds and c.accent or c.text, ZIndex = 54, Parent = head })
 		local tabs = UI.frame({ Size = UDim2.new(1, 0, 0, 72), Position = UDim2.fromOffset(0, 40), BackgroundTransparency = 1, ZIndex = 53, Parent = left })
 		local tg = Instance.new("UIGridLayout")
 		tg.CellSize = UDim2.new(0.2, -5, 0, 33)

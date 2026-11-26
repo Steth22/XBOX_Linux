@@ -1,7 +1,7 @@
 const fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
 const set = require('./medals.js');
-const names = Object.keys(set), CELL = 256, COLS = 5, ROWS = Math.ceil(names.length / COLS);
+const names = Object.keys(set), CELL = 256, COLS = 4, ROWS = Math.ceil(names.length / COLS);
 const svg = (s, size) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="${size}" height="${size}">${s}</svg>`;
 (async () => {
   const b = await chromium.launch();
