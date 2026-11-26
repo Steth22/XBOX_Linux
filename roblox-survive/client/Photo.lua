@@ -160,8 +160,11 @@ function P.start(env)
 	UI.pad(panel, 8)
 	UI.list(panel, 6)
 	local status = UI.text({ Text = "", Size = UDim2.new(1, -20, 0, 26), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 12), TextSize = 16, TextColor3 = c.gold, TextStrokeTransparency = 0.3, ZIndex = 10, Parent = ui })
-	local restore = UI.button({ Text = "", Size = UDim2.fromOffset(36, 36), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 8), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.75, Visible = false, ZIndex = 10, Parent = gui }, function() end)
-	UI.corner(restore, 18)
+	-- the button that brings the panel back: white, so it shows on any picture and on the black bars
+	local restore = UI.button({ Text = "", Size = UDim2.fromOffset(52, 52), AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -14, 1, -14), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.35, Visible = false, ZIndex = 20, Parent = gui }, function() end)
+	UI.corner(restore, 26)
+	UI.stroke(restore, Color3.new(0, 0, 0), 2, 0.5)
+	env.Icons.draw("menu", restore, 26, Color3.fromRGB(30, 30, 30), UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 
 	local panelConns = {}
 	local function clearPanel()
@@ -506,9 +509,15 @@ function P.start(env)
 	local controls = nil
 	pcall(function() controls = require(player.PlayerScripts:WaitForChild("PlayerModule", 5)):GetControls() end)
 	st.yaw, st.pitch, st.vert = 0, 0, 0
+	local lookTouches = {} -- touches that began on the right side of the screen, away from the move stick
+	table.insert(conns, UserInputService.InputBegan:Connect(function(input, processed)
+		if input.UserInputType == Enum.UserInputType.Touch and not processed and input.Position.X > cam.ViewportSize.X * 0.4 then lookTouches[input] = true end
+	end))
+	table.insert(conns, UserInputService.InputEnded:Connect(function(input) lookTouches[input] = nil end))
 	table.insert(conns, UserInputService.InputChanged:Connect(function(input, processed)
-		if not st.free or processed or dragTouch then return end
-		if input.UserInputType == Enum.UserInputType.Touch or (input.UserInputType == Enum.UserInputType.MouseMovement and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)) then
+		if not st.free or dragTouch then return end
+		local isTouch = input.UserInputType == Enum.UserInputType.Touch
+		if (isTouch and lookTouches[input]) or (not isTouch and not processed and input.UserInputType == Enum.UserInputType.MouseMovement and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)) then
 			st.yaw -= input.Delta.X * 0.006
 			st.pitch = math.clamp(st.pitch - input.Delta.Y * 0.006, -1.45, 1.45)
 		elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
@@ -528,7 +537,9 @@ function P.start(env)
 			if UserInputService:IsKeyDown(Enum.KeyCode.E) or UserInputService:IsKeyDown(Enum.KeyCode.ButtonR1) then up = 1 end
 			if UserInputService:IsKeyDown(Enum.KeyCode.Q) or UserInputService:IsKeyDown(Enum.KeyCode.ButtonL1) then up = -1 end
 			local speed = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) and 60 or 20
-			cam.CFrame = CFrame.new(cam.CFrame.Position + (rot:VectorToWorldSpace(Vector3.new(mv.X, 0, mv.Z)) + Vector3.new(0, up, 0)) * speed * dt) * rot
+			-- moving stays level with the ground (looking up or down doesn't make you climb)
+			local flat = CFrame.Angles(0, st.yaw, 0)
+			cam.CFrame = CFrame.new(cam.CFrame.Position + (flat:VectorToWorldSpace(Vector3.new(mv.X, 0, mv.Z)) + Vector3.new(0, up, 0)) * speed * dt) * rot
 		end
 	end))
 
