@@ -16,6 +16,8 @@ Homes.PLOTS = {
 	{ -153, 49, 13.5 }, { 94, -130, 15.5 }, { -75, 163, 13.5 }, { -75, -164, 14 }, { 107, 168, 14 }, { 12, 199, 13 }, { -162, 117, 15 }, { 12, -200, 14.5 },
 }
 
+Homes.RAISE = 2 -- floor height above the pad
+
 local ctx, Inventory, Data, Furnace, Crafting
 local homes = {} -- [Player] = { plot, base (CFrame), model, sign, furnaces, tables, chests = { [n] = model }, beds }
 local folder
@@ -50,7 +52,8 @@ local function baseOf(plot)
 	if hi == -math.huge then lo, hi = 12, 12 end
 	local floorY = hi + 0.3
 	-- the pad is flat at a known height: the floor sits right on it
-	if Homes.PLOTS[plot][3] then floorY = Homes.PLOTS[plot][3] + 0.3 lo = Homes.PLOTS[plot][3] end
+	-- the house stands on a stone base 2 studs above the flat pad, well clear of any grass
+	if Homes.PLOTS[plot][3] then floorY = Homes.PLOTS[plot][3] + Homes.RAISE lo = Homes.PLOTS[plot][3] end
 	local pos = Vector3.new(px, floorY, pz)
 	local face = Vector3.new(0, floorY, 0)
 	if (face - pos).Magnitude < 1 then face = pos + Vector3.new(0, 0, -1) end
@@ -98,7 +101,7 @@ local function build(player)
 	local m
 	local L = hs.lvl >= 1 and House.LEVELS[hs.lvl] or nil
 	if L then
-		m = House.build(hs.design, hs.lvl, { found = h.found })
+		m = House.build(hs.design, hs.lvl, { found = h.found, raise = Homes.RAISE })
 	else
 		m = House.plot(26, 22)
 		local base = Instance.new("Part")
@@ -112,15 +115,16 @@ local function build(player)
 	end
 	m.Name = "House_" .. player.UserId
 	m:SetAttribute("Owner", player.UserId)
-	-- place it: the model was built round the origin
+	-- place it: the model was built round the origin (the empty plot sits on the pad itself)
+	local ground = h.base * CFrame.new(0, -Homes.RAISE, 0)
 	for _, p in ipairs(m:GetDescendants()) do
-		if p:IsA("BasePart") then p.CFrame = h.base * p.CFrame end
+		if p:IsA("BasePart") then p.CFrame = (L and h.base or ground) * p.CFrame end
 	end
 	m.Parent = folder
 	h.model = m
 	-- the sign by the path to the door
 	local hd = L and L.d / 2 or 11
-	local signCf = h.base * CFrame.new(5.5, 0, -hd - 4) * CFrame.Angles(0, math.pi, 0)
+	local signCf = h.base * CFrame.new(5.5, -Homes.RAISE, -hd - 5.5) * CFrame.Angles(0, math.pi, 0)
 	local sign = House.sign(m, signCf)
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Back

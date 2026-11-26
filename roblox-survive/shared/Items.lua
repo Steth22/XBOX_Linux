@@ -42,8 +42,8 @@ local TIERS = {
 	{ key = "stone", ar = "حجري", en = "Stone", head = Color3.fromRGB(128, 128, 134), mat = Enum.Material.Slate, power = 1, mult = 1.35, dur = 1.6, price = 2.3 },
 	{ key = "iron", ar = "حديدي", en = "Iron", head = Color3.fromRGB(196, 200, 208), mat = Enum.Material.Metal, power = 2, mult = 1.8, dur = 2.5, price = 5.5 },
 	{ key = "diamond", ar = "ألماسي", en = "Diamond", head = Color3.fromRGB(110, 225, 250), mat = Enum.Material.Glass, power = 4, mult = 2.6, dur = 4.5, price = 15 },
-	{ key = "crystal", ar = "كريستالي", en = "Crystal", head = Color3.fromRGB(196, 120, 255), mat = Enum.Material.Glass, power = 4, mult = 2.85, dur = 3.6, price = 18 },
-	{ key = "obsidian", ar = "أوبسيديان", en = "Obsidian", head = Color3.fromRGB(58, 36, 84), mat = Enum.Material.Glass, power = 6, mult = 3.2, dur = 6.5, price = 25 },
+	{ key = "crystal", ar = "كريستالي", en = "Crystal", head = Color3.fromRGB(196, 120, 255), mat = Enum.Material.Glass, power = 5, mult = 3.2, dur = 6, price = 18 },
+	{ key = "obsidian", ar = "أوبسيديان", en = "Obsidian", head = Color3.fromRGB(58, 36, 84), mat = Enum.Material.Glass, power = 7, mult = 3.9, dur = 9, price = 25 },
 }
 for _, t in ipairs(TIERS) do
 	I.defs[t.key .. "_axe"] = { ar = "فأس " .. t.ar, en = t.en .. " Axe", kind = "tool", class = "axe", stack = 1, tree = 3 + t.power, rock = 1 + math.floor(t.power / 2), dmg = math.floor(10 * t.mult), dur = math.floor(150 * t.dur), buy = math.floor(30 * t.price), tier = t }
@@ -56,8 +56,8 @@ end
 -- armor: worn on the body, reduces damage taken
 I.defs.leather_armor = { ar = "درع جلدي", en = "Leather Armor", kind = "armor", stack = 1, reduce = 0.15, buy = 140, color = Color3.fromRGB(140, 96, 60), mat = Enum.Material.Fabric }
 I.defs.iron_armor = { ar = "درع حديدي", en = "Iron Armor", kind = "armor", stack = 1, reduce = 0.30, buy = 480, color = Color3.fromRGB(150, 155, 166), mat = Enum.Material.Metal }
-I.defs.crystal_armor = { ar = "درع الكريستال", en = "Crystal Armor", kind = "armor", stack = 1, reduce = 0.42, warm = 6, cool = 6, buy = 1800, color = Color3.fromRGB(190, 120, 250), mat = Enum.Material.Glass }
-I.defs.obsidian_armor = { ar = "درع الأوبسيديان", en = "Obsidian Armor", kind = "armor", stack = 1, reduce = 0.55, buy = 2600, color = Color3.fromRGB(52, 34, 76), mat = Enum.Material.Glass }
+I.defs.crystal_armor = { ar = "درع الكريستال", en = "Crystal Armor", kind = "armor", stack = 1, reduce = 0.52, warm = 6, cool = 6, buy = 1800, color = Color3.fromRGB(190, 120, 250), mat = Enum.Material.Glass }
+I.defs.obsidian_armor = { ar = "درع الأوبسيديان", en = "Obsidian Armor", kind = "armor", stack = 1, reduce = 0.62, buy = 2600, color = Color3.fromRGB(52, 34, 76), mat = Enum.Material.Glass }
 I.defs.diamond_armor = { ar = "درع ألماسي", en = "Diamond Armor", kind = "armor", stack = 1, reduce = 0.45, buy = 1400, color = Color3.fromRGB(80, 176, 214), mat = Enum.Material.Metal }
 
 -- weapons and gear sold at the outposts

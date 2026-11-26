@@ -54,16 +54,9 @@ local function rig(cf, parent)
 	local hum = m:FindFirstChildOfClass("Humanoid")
 	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	m.HumanoidRootPart.Anchored = true
-	local skin, apron, shirt, pants = Color3.fromRGB(196, 140, 100), Color3.fromRGB(70, 48, 34), Color3.fromRGB(150, 60, 46), Color3.fromRGB(50, 46, 44)
-	for _, p in ipairs(m:GetDescendants()) do
-		if p:IsA("BasePart") then
-			local n = p.Name
-			if n == "Head" or n:find("Hand") then p.Color = skin
-			elseif n:find("Torso") then p.Color = apron
-			elseif n:find("Arm") then p.Color = shirt
-			elseif n:find("Leg") or n:find("Foot") then p.Color = pants end
-		end
-	end
+	-- the same faceless look as every character in the game: dark shirt, brown trousers, a belt
+	local Appearance = require(ReplicatedStorage.Shared.Appearance)
+	pcall(Appearance.apply, m, { skin = 3, shirt = 6, pants = 1, hat = "cap", extra = "belt" })
 	local h = hum.HipHeight + m.HumanoidRootPart.Size.Y / 2
 	m:PivotTo(cf * CFrame.new(0, h, 0))
 	m.Parent = parent

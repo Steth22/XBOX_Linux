@@ -284,8 +284,14 @@ function H.build(designKey, lvl, opts)
 	local found = opts.found or 1.5
 	local base = newPart(shell, Vector3.new(W + 2, found, D + 2), CFrame.new(0, -found / 2 - 0.3, 0), rgb(120, 118, 112), M.Cobblestone, "Foundation")
 	newPart(shell, Vector3.new(W - 1, 0.3, D - 1), CFrame.new(0, -0.15, 0), d.floor, M.WoodPlanks, "Floor")
-	-- front steps up to the door
-	newPart(shell, Vector3.new(6, 0.6, 2), CFrame.new(0, -0.6, -hd - 2), rgb(120, 118, 112), M.Cobblestone)
+	-- the house stands on a stone base above the ground; steps lead up to the door
+	local raise = opts.raise or 0.6
+	local trim = newPart(shell, Vector3.new(W + 2.4, 0.4, D + 2.4), CFrame.new(0, -0.5, 0), rgb(96, 94, 90), M.Slate, "BaseTrim")
+	local nSteps = math.max(1, math.ceil(raise / 0.75))
+	for k = 1, nSteps do
+		local top = -raise + (raise / nSteps) * (nSteps - k + 1) - 0.3
+		newPart(shell, Vector3.new(7, top + raise + 0.3, 1.5), CFrame.new(0, (top - raise - 0.3) / 2, -hd - 1 - k * 1.5 + 0.75), rgb(120, 118, 112), M.Cobblestone, "Step")
+	end
 
 	-- the ladder: against the back wall on the right, with a wide opening above it in every upper floor
 	local lx0, lx1 = hw - 7, hw - 3.6

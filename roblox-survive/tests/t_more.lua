@@ -70,7 +70,7 @@ check2("Effects handlers", function()
 	fire("hitTree", tree:GetPivot().Position, tree) fire("treeFall", tree) fire("hitRock", p) fire("rockBreak", p) fire("pick", p)
 	fire("hitMob", p, "wolf") fire("mobDie", p, "guardian") fire("mobAttack", p, "zombie") fire("hurt", rig)
 	fire("shoot", p, p + Vector3.new(30, 0, 0), "arrow") fire("shoot", p, p + Vector3.new(30, 0, 0), "ammo")
-	fire("levelUp", rig) fire("cook", p) fire("celebrate", p) fire("craft", p) fire("place", p) fire("crate", p)
+	fire("levelUp", rig) fire("cook", p) fire("dmgNum", p, 30, true) fire("lifeSteal", rig, 5) fire("enchHit", p, "fire") fire("celebrate", p) fire("craft", p) fire("place", p) fire("crate", p)
 	task.wait(2.5)
 end)
 check2("crafting recipes", function()
@@ -266,5 +266,32 @@ check2("enchantments, books, the anvil and the supply crate", function()
 	for _, l in ipairs(Drops._loot) do assert(l[1] == "coins" or l[1] == "book" or Items.get(l[1]), "loot " .. l[1]) end
 	for _ = 1, 50 do assert(Items.get(Drops._book()), "random book") end
 	require(SSS2.Services.Smith)
+end)
+check2("Fortune really gives more wood", function()
+	local Items = require(game:GetService("ReplicatedStorage").Shared.Items)
+	local R = require(SSS2.Services.Resources)
+	local got = 0
+	local c = {}
+	for k, v in pairs(fake) do c[k] = v end
+	c.give = function(_, id, n) got += n end
+	c.space = function() return 999 end
+	c.notify = function() end
+	c.lucky = function() return false end
+	R.init(c)
+	local tree
+	for _, m in ipairs(workspace.Resources:GetChildren()) do if m:GetAttribute("NodeType") == "tree" then tree = m break end end
+	assert(tree, "no tree")
+	local axe = Items.get("wood_axe")
+	local function chop(def)
+		got = 0
+		for _ = 1, 60 do
+			tree:SetAttribute("HP", 1)
+			R.hit({ UserId = 1 }, tree, def, 0)
+		end
+		return got
+	end
+	local plain = chop(axe)
+	local lucky = chop(setmetatable({ fortune = 3 }, { __index = axe }))
+	assert(lucky > plain * 1.6, "fortune III " .. lucky .. " vs " .. plain)
 end)
 return { results, results2 }

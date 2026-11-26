@@ -83,9 +83,9 @@ local function tick(player)
 	-- Cold / Fire Protection on the armor slow how fast the body cools down or heats up
 	local ae = type(room.inv.armorE) == "table" and room.inv.armorE or {}
 	if env < 10 then
-		body -= (10 - env) * 0.004 * mult * (1 - 0.15 * (ae.cold_protection or 0))
+		body -= (10 - env) * 0.004 * mult * (1 - 0.08 * (ae.cold_protection or 0))
 	elseif env > 32 then
-		body += (env - 32) * 0.004 * mult * (1 - 0.15 * (ae.fire_protection or 0))
+		body += (env - 32) * 0.004 * mult * (1 - 0.08 * (ae.fire_protection or 0))
 	else
 		body += (37 - body) * 0.06
 	end

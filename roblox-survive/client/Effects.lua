@@ -548,6 +548,60 @@ function handlers.explode(pos)
 		end)
 	end
 end
+-- the damage you did, floating up from the creature
+function handlers.dmgNum(pos, n, magic)
+	local a = Instance.new("Part")
+	a.Anchored, a.CanCollide, a.CanQuery, a.CanTouch = true, false, false, false
+	a.Transparency = 1
+	a.Size = Vector3.new(0.2, 0.2, 0.2)
+	a.Position = pos + Vector3.new(math.random(-10, 10) / 10, 2.5, math.random(-10, 10) / 10)
+	a.Parent = workspace
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromOffset(90, 34)
+	bb.AlwaysOnTop = true
+	bb.Adornee = a
+	bb.Parent = a
+	local t = Instance.new("TextLabel")
+	t.Size = UDim2.fromScale(1, 1)
+	t.BackgroundTransparency = 1
+	t.Font = Enum.Font.GothamBold
+	t.TextSize = magic and 26 or 22
+	t.TextColor3 = magic and Color3.fromRGB(205, 140, 255) or Color3.fromRGB(255, 240, 200)
+	t.TextStrokeTransparency = 0.25
+	t.Text = tostring(n)
+	t.Parent = bb
+	local TS = game:GetService("TweenService")
+	TS:Create(a, TweenInfo.new(0.8), { Position = a.Position + Vector3.new(0, 2.5, 0) }):Play()
+	TS:Create(t, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	game:GetService("Debris"):AddItem(a, 0.9)
+end
+-- an enchanted weapon hit: purple (or fiery) sparks
+function handlers.enchHit(pos, kind)
+	E.sparkle(pos, kind == "fire" and Color3.fromRGB(255, 140, 50) or Color3.fromRGB(190, 110, 255), 14)
+end
+-- Health Steal: a green "+n" rises above the player
+function handlers.lifeSteal(char, n)
+	local head = char and char:FindFirstChild("Head")
+	if not head then return end
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromOffset(80, 30)
+	bb.StudsOffset = Vector3.new(0, 2.4, 0)
+	bb.AlwaysOnTop = true
+	bb.Adornee = head
+	bb.Parent = head
+	local t = Instance.new("TextLabel")
+	t.Size = UDim2.fromScale(1, 1)
+	t.BackgroundTransparency = 1
+	t.Font = Enum.Font.GothamBold
+	t.TextSize = 22
+	t.TextColor3 = Color3.fromRGB(90, 255, 120)
+	t.TextStrokeTransparency = 0.3
+	t.Text = "+" .. tostring(n)
+	t.Parent = bb
+	game:GetService("TweenService"):Create(bb, TweenInfo.new(0.9), { StudsOffset = Vector3.new(0, 4.2, 0) }):Play()
+	game:GetService("TweenService"):Create(t, TweenInfo.new(0.9), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	game:GetService("Debris"):AddItem(bb, 1)
+end
 -- a supply crate was opened: a burst of confetti and a fanfare
 function handlers.celebrate(pos)
 	E.play("levelUp", pos, 1)

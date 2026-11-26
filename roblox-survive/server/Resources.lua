@@ -127,14 +127,21 @@ function R.hit(player, node, def, bonus)
 	ctx.fx(kind == "tree" and "hitTree" or "hitRock", node:GetPivot().Position, node)
 	if hp <= 0 then
 		local n = rng:NextInteger(rw.min, rw.max)
-		-- Fortune: up to one more per level
-		if def.fortune then n += rng:NextInteger(0, def.fortune) end
+		-- Fortune (Minecraft): with a chance of 2/(level+2) nothing extra, otherwise the drop is multiplied
+		-- by 2 to level+1 (Fortune III gives 2.2 times as much on average)
+		local bonus = 0
+		if def.fortune and rng:NextNumber() >= 2 / (def.fortune + 2) then
+			local mult = rng:NextInteger(2, def.fortune + 1)
+			bonus = n * (mult - 1)
+		end
+		n += bonus
 		if power >= 3 then n += 1 end
 		if ctx.lucky(player, 0.03) then n *= 2 end
 		n = math.min(n, ctx.space(player, rw.id))
 		ctx.give(player, rw.id, n)
 		ctx.reward(player, rw.xp, rw.coins)
 		ctx.notify(player, "picked", rw.id, n)
+		if bonus > 0 then ctx.notify(player, "fortuneBonus", bonus) end
 		if ctx.bump then ctx.bump(player, kind == "tree" and "trees" or "rocks", 1) end
 		if kind == "tree" then
 			ctx.fx("treeFall", node)

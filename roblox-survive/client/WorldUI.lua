@@ -2658,13 +2658,6 @@ function M.start(gui, remotes)
 		ow.stroke.Color = PURPLE
 		smithPrice = UI.text({ Text = "", Size = UDim2.new(1, -24, 0, 30), Position = UDim2.fromOffset(12, 160), TextWrapped = true, TextSize = 17, ZIndex = 54, Parent = right })
 		smithInfo = UI.text({ Text = "", Size = UDim2.new(1, -24, 0, 60), Position = UDim2.fromOffset(12, 196), TextWrapped = true, TextSize = 15, TextColor3 = PURPLE, ZIndex = 54, Parent = right })
-		-- the list of enchantments and their top levels
-		local list = UI.scroll({ Size = UDim2.new(1, -24, 1, -268), Position = UDim2.fromOffset(12, 262), ZIndex = 54, Parent = right })
-		UI.list(list, 2)
-		for n, k in ipairs(Items.ENCH_ORDER) do
-			local e = Items.ENCH[k]
-			UI.text({ Text = Items.enchName(k, e.max, lang) .. "  -  " .. (lang == "en" and e.desc.en or e.desc.ar), Size = UDim2.new(1, -8, 0, 20), LayoutOrder = n, TextXAlignment = UI.align(lang), TextSize = 13, TextColor3 = c.dim, ZIndex = 55, Parent = list })
-		end
 		refreshSmith()
 	end
 
@@ -3197,6 +3190,7 @@ function M.start(gui, remotes)
 		elseif key == "needWoodStone" then text = Locale.f(lang, "needWoodStone", a or 0, b or 0)
 		elseif key == "houseGave" then text = Locale.f(lang, "houseGave", a or 0)
 		elseif key == "houseUp" then text = Locale.f(lang, "houseUp", a or 1) Effects.ui("skill")
+		elseif key == "fortuneBonus" then text = Locale.f(lang, "fortuneBonus", a or 1) Effects.ui("pop")
 		elseif key == "enchanted" then text = Locale.f(lang, "enchanted", Items.enchName(a, b or 1, lang)) Effects.ui("skill")
 		elseif key == "dropOpened" then text = Locale.f(lang, "dropOpened", tostring(a or "?")) Effects.ui("skill")
 		elseif key == "dropLoot" then

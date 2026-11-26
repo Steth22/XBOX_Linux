@@ -826,7 +826,8 @@ local function kill(m, s, player)
 		local loot = s.looting or 0
 		for _, d in ipairs(def.drops) do
 			-- Looting: drops are likelier and bigger
-			if rng:NextNumber() < math.min(1, d[4] * (1 + 0.5 * loot)) then
+			-- Looting (Minecraft): up to one more per level, rare drops a little likelier
+			if rng:NextNumber() < math.min(1, d[4] + (d[4] < 1 and 0.02 * loot or 0)) then
 				local n = (rng:NextInteger(d[2], d[3]) + rng:NextInteger(0, loot)) * (double and 2 or 1)
 				local rest = ctx.giveItem(player, { id = d[1], n = n })
 				if n - rest > 0 then ctx.notify(player, "picked", d[1], n - rest) end

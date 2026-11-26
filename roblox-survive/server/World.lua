@@ -47,7 +47,7 @@ local lastHit = {} -- [Player] = what hurt them last (shown on the death screen)
 local placedOnce = {} -- [Player] = already put at their saved spot this visit
 local spawnBed = {} -- [Player] = the bed they respawn at (a placed bed only lives on this server)
 local makeBed -- defined with the placing code
-local enchantHit -- defined with the swing code
+local enchantHit, sharpMult -- defined with the swing code
 local awaitingReady = {} -- [Player] = true until their loading screen has finished
 local lamp = {} -- [Player] = hotbar/bag slot of the lantern hanging in the left hand
 local deathBag = {} -- [Player] = { model, x, z } items left where the player died
@@ -296,9 +296,10 @@ function ctx.hurt(player, amount, cause)
 	-- armor enchantments
 	local ae = room and room.inv.armorE
 	if type(ae) == "table" then
-		if ae.protection then amount *= (1 - 0.05 * ae.protection) end
-		if ae.fire_protection and (cause == "heat" or cause == "lava" or cause == "fire" or cause == "magma" or cause == "lavalizard") then amount *= (1 - 0.15 * ae.fire_protection) end
-		if ae.cold_protection and cause == "cold" then amount *= (1 - 0.15 * ae.cold_protection) end
+		-- Minecraft: Protection 4% a level against everything, the special ones 8% a level against their own kind
+		if ae.protection then amount *= (1 - 0.04 * ae.protection) end
+		if ae.fire_protection and (cause == "heat" or cause == "lava" or cause == "fire" or cause == "magma" or cause == "lavalizard") then amount *= (1 - 0.08 * ae.fire_protection) end
+		if ae.cold_protection and cause == "cold" then amount *= (1 - 0.08 * ae.cold_protection) end
 	end
 	if hasBuff(player, "stone") then amount *= 0.6 end
 	if sleeping[player] and ctx.wake then ctx.wake(player) end
@@ -439,11 +440,28 @@ end
 
 -- Fire Aspect sets the creature on fire, Health Steal heals you by part of the damage
 function enchantHit(player, m, dmg, e)
-	if e.fire_aspect then pcall(Powers.ignite, m, 2 + 1.5 * e.fire_aspect, 3 + 3 * e.fire_aspect, player) end
+	local root = m.PrimaryPart
+	-- the damage number over the creature (purple with an enchanted weapon)
+	if root then ctx.fx("dmgNum", root.Position, math.floor(dmg + 0.5), next(e) ~= nil) end
+	if not next(e) then return end
+	if root and (e.sharpness or e.fire_aspect or e.looting) then ctx.fx("enchHit", root.Position, e.fire_aspect and "fire" or "magic") end
+	-- Fire Aspect (Minecraft): 4 seconds of burning per level, 1 heart a second on a 7-damage sword
+	if e.fire_aspect then pcall(Powers.ignite, m, 4 * e.fire_aspect, math.max(3, dmg / 7 * 2), player) end
 	if e.health_steal then
 		local _, hum = hrpOf(player)
-		if hum and hum.Health > 0 then hum.Health = math.min(hum.MaxHealth, hum.Health + dmg * 0.04 * e.health_steal) end
+		if hum and hum.Health > 0 and hum.Health < hum.MaxHealth then
+			local gain = math.min(hum.MaxHealth - hum.Health, dmg * 0.04 * e.health_steal)
+			hum.Health += gain
+			if gain >= 0.5 then ctx.fx("lifeSteal", player.Character, math.floor(gain + 0.5)) end
+		end
 	end
+end
+
+-- Minecraft's Sharpness: +0.5 damage per level and +0.5, on a diamond sword's 7
+function sharpMult(e)
+	local l = e.sharpness
+	if not l then return 1 end
+	return 1 + (0.5 * l + 0.5) / 7
 end
 
 local function swing(player, index, def)
@@ -469,7 +487,7 @@ local function swing(player, index, def)
 	if best then
 		local slotNow = Data.room(player) and Data.room(player).inv.slots[index]
 		local e = slotNow and slotNow.e or {}
-		local dmg = (def.dmg or 5) * (1 + 0.1 * str) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1) * (1 + 0.15 * (e.sharpness or 0))
+		local dmg = (def.dmg or 5) * (1 + 0.1 * str) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1) * sharpMult(e)
 		Mobs.damage(best, dmg, player, { id = slotNow and slotNow.id, class = def.class, lamp = lamp[player] ~= nil, looting = e.looting })
 		enchantHit(player, best, dmg, e)
 		useDurability(player, index)
@@ -532,7 +550,7 @@ local function shoot(player, index, dir)
 		local m = Mobs.modelOf(res.Instance)
 		if m then
 			local e = slot.e or {}
-			local dmg = def.dmg * (1 + 0.1 * skill(player, "strength")) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1) * (1 + 0.15 * (e.sharpness or 0))
+			local dmg = def.dmg * (1 + 0.1 * skill(player, "strength")) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1) * sharpMult(e)
 			Mobs.damage(m, dmg, player, { id = slot.id, class = "ranged", lamp = lamp[player] ~= nil, looting = e.looting })
 			enchantHit(player, m, dmg, e)
 		end
@@ -688,6 +706,29 @@ function select(player, index)
 	local tool = Items.buildTool(id)
 	if tool then
 		if def.kind == "ranged" then tool:SetAttribute("Ranged", true) end
+		-- an enchanted tool glows purple in the hand, like Minecraft's glint
+		if slot.e then
+			local hl = Instance.new("Highlight")
+			hl.FillColor = Color3.fromRGB(170, 90, 255)
+			hl.FillTransparency = 0.65
+			hl.OutlineColor = Color3.fromRGB(210, 150, 255)
+			hl.OutlineTransparency = 0.35
+			hl.DepthMode = Enum.HighlightDepthMode.Occluded
+			hl.Parent = tool
+			local part = tool:FindFirstChildWhichIsA("BasePart", true)
+			if part then
+				local pe = Instance.new("ParticleEmitter")
+				pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+				pe.Color = ColorSequence.new(Color3.fromRGB(200, 130, 255))
+				pe.LightEmission = 1
+				pe.Size = NumberSequence.new(0.25, 0)
+				pe.Speed = NumberRange.new(0.5, 1.5)
+				pe.SpreadAngle = Vector2.new(180, 180)
+				pe.Lifetime = NumberRange.new(0.5, 1)
+				pe.Rate = 8
+				pe.Parent = part
+			end
+		end
 		if def.kind == "light" then
 			for _, p in ipairs(tool:GetDescendants()) do
 				if p:IsA("BasePart") and p.Material == Enum.Material.Neon then
