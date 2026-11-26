@@ -188,6 +188,18 @@ function Data.loadRoom(player, code)
 		end
 		if type(res.spawn) == "table" and tonumber(res.spawn[1]) and tonumber(res.spawn[2]) and tonumber(res.spawn[3]) then
 			r.spawn = { tonumber(res.spawn[1]), tonumber(res.spawn[2]), tonumber(res.spawn[3]), village = res.spawn.village == true }
+			-- a bed the player placed: where it stood, so it can be put back
+			local b = res.spawn.bed
+			if type(b) == "table" and tonumber(b[1]) and tonumber(b[2]) and tonumber(b[3]) then r.spawn.bed = { tonumber(b[1]), tonumber(b[2]), tonumber(b[3]), tonumber(b[4]) or 0 } end
+		end
+		-- items left where the player died (kept if the server closed before they were picked up)
+		if type(res.lostBag) == "table" and type(res.lostBag.items) == "table" and type(res.lostBag.pos) == "table" then
+			local items = {}
+			for _, it in ipairs(res.lostBag.items) do
+				if type(it) == "table" and type(it.id) == "string" and tonumber(it.n) then table.insert(items, { id = it.id, n = math.floor(tonumber(it.n)), d = tonumber(it.d) }) end
+			end
+			local expires = tonumber(res.lostBag.expires) or 0
+			if #items > 0 and os.time() < expires then r.lostBag = { pos = { tonumber(res.lostBag.pos[1]) or 0, tonumber(res.lostBag.pos[2]) or 0, tonumber(res.lostBag.pos[3]) or 0 }, items = items, expires = expires } end
 		end
 		if type(res.powers) == "table" then
 			local pw = { off = {} }
@@ -234,12 +246,14 @@ function Data.roomCode(player)
 	return roomCodes[player]
 end
 
+Data.beforeSave = nil -- set by World: copies live things (the death bag) into the room before saving
 function Data.saveRoom(player)
+	if Data.beforeSave and rooms[player] then pcall(Data.beforeSave, player, rooms[player]) end
 	local r, code = rooms[player], roomCodes[player]
 	if not r or not code then return end
 	Data.touchRoomList(player, code, r.coins, r.xp)
 	if r._noSave then return end
-	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, dex = r.dex, pos = r.pos, explored = r.explored, explored2 = r.explored2, spawn = r.spawn, powers = r.powers, t = os.time() }
+	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, dex = r.dex, pos = r.pos, explored = r.explored, explored2 = r.explored2, spawn = r.spawn, powers = r.powers, lostBag = r.lostBag, t = os.time() }
 	try(function()
 		roomStore:SetAsync("r_" .. code .. "_" .. player.UserId, copy)
 	end)

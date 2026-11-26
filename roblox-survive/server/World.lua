@@ -42,6 +42,7 @@ local beds = {} -- [Player] = bed model they own
 local lastHit = {} -- [Player] = what hurt them last (shown on the death screen)
 local placedOnce = {} -- [Player] = already put at their saved spot this visit
 local spawnBed = {} -- [Player] = the bed they respawn at (a placed bed only lives on this server)
+local makeBed -- defined with the placing code
 local lamp = {} -- [Player] = hotbar/bag slot of the lantern hanging in the left hand
 local deathBag = {} -- [Player] = { model, x, z } items left where the player died
 local mapDirty = {} -- [Player] = explored cells changed since the last send
@@ -507,6 +508,32 @@ local function hookFire(part)
 	pr:Destroy()
 end
 
+-- a bed the player owns (placed now, or put back where it stood when they rejoin)
+function makeBed(player, cf)
+	if beds[player] and beds[player].Parent then beds[player]:Destroy() end
+	local m = Items.model("bed")
+	if not m then return nil end
+	for _, p in ipairs(m:GetDescendants()) do
+		if p:IsA("BasePart") then p.Anchored = true p.CanCollide = true p.CanQuery = true end
+	end
+	m.Name = "Bed"
+	m:SetAttribute("Owner", player.UserId)
+	m:PivotTo(cf)
+	local pr = Instance.new("ProximityPrompt")
+	pr.ActionText = "Sleep"
+	pr.ObjectText = "Bed"
+	pr.HoldDuration = 0.5
+	pr.MaxActivationDistance = 9
+	pr.RequiresLineOfSight = false
+	pr:SetAttribute("Key", "sleep")
+	pr:SetAttribute("Obj", "bed")
+	pr.Parent = m.PrimaryPart
+	m.Parent = workspace
+	beds[player] = m
+	pr.Triggered:Connect(function(pl) ctx.sleep(pl, m) end)
+	return m
+end
+
 local function place(player, index, def, id)
 	if not cd(player, "place", 1) then return end
 	local hrp = hrpOf(player)
@@ -537,26 +564,9 @@ local function place(player, index, def, id)
 			end
 		end)
 	elseif id == "bed" then
-		if beds[player] and beds[player].Parent then beds[player]:Destroy() end
-		m.Name = "Bed"
-		m:SetAttribute("Owner", player.UserId)
+		m:Destroy()
 		local look = hrp.CFrame.LookVector
-		m:PivotTo(CFrame.lookAt(res.Position + Vector3.new(0, 0.05, 0), res.Position + Vector3.new(look.X, 0.05, look.Z)))
-		for _, p in ipairs(m:GetDescendants()) do
-			if p:IsA("BasePart") then p.CanCollide = true p.CanQuery = true end
-		end
-		local pr = Instance.new("ProximityPrompt")
-		pr.ActionText = "Sleep"
-		pr.ObjectText = "Bed"
-		pr.HoldDuration = 0.5
-		pr.MaxActivationDistance = 9
-		pr.RequiresLineOfSight = false
-		pr:SetAttribute("Key", "sleep")
-		pr:SetAttribute("Obj", "bed")
-		pr.Parent = m.PrimaryPart
-		m.Parent = workspace
-		beds[player] = m
-		pr.Triggered:Connect(function(pl) ctx.sleep(pl, m) end)
+		makeBed(player, CFrame.lookAt(res.Position + Vector3.new(0, 0.05, 0), res.Position + Vector3.new(look.X, 0.05, look.Z)))
 		notify(player, "bedPlaced")
 	elseif id == "trap" then
 		m:SetAttribute("Owner", player.UserId)
@@ -848,6 +858,7 @@ local function onCharacter(player, char)
 		local r = Data.room(player)
 		local hrp = char:FindFirstChild("HumanoidRootPart")
 		if r and hrp then
+			r.pos = nil -- after dying you come back at your bed (or the camp), not where you fell
 			local items = Inventory.takeAll(r.inv)
 			if #items > 0 then
 				local bag = Loot.drop(hrp.Position, items, player.UserId)
@@ -920,6 +931,11 @@ local function setSpawn(player, bed)
 	local same = spawnBed[player] == bed
 	spawnBed[player] = bed
 	room.spawn = { math.floor(p.X * 10) / 10, math.floor(p.Y * 10) / 10, math.floor(p.Z * 10) / 10, village = village }
+	if not village then
+		local b = bed:GetPivot()
+		local _, ry = b:ToEulerAnglesYXZ()
+		room.spawn.bed = { math.floor(b.X * 10) / 10, math.floor(b.Y * 10) / 10, math.floor(b.Z * 10) / 10, math.floor(ry * 100) / 100 }
+	end
 	if not same then notify(player, "spawnSet") end
 end
 function ctx.sleep(player, bed)
@@ -1635,6 +1651,26 @@ local function onJoin(player)
 	end
 	local loaded = Data.loadRoom(player, serverCode)
 	ctx.feed(loaded and loaded._new and "newPlayer" or "join", player.DisplayName)
+	-- put back what only lived on the old server: the player's own bed and the bag left where they died
+	local room = Data.room(player)
+	if room then
+		local sp = room.spawn
+		if sp and not sp.village and type(sp.bed) == "table" and not (beds[player] and beds[player].Parent) then
+			local b = sp.bed
+			local ok, bed = pcall(makeBed, player, CFrame.new(b[1], b[2], b[3]) * CFrame.Angles(0, b[4] or 0, 0))
+			if ok and bed then spawnBed[player] = bed end
+		end
+		local live = Loot.ownedBag(player.UserId)
+		if live then
+			local p = live:GetPivot().Position
+			deathBag[player] = { live, math.floor(p.X), math.floor(p.Z), math.floor(p.Y) }
+		elseif room.lostBag and os.time() < (room.lostBag.expires or 0) then
+			-- the 15 minutes keep running while you are away
+			local lb = room.lostBag
+			local bag = Loot.drop(Vector3.new(lb.pos[1], lb.pos[2] + 3, lb.pos[3]), lb.items, player.UserId, lb.expires - os.time())
+			if bag then deathBag[player] = { bag, math.floor(lb.pos[1]), math.floor(lb.pos[3]), math.floor(lb.pos[2]) } end
+		end
+	end
 	Rooms.setPresence(player.UserId, serverCode)
 	push(player)
 	spawnCharacter(player)
@@ -1723,6 +1759,18 @@ function World.start(r)
 		for _, t in ipairs(tf and tf:GetChildren() or {}) do table.insert(lines, t:GetAttribute("Points") or "") end
 		ReplicatedStorage:SetAttribute("RailLines", table.concat(lines, "|"))
 	end)
+	-- the death bag is saved with the room, so a disconnect or a closed server doesn't lose it
+	Data.beforeSave = function(player, r)
+		local m, items, expires = Loot.ownedBag(player.UserId)
+		if m then
+			local p = m:GetPivot().Position
+			local copy = {}
+			for _, it in ipairs(items) do table.insert(copy, { id = it.id, n = it.n, d = it.d }) end
+			r.lostBag = { pos = { math.floor(p.X * 10) / 10, math.floor(p.Y * 10) / 10, math.floor(p.Z * 10) / 10 }, items = copy, expires = expires }
+		else
+			r.lostBag = nil
+		end
+	end
 	local okP, errP = pcall(function() Powers.start(ctx, Mobs, Data, Inventory) end)
 	if not okP then Debug.log("start.powers", errP) end
 	local okW, errW = pcall(function() Weather.start(ctx) end)

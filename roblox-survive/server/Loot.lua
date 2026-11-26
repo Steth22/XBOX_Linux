@@ -58,7 +58,7 @@ local function part(parent, size, cf, color, mat, shape)
 end
 
 -- items: list of { id, n, d }
-function Loot.drop(pos, items, ownerId)
+function Loot.drop(pos, items, ownerId, life)
 	if #items == 0 then return end
 	local g = groundBelow(pos)
 	local m = Instance.new("Model")
@@ -80,7 +80,8 @@ function Loot.drop(pos, items, ownerId)
 	pr:SetAttribute("Obj", "bag")
 	pr.Parent = sack
 	m.Parent = folder
-	bags[m] = { items = items, owner = ownerId, t = os.clock() }
+	life = life or Config.BAG_LIFETIME
+	bags[m] = { items = items, owner = ownerId, t = os.clock(), expires = os.time() + life }
 	pr.Triggered:Connect(function(player)
 		if not alive(player) then return end -- the dead can't loot (not even their own bag)
 		local b = bags[m]
@@ -104,7 +105,7 @@ function Loot.drop(pos, items, ownerId)
 			ctx.notify(player, "bagFull")
 		end
 	end)
-	task.delay(Config.BAG_LIFETIME, function()
+	task.delay(life, function()
 		bags[m] = nil
 		if m.Parent then m:Destroy() end
 	end)
@@ -112,6 +113,14 @@ function Loot.drop(pos, items, ownerId)
 end
 
 -- a single item lying on the ground (anyone can pick it up)
+-- the bag a player left where they died (if it is still there) and what is left in it
+function Loot.ownedBag(ownerId)
+	for m, b in pairs(bags) do
+		if m.Parent and b.owner == ownerId and #b.items > 0 then return m, b.items, b.expires end
+	end
+	return nil
+end
+
 function Loot.dropItem(pos, it)
 	local Items = require(ReplicatedStorage.Shared.Items)
 	local m = Items.model(it.id)
@@ -145,7 +154,7 @@ function Loot.dropItem(pos, it)
 		pr:SetAttribute("Count", rest)
 		if rest <= 0 then m:Destroy() else ctx.notify(player, "bagFull") end
 	end)
-	task.delay(300, function() if m.Parent then m:Destroy() end end)
+	task.delay(Config.BAG_LIFETIME, function() if m.Parent then m:Destroy() end end) -- thrown items go after 15 minutes
 	return m
 end
 
