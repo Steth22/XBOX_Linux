@@ -83,6 +83,16 @@ end
 
 local pendingReq = {} -- [userId] = { code, t }
 
+-- is one of the player's online friends inside this room right now?
+local function friendInRoom(player, code)
+	local ok, friends = pcall(function() return player:GetFriendsOnline(200) end)
+	if not ok or not friends then return false end
+	for _, f in ipairs(friends) do
+		if Rooms.getPresence(f.VisitorId) == code then return true end
+	end
+	return false
+end
+
 local actions = {}
 
 function actions.info(player, profile)
@@ -156,6 +166,10 @@ function actions.join(player, profile, code)
 	if mode == "public" then return enterRoom(player, rec) end
 	local okF, isFriend = pcall(function() return player:IsFriendsWith(rec.owner) end)
 	if okF and isFriend then return enterRoom(player, rec) end
+	if mode == "fof" then
+		if friendInRoom(player, rec.code) then return enterRoom(player, rec) end
+		return { ok = false, err = "fofOnly" }
+	end
 	if mode == "friends" then return { ok = false, err = "friendsOnly" } end
 	-- by request: ask the owner inside the room
 	if Rooms.getPresence(rec.owner) ~= rec.code then return { ok = false, err = "ownerOffline" } end
@@ -173,19 +187,12 @@ function actions.join(player, profile, code)
 	return { ok = false, err = "requestSent" }
 end
 
--- quick play: join someone's public room; if there is none, open one of your own (it counts towards your limit),
--- and if you already have all your rooms, go to your own room. Rooms without an owner are never made.
+-- quick play: join a public room with space; if there is none, open a new public room that belongs to nobody,
+-- so it never uses up one of your own rooms (you can come back to it from your visited rooms)
 function actions.quick(player, profile)
 	local rec = Rooms.findPublic()
 	if rec then return enterRoom(player, rec) end
-	local owned = ownedRooms(player, profile)
-	if #owned < roomLimit(player) then
-		local err
-		rec, err = createOwned(player, profile, true)
-		if not rec then return { ok = false, err = err } end
-		return enterRoom(player, rec)
-	end
-	rec = Rooms.get(owned[1].code)
+	rec = Rooms.create(0, true)
 	if not rec then return { ok = false, err = "busy" } end
 	return enterRoom(player, rec)
 end

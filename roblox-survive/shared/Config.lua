@@ -7,7 +7,7 @@ C.BIG_BAG_PRICE = 1500
 -- bag slots for a bag state (false / true / "big")
 function C.bagSlots(bag) return bag == "big" and C.BIG_BAG or (bag and C.BAG or 0) end
 C.MAX_PLAYERS = 16
-C.ROOM_TTL = 72 * 3600
+C.ROOM_TTL = 100 * 365 * 24 * 3600 -- rooms are kept until their owner deletes them
 C.START_COINS = 50
 C.START_ITEMS = { { "wood_axe", 1 }, { "berries", 4 } }
 C.CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -17,7 +17,9 @@ C.RANK_SCAN = 1000
 C.SKILLS = { "health", "strength", "luck", "speed", "resist", "aid" }
 C.SKILL_MAX = 10 -- kept for old saves
 C.SKILL_CAP = { speed = 10, resist = 14 } -- skills not listed here have no limit
-C.DAY_LENGTH = 20 * 60 -- seconds for a full day/night
+C.DAY_TIME = 10 * 60 -- seconds of daylight
+C.NIGHT_TIME = 10 * 60 -- seconds of night
+C.DAY_LENGTH = C.DAY_TIME + C.NIGHT_TIME
 C.VENDOR_RANGE = 24
 C.BAG_OWNER_TIME = 300 -- dropped items belong to their owner for this long
 C.BAG_LIFETIME = 900
@@ -26,7 +28,7 @@ C.EXTRA_ROOMS = 2 -- extra rooms from the game pass
 C.EXTRA_ROOMS_PASS = 2101924888 -- "+2 Rooms" game pass (30 Robux)
 C.ADMIN_PASS = 2099748271 -- "Admin" game pass (250 Robux): admin tools in rooms you own
 C.XP_SEASON = 4 -- ranking XP version; a profile from an older one is recounted from its open, non-admin rooms
-C.ROOM_ACCESS = { "public", "friends", "request" }
+C.ROOM_ACCESS = { "public", "friends", "fof", "request" } -- fof: friends of anyone in the room
 C.SKILL_DROP_CHANCE = 0.01
 C.STASH_BASE = 10 -- storage slots at level 1
 C.STASH_STEP = 10 -- extra slots per upgrade

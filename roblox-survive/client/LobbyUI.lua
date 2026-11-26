@@ -14,7 +14,7 @@ local c = UI.c
 local M = {}
 
 local ERR = { expired = "expired", notFound = "notFound", full = "full", busy = "busy", wait = "wait",
-	roomLimit = "roomLimit", nameBad = "nameBad", friendsOnly = "friendsOnly", ownerOffline = "ownerOffline", requestSent = "requestSent", passMissing = "passMissing", owned = "owned" }
+	roomLimit = "roomLimit", nameBad = "nameBad", friendsOnly = "friendsOnly", fofOnly = "fofOnly", ownerOffline = "ownerOffline", requestSent = "requestSent", passMissing = "passMissing", owned = "owned" }
 
 local function newRig()
 	local ok, m = pcall(function()
@@ -355,8 +355,8 @@ function M.start(gui, remotes)
 				b.TextColor3 = sel.access == id and c.bg or c.text
 			end
 		end
-		for _, id in ipairs({ "public", "friends", "request" }) do
-			btns[id] = UI.button({ Text = T("acc_" .. id), Size = UDim2.fromOffset(160, 48), TextSize = 18, ZIndex = 54, Parent = chips }, function()
+		for _, id in ipairs({ "public", "friends", "fof", "request" }) do
+			btns[id] = UI.button({ Text = T("acc_" .. id), Size = UDim2.fromOffset(122, 48), TextSize = 15, ZIndex = 54, Parent = chips }, function()
 				sel.access = id
 				mark()
 			end)
@@ -453,7 +453,7 @@ function M.start(gui, remotes)
 			ownedSet[r.code] = true
 			n += 1
 			r.defaultName = Locale.f(lang, "roomN", i)
-			local sub = string.format("%s  |  %s  |  %s %d  |  %s", Locale.f(lang, "codeIs", r.code), T("acc_" .. r.access), T("maxPlayers"), r.maxPlayers, Locale.f(lang, "hoursLeft", r.hours)) .. (r.admin and ("  |  " .. T("adminOnTag")) or "")
+			local sub = string.format("%s  |  %s  |  %s %d", Locale.f(lang, "codeIs", r.code), T("acc_" .. r.access), T("maxPlayers"), r.maxPlayers) .. (r.admin and ("  |  " .. T("adminOnTag")) or "")
 			local row = joinRow(list, (r.name or r.defaultName) .. "   (" .. T("myRoom") .. ")", sub, function() travel("join", r.code) end)
 			local bx = lang == "ar" and 0 or 1
 			local gear = UI.button({ Text = "", Size = UDim2.fromOffset(44, 44), AnchorPoint = Vector2.new(bx, 0.5), Position = UDim2.new(bx, lang == "ar" and 132 or -132, 0.5, 0), BackgroundColor3 = c.card2, ZIndex = 55, Parent = row }, function()
@@ -468,7 +468,7 @@ function M.start(gui, remotes)
 			if not ownedSet[r.code] then
 				if not visitedHeader then visitedHeader = true header(T("visitedRooms")) end
 				n += 1
-				local sub = string.format("%s %s   |   %s %s   |   %s", T("coins"), Format.number(r.coins), T("xp"), Format.number(r.xp), Locale.f(lang, "hoursLeft", r.hours))
+				local sub = string.format("%s %s   |   %s %s", T("coins"), Format.number(r.coins), T("xp"), Format.number(r.xp))
 				local row = joinRow(list, r.code, sub, function() travel("join", r.code) end)
 				progressBadge(row, r.pct, 130)
 				UI.enter(row, n * 0.05, 14)

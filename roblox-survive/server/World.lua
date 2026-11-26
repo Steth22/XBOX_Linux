@@ -1697,6 +1697,15 @@ local function onJoin(player)
 			if mode ~= "public" and rec.owner ~= 0 then
 				local okF, friend = pcall(function() return player:IsFriendsWith(rec.owner) end)
 				friend = okF and friend
+				if mode == "fof" and not friend then
+					for _, other in ipairs(Players:GetPlayers()) do
+						if other ~= player then
+							local okO, f2 = pcall(function() return player:IsFriendsWith(other.UserId) end)
+							if okO and f2 then friend = true break end
+						end
+					end
+					if not friend then Rooms.toLobby(player, "fofOnly") return end
+				end
 				if mode == "friends" and not friend then Rooms.toLobby(player, "friendsOnly") return end
 				if mode == "request" and not friend and not Rooms.isApproved(code, player.UserId) then Rooms.toLobby(player, "requestDeclined") return end
 			end

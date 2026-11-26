@@ -871,7 +871,7 @@ function M.start(gui, remotes)
 		UI.corner(bar, 5)
 		local fill = UI.frame({ Size = UDim2.fromScale(killedKinds / math.max(1, #reg.kinds), 1), AnchorPoint = Vector2.new(ar and 1 or 0, 0), Position = UDim2.fromScale(ar and 1 or 0, 0), BackgroundColor3 = got and (Biomes.medal[reg.key] or c.gold) or c.accent, ZIndex = 55, Parent = bar })
 		UI.corner(fill, 5)
-		UI.text({ Text = got and T("medalGot") or (killedKinds .. " / " .. #reg.kinds .. "   " .. T("medalNeed")), Size = UDim2.new(1, -220, 0, 16), Position = UDim2.new(ar and 1 or 0, tx, 0, 54), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 12, TextColor3 = c.dim, ZIndex = 54, Parent = medal })
+		UI.text({ Text = got and T("medalOwned") or (killedKinds .. " / " .. #reg.kinds .. "   " .. T("medalNeed")), Size = UDim2.new(1, -220, 0, 16), Position = UDim2.new(ar and 1 or 0, tx, 0, 54), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 12, TextColor3 = c.dim, ZIndex = 54, Parent = medal })
 		if got then
 			local wearing = dex.neck == reg.key
 			UI.button({ Text = wearing and T("wearing") or T("wear"), Size = UDim2.fromOffset(110, 40), AnchorPoint = Vector2.new(ar and 0 or 1, 0.5), Position = UDim2.new(ar and 0 or 1, ar and 12 or -12, 0.5, 0), BackgroundColor3 = wearing and c.card2 or c.gold, TextColor3 = wearing and c.text or c.bg, TextSize = 16, ZIndex = 55, Parent = medal }, function()

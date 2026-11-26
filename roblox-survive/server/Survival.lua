@@ -141,13 +141,14 @@ function S.start(c)
 	ctx = c
 	Lighting.ClockTime = 8
 	if not ReplicatedStorage:GetAttribute("Day") then ReplicatedStorage:SetAttribute("Day", 1) end
-	local perSecond = 24 / Config.DAY_LENGTH
+	-- the day (6:00 to 18:30) and the night (18:30 to 6:00) each last Config.DAY_TIME / NIGHT_TIME seconds
+	local dayRate, nightRate = 12.5 / Config.DAY_TIME, 11.5 / Config.NIGHT_TIME
 	task.spawn(function()
 		while true do
 			task.wait(1)
 			local before = Lighting.ClockTime
 			-- photo mode can stop the clock
-			if not ReplicatedStorage:GetAttribute("TimeFrozen") then Lighting.ClockTime = (Lighting.ClockTime + perSecond) % 24 end
+			if not ReplicatedStorage:GetAttribute("TimeFrozen") then Lighting.ClockTime = (Lighting.ClockTime + (isNight() and nightRate or dayRate)) % 24 end
 			if before < 6 and Lighting.ClockTime >= 6 then
 				local day = (ReplicatedStorage:GetAttribute("Day") or 1) + 1
 				ReplicatedStorage:SetAttribute("Day", day)
