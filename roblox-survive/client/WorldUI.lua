@@ -815,33 +815,59 @@ function M.start(gui, remotes)
 	}
 	local ROCK = Color3.fromRGB(34, 32, 36)
 	local cellColor -- defined just below
-	-- draws the explored part of a layer into `parent` (px = pixels per map cell)
+	-- draws the explored part of a layer into `parent` (px = pixels per map cell).
+	-- Each row is drawn as a few long strips of one colour (not one frame per cell), and only
+	-- rows whose explored cells changed are redrawn, so switching maps stays smooth.
 	local function drawLayer(parent, px, layer, z, cache)
 		local N = Config.MAP_CELLS
 		local H = Biomes.HALF
 		local ex = layer == "under" and mapExplored2 or mapExplored
 		cache = cache or {}
-		for i = 1, #ex do
-			if ex:sub(i, i) == "1" and not cache[i] then
-				local cx, cz = (i - 1) % N, (i - 1) // N
-				if layer == "under" and #caveMask == maskN * maskN then
-					-- each map cell shows the cave openings inside it
-					local sub = maskN // N
-					local holder = UI.frame({ Size = UDim2.fromOffset(px + 1, px + 1), Position = UDim2.fromOffset(cx * px, cz * px), BackgroundColor3 = ROCK, BorderSizePixel = 0, ZIndex = z, Parent = parent })
-					for sx = 0, sub - 1 do
-						for sz = 0, sub - 1 do
-							local mx, mz = cx * sub + sx, cz * sub + sz
-							local k = mz * maskN + mx + 1
-							if caveMask:sub(k, k) == "1" then
-								local wx, wz = -H + (mx + 0.5) * (2 * H / maskN), -H + (mz + 0.5) * (2 * H / maskN)
-								UI.frame({ Size = UDim2.fromOffset(px / sub + 1, px / sub + 1), Position = UDim2.fromOffset(sx * px / sub, sz * px / sub), BackgroundColor3 = CAVE_COLOR[Biomes.at(wx, wz)] or CAVE_COLOR.forest, BorderSizePixel = 0, ZIndex = z, Parent = holder })
+		cache.rows = cache.rows or {}
+		cache.sig = cache.sig or {}
+		if #ex < N * N then return cache end
+		local fine = layer == "under" and #caveMask == maskN * maskN
+		local sub = fine and maskN // N or 1
+		local R = N * sub -- rows / columns at drawing resolution
+		local step = px / sub
+		for cz = 0, N - 1 do
+			local sig = ex:sub(cz * N + 1, cz * N + N)
+			if cache.sig[cz] ~= sig then
+				cache.sig[cz] = sig
+				for _, f in ipairs(cache.rows[cz] or {}) do f:Destroy() end
+				local frames = {}
+				cache.rows[cz] = frames
+				if sig:find("1", 1, true) then
+					for rz = cz * sub, cz * sub + sub - 1 do
+						local runStart, runColor = nil, nil
+						local function flush(endX)
+							if runStart then
+								table.insert(frames, UI.frame({ Size = UDim2.fromOffset(math.ceil((endX - runStart) * step) + 1, math.ceil(step) + 1), Position = UDim2.fromOffset(math.floor(runStart * step), math.floor(rz * step)), BackgroundColor3 = runColor, BorderSizePixel = 0, ZIndex = z, Parent = parent }))
+							end
+							runStart, runColor = nil, nil
+						end
+						for rx = 0, R do
+							local col = nil
+							if rx < R then
+								local cx = rx // sub
+								if sig:sub(cx + 1, cx + 1) == "1" then
+									local wx, wz = -H + (rx + 0.5) * (2 * H / R), -H + (rz + 0.5) * (2 * H / R)
+									if fine then
+										local k = rz * maskN + rx + 1
+										col = caveMask:sub(k, k) == "1" and (CAVE_COLOR[Biomes.at(wx, wz)] or CAVE_COLOR.forest) or ROCK
+									elseif layer == "under" then
+										col = ROCK
+									else
+										col = cellColor(wx, wz)
+									end
+								end
+							end
+							if col ~= runColor then
+								flush(rx)
+								if col then runStart, runColor = rx, col end
 							end
 						end
 					end
-					cache[i] = holder
-				else
-					local wx, wz = -H + (cx + 0.5) * (2 * H / N), -H + (cz + 0.5) * (2 * H / N)
-					cache[i] = UI.frame({ Size = UDim2.fromOffset(math.ceil(px) + 1, math.ceil(px) + 1), Position = UDim2.fromOffset(cx * px, cz * px), BackgroundColor3 = cellColor(wx, wz), BorderSizePixel = 0, ZIndex = z, Parent = parent })
 				end
 			end
 		end
@@ -860,7 +886,8 @@ function M.start(gui, remotes)
 		local d = math.max(math.abs(x), math.abs(z))
 		if d > Biomes.SEA then return SEA end
 		local col = REGION_COLOR[Biomes.at(x, z)] or REGION_COLOR.forest
-		local n = math.noise(x / 180, z / 180, 5.5) * 0.18
+		local n = math.floor(math.noise(x / 180, z / 180, 5.5) * 0.18 / 0.06 + 0.5) * 0.06
+		if n == 0 then return col end
 		return n > 0 and col:Lerp(Color3.new(1, 1, 1), n) or col:Lerp(Color3.new(0, 0, 0), -n)
 	end
 	local mapCells = {} -- index -> Frame (kept between opens)
@@ -1006,6 +1033,7 @@ function M.start(gui, remotes)
 	local north = UI.text({ Text = "N", Size = UDim2.fromOffset(20, 18), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 2), TextSize = 14, TextColor3 = Color3.fromRGB(255, 120, 110), TextStrokeTransparency = 0.3, ZIndex = 9, Parent = mini })
 	local miniOthers = {}
 	local lastExplored = ""
+	local miniUnder = nil
 	RunService.Heartbeat:Connect(function()
 		local char = player.Character
 		local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -1017,10 +1045,13 @@ function M.start(gui, remotes)
 		end
 		local p = hrp.Position
 		local under = p.Y < -26
-		canvasS.Visible, canvasU.Visible = not under, under
-		mini.BackgroundColor3 = under and Color3.fromRGB(26, 24, 28) or Color3.fromRGB(16, 18, 22)
-		north.Text = under and (lang == "ar" and "كهوف" or "CAVES") or "N"
-		north.Size = UDim2.fromOffset(under and 60 or 20, 18)
+		if under ~= miniUnder then
+			miniUnder = under
+			canvasS.Visible, canvasU.Visible = not under, under
+			mini.BackgroundColor3 = under and Color3.fromRGB(26, 24, 28) or Color3.fromRGB(16, 18, 22)
+			north.Text = under and (lang == "ar" and "كهوف" or "CAVES") or "N"
+			north.Size = UDim2.fromOffset(under and 60 or 20, 18)
+		end
 		canvasS.Position = UDim2.fromOffset(MINI / 2 - (p.X + H2) * K, MINI / 2 - (p.Z + H2) * K)
 		canvasU.Position = canvasS.Position
 		local look = hrp.CFrame.LookVector
@@ -1370,16 +1401,16 @@ function M.start(gui, remotes)
 
 	-- switching admin on can't be undone: warn first
 	local function adminWarnModal()
-		local content = openModal("adminWarn", T("adminWarnTitle"), UDim2.fromOffset(520, 340))
-		Icons.draw("lock", content, 46, c.danger, UDim2.new(0.5, 0, 0, 30), Vector2.new(0.5, 0.5))
-		UI.text({ Text = T("adminWarn"), Size = UDim2.new(1, -20, 0, 130), Position = UDim2.fromOffset(10, 62), TextWrapped = true, TextSize = 19, TextColor3 = c.text, ZIndex = 53, Parent = content })
-		UI.button({ Text = T("activate"), Size = UDim2.new(0.5, -8, 0, 54), Position = UDim2.new(lang == "ar" and 0.5 or 0, lang == "ar" and 8 or 0, 1, -54), BackgroundColor3 = c.danger, TextColor3 = c.text, TextSize = 20, ZIndex = 54, Parent = content }, function()
+		local content = openModal("adminWarn", T("adminWarnTitle"), UDim2.fromOffset(440, 250))
+		Icons.draw("lock", content, 40, c.danger, UDim2.new(0.5, 0, 0, 22), Vector2.new(0.5, 0.5))
+		UI.text({ Text = T("adminWarn"), Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 50), TextSize = 22, TextColor3 = c.text, ZIndex = 53, Parent = content })
+		UI.button({ Text = T("activate"), Size = UDim2.new(0.5, -6, 0, 52), Position = UDim2.new(lang == "ar" and 0.5 or 0, lang == "ar" and 6 or 0, 1, -52), BackgroundColor3 = c.danger, TextColor3 = c.text, TextSize = 20, ZIndex = 54, Parent = content }, function()
 			act("adminActivate")
 			task.delay(0.7, function()
 				if state and state.adminOn then act("map") adminModal() elseif closeModal then closeModal() end
 			end)
 		end)
-		UI.button({ Text = T("cancel"), Size = UDim2.new(0.5, -8, 0, 54), Position = UDim2.new(lang == "ar" and 0 or 0.5, lang == "ar" and 0 or 8, 1, -54), BackgroundColor3 = c.card2, TextColor3 = c.text, TextSize = 20, ZIndex = 54, Parent = content }, function()
+		UI.button({ Text = T("cancel"), Size = UDim2.new(0.5, -6, 0, 52), Position = UDim2.new(lang == "ar" and 0 or 0.5, lang == "ar" and 0 or 6, 1, -52), BackgroundColor3 = c.card2, TextColor3 = c.text, TextSize = 20, ZIndex = 54, Parent = content }, function()
 			if closeModal then closeModal() end
 		end)
 	end
