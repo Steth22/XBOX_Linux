@@ -1136,11 +1136,9 @@ function M.start(gui, remotes)
 		mapCells = drawLayer(board, cell, layer, 54, {})
 		-- the mine rails, where you have been
 		if layer == "under" then
-			local under = workspace:FindFirstChild("Underground")
-			local tracks = under and under:FindFirstChild("Tracks")
-			for _, t in ipairs(tracks and tracks:GetChildren() or {}) do
+			for line in string.gmatch(ReplicatedStorage:GetAttribute("RailLines") or "", "[^|]+") do
 				local pts = {}
-				for x, _, z in string.gmatch(t:GetAttribute("Points") or "", "([%-%d%.]+),([%-%d%.]+),([%-%d%.]+)") do
+				for x, _, z in string.gmatch(line, "([%-%d%.]+),([%-%d%.]+),([%-%d%.]+)") do
 					local p = Vector2.new(tonumber(x), tonumber(z))
 					-- keep only points a few pixels apart (fewer pieces to draw)
 					if #pts == 0 or (p - pts[#pts]).Magnitude > 40 then table.insert(pts, p) end
@@ -1169,7 +1167,9 @@ function M.start(gui, remotes)
 		for _, poi in ipairs(mapPoisList) do
 			local def = POI_ICON[poi[1]]
 			-- cave entrances show on both maps
-			if def and (poiLayer(poi) == layer or poi[1] == "cave") and explored(poi[2], poi[3]) then marker(def[1], poi[2], poi[3], def[2], 22) end
+			-- the dwarf traders are always marked on the caves map, so they can be found
+			local always = poi[1] == "dwarf" and layer == "under"
+			if def and (poiLayer(poi) == layer or poi[1] == "cave") and (always or explored(poi[2], poi[3])) then marker(def[1], poi[2], poi[3], def[2], always and 28 or 22) end
 		end
 		if state.death then
 			marker("close", state.death[1], state.death[2], Color3.fromRGB(255, 70, 60), 24)
@@ -1253,7 +1253,7 @@ function M.start(gui, remotes)
 			local i = cz * N + cx + 1
 			local layer = poiLayer(poi)
 			local ex = layer == "under" and mapExplored2 or mapExplored
-			if not miniPois[idx] and ex:sub(i, i) == "1" and POI_ICON[poi[1]] then
+			if not miniPois[idx] and (ex:sub(i, i) == "1" or poi[1] == "dwarf") and POI_ICON[poi[1]] then
 				local h = UI.frame({ Size = UDim2.fromOffset(20, 20), AnchorPoint = Vector2.new(0.5, 0.5), Position = miniPos(poi[2], poi[3]), BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.2, ZIndex = 5, Parent = layer == "under" and canvasU or canvasS })
 				UI.corner(h, 10)
 				Icons.draw(POI_ICON[poi[1]][1], h, 14, POI_ICON[poi[1]][2], UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
@@ -1344,6 +1344,9 @@ function M.start(gui, remotes)
 	end
 	local deathMarker = makeMarker(Color3.fromRGB(255, 90, 80), "close")
 	local playerMarkers = {}
+	-- underground: the nearest dwarf trader is always marked, so you can find him
+	local dwarfMarker = makeMarker(Color3.fromRGB(255, 170, 70), "coin")
+	local dwarfSpots = nil
 	RunService.Heartbeat:Connect(function()
 		local char = player.Character
 		local cam = workspace.CurrentCamera
@@ -1357,6 +1360,29 @@ function M.start(gui, remotes)
 			deathMarker.label.Text = T("yourItems2") .. "  " .. Locale.f(lang, "meters", math.floor((p - from).Magnitude))
 		else
 			deathMarker.bb.Enabled = false
+		end
+		if not dwarfSpots then
+			local raw = ReplicatedStorage:GetAttribute("DwarfSpots")
+			if type(raw) == "string" and raw ~= "" then
+				dwarfSpots = {}
+				for x, y, z in string.gmatch(raw, "([%-%d]+),([%-%d]+),([%-%d]+)") do
+					table.insert(dwarfSpots, Vector3.new(tonumber(x), tonumber(y), tonumber(z)))
+				end
+			end
+		end
+		local nearD, nd = nil, math.huge
+		if from.Y < -26 then
+			for _, p in ipairs(dwarfSpots or {}) do
+				local d = (p - from).Magnitude
+				if d < nd then nearD, nd = p, d end
+			end
+		end
+		if nearD then
+			dwarfMarker.anchor.Position = nearD + Vector3.new(0, 7, 0)
+			dwarfMarker.bb.Enabled = true
+			dwarfMarker.label.Text = T("o_dwarf") .. "  " .. Locale.f(lang, "meters", math.floor(nd))
+		else
+			dwarfMarker.bb.Enabled = false
 		end
 		-- other players
 		local pvp = state and state.pvp

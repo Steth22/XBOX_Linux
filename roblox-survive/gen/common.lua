@@ -279,6 +279,25 @@ for _ = 1, 40 do
 		tunnel(c, stub, urng:NextNumber(6, 7.5), urng:NextNumber(10, 25), "stub")
 	end
 end
+-- lakes only where the water can't spill: every passage out of a lake cavern must climb above the
+-- water line. The passages that start below it fill with water up to the same level (no water walls).
+for _, c in ipairs(UG.caverns) do
+	if c.lake then
+		for _, t in ipairs(UG.tunnels) do
+			if t.a == c or t.b == c then
+				local other = t.a == c and t.b or t.a
+				if (other.floor or -999) < c.water + 2 or t.kind == "mine" or t.kind == "entrance" then c.lake = false c.water = nil break end
+			end
+		end
+	end
+end
+for _, t in ipairs(UG.tunnels) do
+	local lv = nil
+	for _, c in ipairs({ t.a, t.b }) do
+		if c.lake and c.water then lv = math.max(lv or -999, c.water) end
+	end
+	t.lakeLevel = lv
+end
 -- the rail lines: the mine tunnels joined end to end (they pass through each cavern's centre)
 for li = 1, #lineTunnels do
 	local pts = {}
@@ -393,7 +412,7 @@ for _, t in ipairs(UG.tunnels) do
 		local r = math.max(t.radii and t.radii[k] or t.r, t.radii and t.radii[k + 1] or t.r)
 		local m = r + 4
 		hadd(math.min(a.X, b.X) - m, math.min(a.Z, b.Z) - m, math.max(a.X, b.X) + m, math.max(a.Z, b.Z) + m,
-			{ a = a, b = b, r = r, rough = (t.kind == "mine") and 0 or 1.4, floor = true })
+			{ a = a, b = b, r = r, rough = (t.kind == "mine") and 0 or 1.4, floor = true, tun = t })
 	end
 end
 for _, s in ipairs(UG.shafts) do
@@ -419,7 +438,7 @@ local function ugColumn(x, z)
 end
 -- open space at a point: > 0 inside a cave (in studs), < 0 in rock; also the cavern there (for water / lava)
 local function ugField(x, y, z, shapes)
-	local best, cav = -99, nil
+	local best, cav, tun = -99, nil, nil
 	for _, sh in ipairs(shapes) do
 		local f
 		if sh.cav then
@@ -428,7 +447,7 @@ local function ugField(x, y, z, shapes)
 			f = (1 - e) * math.min(bl.rx, bl.ry, bl.rz) * 0.9
 			if not c.lake then f = math.min(f, y - c.floor) end
 			f += math.noise(x / 14, y / 14, z / 14) * 3
-			if f > best then best, cav = f, c end
+			if f > best then best, cav, tun = f, c, nil end
 		else
 			local ab = sh.b - sh.a
 			local p = Vector3.new(x, y, z)
@@ -437,9 +456,9 @@ local function ugField(x, y, z, shapes)
 			f = sh.r - (p - q).Magnitude
 			if sh.floor then f = math.min(f, y - (q.Y - sh.r * 0.6)) end
 			if sh.rough > 0 then f += math.noise(x / 10, y / 10, z / 10) * sh.rough end
-			if f > best then best, cav = f, nil end
+			if f > best then best, cav, tun = f, nil, sh.tun end
 		end
 	end
-	return best, cav
+	return best, cav, tun
 end
 UG.column, UG.field = ugColumn, ugField

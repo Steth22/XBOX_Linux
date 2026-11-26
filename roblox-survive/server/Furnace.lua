@@ -147,12 +147,64 @@ local function buildAll(folder, vendorParts)
 	-- terrain collision is rebuilt at startup; wait for it before looking for the ground
 	local t0 = os.clock()
 	while not workspace:GetAttribute("TerrainReady") and os.clock() - t0 < 90 do task.wait(0.5) end
-	-- one beside every trader (the roaming black market has none)
+	-- one just outside every trader's stall, on its right (as you face the trader), facing the same way
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = avoid
+	local op = OverlapParams.new()
+	op.FilterType = Enum.RaycastFilterType.Exclude
+	op.FilterDescendantsInstances = avoid
+	local function beside(counter)
+		local home = counter.Parent
+		-- which way the stall faces: from the trader (behind the counter) towards the customers
+		local front = nil
+		local best = 14
+		for _, d in ipairs(home:GetDescendants()) do
+			if d:IsA("Humanoid") and d.Parent:IsA("Model") then
+				local r = d.Parent:FindFirstChild("HumanoidRootPart")
+				local dist = r and (r.Position - counter.Position).Magnitude
+				if dist and dist < best then best = dist front = counter.Position - r.Position end
+			end
+		end
+		front = front and Vector3.new(front.X, 0, front.Z) or Vector3.new(counter.CFrame.LookVector.X, 0, counter.CFrame.LookVector.Z)
+		if front.Magnitude < 0.1 then front = Vector3.new(0, 0, -1) end
+		front = front.Unit
+		local right = (-front):Cross(Vector3.yAxis).Unit
+		-- how far the stall reaches to that side: parts of the stall near the counter
+		local reach = counter.Size.Magnitude / 2
+		for _, d in ipairs(home:GetDescendants()) do
+			if d:IsA("BasePart") and d.CanCollide and (d.Position - counter.Position).Magnitude < 16 then
+				local cf, sz = d.CFrame, d.Size / 2
+				for _, sx in ipairs({ -1, 1 }) do for _, sy in ipairs({ -1, 1 }) do for _, sz2 in ipairs({ -1, 1 }) do
+					local corner = cf * Vector3.new(sx * sz.X, sy * sz.Y, sz2 * sz.Z)
+					reach = math.max(reach, (corner - counter.Position):Dot(right))
+				end end end
+			end
+		end
+		local under = counter.Position.Y < -26
+		for extra = 3.5, 14, 1.5 do
+			local p = counter.Position + right * (reach + extra)
+			local hit = workspace:Raycast(p + Vector3.new(0, under and 6 or 12, 0), Vector3.new(0, -40, 0), params)
+			if hit and hit.Normal.Y > 0.75 then
+				local at = hit.Position
+				local blocking = workspace:GetPartBoundsInBox(CFrame.new(at + Vector3.new(0, 2.6, 0)), Vector3.new(4.8, 4.4, 4.8), op)
+				local solid = false
+				for _, b in ipairs(blocking) do if b.CanCollide then solid = true break end end
+				if not solid then
+					local m, body = build(CFrame.lookAt(at, at + front), folder)
+					hook(m, body)
+					made += 1
+					return true
+				end
+			end
+		end
+		return false
+	end
 	for _, v in ipairs(vendorParts) do
 		if v.part and v.part.Parent and v.shop ~= "black" then
-			local p = v.part.Position
-			local under = p.Y < -26
-			put(p - Vector3.new(0, 2.5, 0), under and 6 or 12, p)
+			if not beside(v.part) then
+				put(v.part.Position - Vector3.new(0, 2.5, 0), v.part.Position.Y < -26 and 6 or 12, v.part.Position)
+			end
 		end
 	end
 	-- a second one in every village, near its middle

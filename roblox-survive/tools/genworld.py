@@ -49,6 +49,15 @@ def fixcabindoors():
 def terrainmap():
     return go("terrainmap", g("terrainmap.lua"))
 
+def validate():
+    # water first (in strips across the map), then the objects and buildings
+    ok = True
+    for b in range(8):
+        a = -HALF // RES + b * (2 * HALF // RES // 8)
+        src = "\nlocal PART = \"water\"\nlocal XFROM, XTO = %d, %d\n" % (a, a + 2 * HALF // RES // 8) + g("validate.lua")
+        ok = go("validate water %d/8" % (b + 1), src) and ok
+    return go("validate objects", "\nlocal PART = \"objects\"\n" + g("validate.lua")) and ok
+
 def vegetation():
     ok = True
     for part in (1, 2):
@@ -64,6 +73,7 @@ if __name__ == "__main__":
     if what in ("all", "villages"): villages()
     if what in ("all", "caves"): caves()
     if what in ("all", "vegetation"): vegetation()
+    if what in ("all", "validate"): validate()
     if what in ("all", "terrainmap"): terrainmap()
     if what in ("all", "fixcabins"): fixcabins()
     if what == "fixcabindoors": fixcabindoors()

@@ -3,6 +3,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
+-- phones and tablets: always landscape (either way round), never portrait
+pcall(function() player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor end)
+pcall(function() game:GetService("StarterGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor end)
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local mode = ReplicatedStorage:WaitForChild("Mode")
 

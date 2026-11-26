@@ -1681,6 +1681,22 @@ function World.start(r)
 		end
 	end
 
+	-- far-away places the clients may not have streamed in: the dwarf traders and the rail lines
+	pcall(function()
+		local spots = {}
+		local uc = workspace:FindFirstChild("UnderCamps")
+		for _, m in ipairs(uc and uc:GetChildren() or {}) do
+			if m.Name == "DwarfHold" then
+				local p = m:GetPivot().Position
+				table.insert(spots, string.format("%d,%d,%d", p.X, p.Y, p.Z))
+			end
+		end
+		ReplicatedStorage:SetAttribute("DwarfSpots", table.concat(spots, ";"))
+		local lines = {}
+		local tf = workspace:FindFirstChild("Underground") and workspace.Underground:FindFirstChild("Tracks")
+		for _, t in ipairs(tf and tf:GetChildren() or {}) do table.insert(lines, t:GetAttribute("Points") or "") end
+		ReplicatedStorage:SetAttribute("RailLines", table.concat(lines, "|"))
+	end)
 	local okW, errW = pcall(function() Weather.start(ctx) end)
 	if not okW then Debug.log("start.weather", errW) end
 	local okF, errF = pcall(function() Furnace.start(ctx, Inventory, Data, vendors) end)

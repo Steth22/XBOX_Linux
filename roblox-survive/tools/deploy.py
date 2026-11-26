@@ -76,6 +76,7 @@ local sp = game:GetService("StarterPlayer")
 pcall(function() sp.LoadCharacterAppearance = false end)
 pcall(function() sp.GameSettingsAvatar = Enum.GameAvatarType.R15 end)
 pcall(function() workspace.StreamingEnabled = true end)
+pcall(function() game:GetService("StarterGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor end)
 local out = {}
 out.maxPlayers = pcall(function() game:GetService("Players").MaxPlayers = 16 end)
 ''')

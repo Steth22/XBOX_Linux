@@ -99,8 +99,8 @@ for cx = XFROM, XTO - 1, CH do
 					if iy == VY0 then solid = 1 end
 					local m, o = Enum.Material.Air, 0
 					-- caves cut into the rock (and through the surface at the entrances)
-					local f, cav = -99, nil
-					if c.shapes and yc > c.ylo and yc < c.yhi then f, cav = UG.field(c.wx, yc, c.wz, c.shapes) end
+					local f, cav, tun = -99, nil, nil
+					if c.shapes and yc > c.ylo and yc < c.yhi then f, cav, tun = UG.field(c.wx, yc, c.wz, c.shapes) end
 					local rockOcc = f > -2 and math.clamp(0.5 - f / 3, 0, 1) or 1
 					if iy == VY0 then rockOcc = 1 end
 					if solid > 0 and rockOcc > 0.04 then
@@ -123,6 +123,8 @@ for cx = XFROM, XTO - 1, CH do
 					elseif solid > 0 then
 						-- carved: air, or an underground lake
 						if cav and cav.water and yc < cav.water then m, o = Enum.Material.Water, 1 end
+						-- a passage leaving a lake is flooded up to the lake's level
+						if not cav and tun and tun.lakeLevel and yc < tun.lakeLevel then m, o = Enum.Material.Water, 1 end
 					elseif y0 < WATER then
 						if c.biome == "snow" then
 							m = Enum.Material.Glacier -- frozen ponds
