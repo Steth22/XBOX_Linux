@@ -33,6 +33,24 @@ Best.regions = {
 	{ key = "bandits", kinds = { "bandit", "banditlord" } },
 }
 
+-- what each boss can do (shown in the index; the server's Mobs.KIT runs them)
+Best.abilities = {
+	alpha = { "howl", "pounce" }, yeti = { "slam", "snowball" }, scorpionking = { "sting", "burrow" }, guardian = { "roots", "slam" },
+	crabking = { "shell", "bubbles" }, gorilla = { "enrage", "boulder" }, magma = { "lavapools", "slam" }, golem = { "quake", "shards" },
+	banditlord = { "reinforce", "smoke" }, spiderqueen = { "web", "brood" }, giantworm = { "burrow", "sandblast" }, mineguardian = { "charge", "shockwave" },
+}
+
+-- the regions (index tabs) a creature is listed in
+function Best.homes(kind)
+	local out = {}
+	for _, r in ipairs(Best.regions) do
+		for _, k in ipairs(r.kinds) do
+			if k == kind then table.insert(out, r.key) break end
+		end
+	end
+	return out
+end
+
 function Best.region(key)
 	for _, r in ipairs(Best.regions) do
 		if r.key == key then return r end

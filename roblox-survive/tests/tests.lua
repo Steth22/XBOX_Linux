@@ -87,6 +87,11 @@ check("WorldUI build", function()
 	state.adminOn = true; state.adminBy = "Owner"; state.isOwner = false; state.isMod = true
 	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
 	api.menuModal()
+	state.dex = { seen = { wolf = true, alpha = true, rabbit = true }, kills = { wolf = 3, alpha = 1 }, medals = { forest = true }, neck = "forest" }
+	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
+	api.indexModal()
+	state.lang = "ar"; for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
+	api.indexModal()
 	for _, h in ipairs(remotes.Notify.OnClientEvent.handlers) do h("feed", { k = "adminOn", a = "Owner" }) h("feed", { k = "modOn", a = "Friend" }) end
 end)
 check("LobbyUI build", function()

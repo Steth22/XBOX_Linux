@@ -720,84 +720,198 @@ function M.start(gui, remotes)
 		local dir = Vector3.new(-1.1, 0.55, -1.3).Unit -- three-quarter view from the front
 		cam.CFrame = CFrame.lookAt(cf.Position + dir * dist, cf.Position)
 	end
+	-- region necklaces: a round medal with a picture of the region (one image sheet)
+	local MEDALS = "rbxassetid://106881920182575"
+	local MEDAL_AT = { forest = { 0, 0 }, hills = { 256, 0 }, snow = { 512, 0 }, desert = { 768, 0 }, mountains = { 1024, 0 },
+		beach = { 0, 256 }, jungle = { 256, 256 }, volcano = { 512, 256 }, caves = { 768, 256 }, bandits = { 1024, 256 } }
+	local function medalImage(parent, key, size, got, pos, anchor)
+		local at = MEDAL_AT[key] or MEDAL_AT.forest
+		local img = Instance.new("ImageLabel")
+		img.BackgroundTransparency = 1
+		img.Size = UDim2.fromOffset(size, size)
+		img.Position = pos or UDim2.fromScale(0.5, 0.5)
+		img.AnchorPoint = anchor or Vector2.new(0.5, 0.5)
+		img.Image = MEDALS
+		img.ImageRectOffset = Vector2.new(at[1], at[2])
+		img.ImageRectSize = Vector2.new(256, 256)
+		img.ImageColor3 = got and Color3.new(1, 1, 1) or Color3.fromRGB(80, 84, 88)
+		img.ImageTransparency = got and 0 or 0.15
+		img.ZIndex = parent.ZIndex + 1
+		img.Parent = parent
+		return img
+	end
+	local indexSel = nil -- the creature shown on the right
+	local indexSpin = nil
 	local function indexModal()
-		local content = openModal("index", T("index"), UDim2.fromOffset(660, 600))
+		local content = openModal("index", T("index"), UDim2.fromOffset(980, 600))
+		if indexSpin then indexSpin:Disconnect() indexSpin = nil end
 		local dex = state.dex or { seen = {}, kills = {}, medals = {} }
+		dex.seen, dex.kills, dex.medals = dex.seen or {}, dex.kills or {}, dex.medals or {}
 		local seenN = 0
-		for _ in pairs(dex.seen or {}) do seenN += 1 end
-		local head = UI.frame({ Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = c.card, ZIndex = 53, Parent = content })
-		UI.corner(head, 18)
-		Icons.draw("book", head, 22, c.gold, UDim2.new(lang == "ar" and 1 or 0, lang == "ar" and -12 or 12, 0.5, 0), Vector2.new(lang == "ar" and 1 or 0, 0.5))
-		UI.text({ Text = Locale.f(lang, "found", seenN, Bestiary.total()), Size = UDim2.new(1, -60, 1, 0), Position = UDim2.fromOffset(lang == "ar" and 10 or 46, 0), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = c.gold, ZIndex = 54, Parent = head })
-		-- region tabs
-		local tabs = UI.scroll({ Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 42), ZIndex = 53, Parent = content })
-		tabs.ScrollingDirection = Enum.ScrollingDirection.X
-		tabs.AutomaticCanvasSize = Enum.AutomaticSize.X
-		tabs.CanvasSize = UDim2.new()
-		UI.list(tabs, 6, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Left)
-		for i, reg in ipairs(Bestiary.regions) do
-			local on = indexTab == reg.key
-			local b = UI.button({ Text = T("biome_" .. reg.key), LayoutOrder = i, Size = UDim2.fromOffset(112, 38), TextSize = 15, BackgroundColor3 = on and c.gold or c.card, TextColor3 = on and c.bg or c.text, ZIndex = 54, Parent = tabs }, function()
-				indexTab = reg.key
+		for _ in pairs(dex.seen) do seenN += 1 end
+		local reg = Bestiary.region(indexTab) or Bestiary.regions[1]
+		if not indexSel or not table.find(reg.kinds, indexSel) then indexSel = reg.kinds[1] end
+		local LW, GAP = 560, 16
+		local left = UI.frame({ Size = UDim2.new(0, LW, 1, 0), BackgroundTransparency = 1, ZIndex = 52, Parent = content })
+		local right = UI.frame({ Size = UDim2.new(1, -(LW + GAP), 1, 0), Position = UDim2.fromOffset(LW + GAP, 0), BackgroundColor3 = c.card, ZIndex = 52, Parent = content })
+		UI.corner(right, 14)
+
+		-- left: count, region tabs (two rows), the region's necklace, creature cards
+		local head = UI.frame({ Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = c.card, ZIndex = 53, Parent = left })
+		UI.corner(head, 17)
+		Icons.draw("book", head, 20, c.gold, UDim2.new(lang == "ar" and 1 or 0, lang == "ar" and -12 or 12, 0.5, 0), Vector2.new(lang == "ar" and 1 or 0, 0.5))
+		UI.text({ Text = Locale.f(lang, "found", seenN, Bestiary.total()), Size = UDim2.new(1, -60, 1, 0), Position = UDim2.fromOffset(lang == "ar" and 10 or 44, 0), TextXAlignment = UI.align(lang), TextSize = 16, TextColor3 = c.gold, ZIndex = 54, Parent = head })
+		local tabs = UI.frame({ Size = UDim2.new(1, 0, 0, 72), Position = UDim2.fromOffset(0, 40), BackgroundTransparency = 1, ZIndex = 53, Parent = left })
+		local tg = Instance.new("UIGridLayout")
+		tg.CellSize = UDim2.new(0.2, -5, 0, 33)
+		tg.CellPadding = UDim2.fromOffset(6, 6)
+		tg.SortOrder = Enum.SortOrder.LayoutOrder
+		tg.HorizontalAlignment = lang == "ar" and Enum.HorizontalAlignment.Right or Enum.HorizontalAlignment.Left
+		tg.Parent = tabs
+		for i, rg in ipairs(Bestiary.regions) do
+			local on = indexTab == rg.key
+			local b = UI.button({ Text = T("biome_" .. rg.key), LayoutOrder = i, TextSize = 14, BackgroundColor3 = on and c.gold or c.card, TextColor3 = on and c.bg or c.text, ZIndex = 54, Parent = tabs }, function()
+				indexTab = rg.key
+				indexSel = nil
 				indexModal()
 			end)
-			if dex.medals and dex.medals[reg.key] then
-				local dot = UI.frame({ Size = UDim2.fromOffset(10, 10), Position = UDim2.new(1, -14, 0, 4), BackgroundColor3 = Biomes.medal[reg.key], ZIndex = 56, Parent = b })
-				UI.corner(dot, 5)
+			if dex.medals[rg.key] then
+				local dot = UI.frame({ Size = UDim2.fromOffset(8, 8), Position = UDim2.new(1, -12, 0, 4), BackgroundColor3 = Biomes.medal[rg.key] or c.gold, ZIndex = 56, Parent = b })
+				UI.corner(dot, 4)
 			end
 		end
-		local reg = Bestiary.region(indexTab)
-		-- the region's necklace
-		local medal = UI.frame({ Size = UDim2.new(1, 0, 0, 62), Position = UDim2.fromOffset(0, 92), BackgroundColor3 = c.card, ZIndex = 53, Parent = content })
-		UI.corner(medal, 12)
-		local got = dex.medals and dex.medals[indexTab]
+		local got = dex.medals[reg.key]
 		local killedKinds = 0
-		for _, k in ipairs(reg.kinds) do if dex.kills and (dex.kills[k] or 0) > 0 then killedKinds += 1 end end
-		local mi = UI.frame({ Size = UDim2.fromOffset(48, 48), AnchorPoint = Vector2.new(lang == "ar" and 1 or 0, 0.5), Position = UDim2.new(lang == "ar" and 1 or 0, lang == "ar" and -8 or 8, 0.5, 0), BackgroundTransparency = 1, ZIndex = 54, Parent = medal })
-		Icons.draw("medal", mi, 44, got and Biomes.medal[indexTab] or c.card2, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
-		UI.text({ Text = Locale.f(lang, "medal", T("biome_" .. indexTab)) .. "   " .. killedKinds .. "/" .. #reg.kinds, Size = UDim2.new(1, -200, 0, 26), Position = UDim2.new(lang == "ar" and 1 or 0, lang == "ar" and -64 or 64, 0, 6), AnchorPoint = Vector2.new(lang == "ar" and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = got and Biomes.medal[indexTab] or c.text, ZIndex = 54, Parent = medal })
-		UI.text({ Text = T("medalNeed"), Size = UDim2.new(1, -200, 0, 20), Position = UDim2.new(lang == "ar" and 1 or 0, lang == "ar" and -64 or 64, 0, 34), AnchorPoint = Vector2.new(lang == "ar" and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 13, TextColor3 = c.dim, ZIndex = 54, Parent = medal })
+		for _, k in ipairs(reg.kinds) do if (dex.kills[k] or 0) > 0 then killedKinds += 1 end end
+		local medal = UI.frame({ Size = UDim2.new(1, 0, 0, 76), Position = UDim2.fromOffset(0, 118), BackgroundColor3 = c.card, ZIndex = 53, Parent = left })
+		UI.corner(medal, 12)
+		local ar = lang == "ar"
+		medalImage(medal, reg.key, 64, got, UDim2.new(ar and 1 or 0, ar and -42 or 42, 0.5, 0))
+		local tx = ar and -84 or 84
+		UI.text({ Text = Locale.f(lang, "medal", T("biome_" .. reg.key)), Size = UDim2.new(1, -220, 0, 24), Position = UDim2.new(ar and 1 or 0, tx, 0, 10), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = got and (Biomes.medal[reg.key] or c.gold) or c.text, ZIndex = 54, Parent = medal })
+		local bar = UI.frame({ Size = UDim2.new(1, -220, 0, 10), Position = UDim2.new(ar and 1 or 0, tx, 0, 40), AnchorPoint = Vector2.new(ar and 1 or 0, 0), BackgroundColor3 = c.bg, ZIndex = 54, Parent = medal })
+		UI.corner(bar, 5)
+		local fill = UI.frame({ Size = UDim2.fromScale(killedKinds / math.max(1, #reg.kinds), 1), AnchorPoint = Vector2.new(ar and 1 or 0, 0), Position = UDim2.fromScale(ar and 1 or 0, 0), BackgroundColor3 = got and (Biomes.medal[reg.key] or c.gold) or c.accent, ZIndex = 55, Parent = bar })
+		UI.corner(fill, 5)
+		UI.text({ Text = got and T("medalGot") or (killedKinds .. " / " .. #reg.kinds .. "   " .. T("medalNeed")), Size = UDim2.new(1, -220, 0, 16), Position = UDim2.new(ar and 1 or 0, tx, 0, 54), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 12, TextColor3 = c.dim, ZIndex = 54, Parent = medal })
 		if got then
-			local wearing = dex.neck == indexTab
-			UI.button({ Text = wearing and T("wearing") or T("wear"), Size = UDim2.fromOffset(110, 40), AnchorPoint = Vector2.new(lang == "ar" and 0 or 1, 0.5), Position = UDim2.new(lang == "ar" and 0 or 1, lang == "ar" and 10 or -10, 0.5, 0), BackgroundColor3 = wearing and c.card2 or c.gold, TextColor3 = wearing and c.text or c.bg, TextSize = 16, ZIndex = 55, Parent = medal }, function()
-				if not wearing then act("wearMedal", indexTab) end
+			local wearing = dex.neck == reg.key
+			UI.button({ Text = wearing and T("wearing") or T("wear"), Size = UDim2.fromOffset(110, 40), AnchorPoint = Vector2.new(ar and 0 or 1, 0.5), Position = UDim2.new(ar and 0 or 1, ar and 12 or -12, 0.5, 0), BackgroundColor3 = wearing and c.card2 or c.gold, TextColor3 = wearing and c.text or c.bg, TextSize = 16, ZIndex = 55, Parent = medal }, function()
+				if not wearing then act("wearMedal", reg.key) end
 			end)
 		end
-		-- creature cards
-		local grid = UI.scroll({ Size = UDim2.new(1, 0, 1, -162), Position = UDim2.fromOffset(0, 160), ZIndex = 53, Parent = content })
+		local grid = UI.scroll({ Size = UDim2.new(1, 0, 1, -204), Position = UDim2.fromOffset(0, 204), ZIndex = 53, Parent = left })
+		local pad = Instance.new("UIPadding")
+		pad.PaddingTop, pad.PaddingBottom, pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 4), UDim.new(0, 8), UDim.new(0, 4), UDim.new(0, 10)
+		pad.Parent = grid
 		local gl = Instance.new("UIGridLayout")
-		gl.CellSize = UDim2.fromOffset(150, 186)
+		gl.CellSize = UDim2.fromOffset(128, 132)
 		gl.CellPadding = UDim2.fromOffset(8, 8)
-		gl.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		gl.HorizontalAlignment = ar and Enum.HorizontalAlignment.Right or Enum.HorizontalAlignment.Left
 		gl.SortOrder = Enum.SortOrder.LayoutOrder
 		gl.Parent = grid
-		for i, kind in ipairs(reg.kinds) do
-			local seen = dex.seen and dex.seen[kind]
+
+		-- right: details of the chosen creature
+		local function details(kind)
+			for _, ch in ipairs(right:GetChildren()) do if not ch:IsA("UICorner") then ch:Destroy() end end
+			if indexSpin then indexSpin:Disconnect() indexSpin = nil end
+			local seen = kind and dex.seen[kind]
+			local view = UI.frame({ Size = UDim2.new(1, -20, 0, 210), Position = UDim2.fromOffset(10, 10), BackgroundColor3 = c.bg, ZIndex = 53, Parent = right })
+			UI.corner(view, 12)
+			if not seen then
+				UI.text({ Text = "?", Size = UDim2.fromScale(1, 1), TextSize = 90, TextColor3 = c.card2, ZIndex = 54, Parent = view })
+				UI.text({ Text = kind and T("unknown") or T("pickCreature"), Size = UDim2.new(1, -24, 0, 60), Position = UDim2.fromOffset(12, 236), TextWrapped = true, TextSize = 18, TextColor3 = c.dim, ZIndex = 53, Parent = right })
+				return
+			end
+			mobView(view, kind)
+			local vp = view:FindFirstChildWhichIsA("ViewportFrame")
+			local cam = vp and vp.CurrentCamera
+			if cam then
+				-- turn slowly so the whole creature can be seen
+				local m = vp:FindFirstChildWhichIsA("Model")
+				local cf, sz = m:GetBoundingBox()
+				local dist = (sz.Magnitude / 2) / math.tan(math.rad(15)) * 1.0
+				local t0 = os.clock()
+				indexSpin = RunService.Heartbeat:Connect(function()
+					if not vp.Parent then indexSpin:Disconnect() indexSpin = nil return end
+					local a = math.rad(210) + (os.clock() - t0) * 0.5
+					cam.CFrame = CFrame.lookAt(cf.Position + Vector3.new(math.sin(a), 0.42, math.cos(a)).Unit * dist, cf.Position)
+				end)
+			end
 			local ty = Bestiary.kinds[kind]
-			local card = UI.frame({ LayoutOrder = i, BackgroundColor3 = seen and c.card or c.panel, ZIndex = 54, Parent = grid })
+			local col = TYPE_COLOR[ty] or c.card2
+			local info = UI.scroll({ Size = UDim2.new(1, -20, 1, -234), Position = UDim2.fromOffset(10, 228), ZIndex = 53, Parent = right })
+			UI.list(info, 6)
+			local n = 0
+			local function line(props)
+				n += 1
+				props.LayoutOrder = n
+				props.Size = props.Size or UDim2.new(1, -8, 0, 0)
+				props.AutomaticSize = Enum.AutomaticSize.Y
+				props.TextWrapped = true
+				props.TextXAlignment = UI.align(lang)
+				props.ZIndex = 54
+				props.Parent = info
+				return UI.text(props)
+			end
+			line({ Text = T("mob_" .. kind), TextSize = 26, TextColor3 = c.text })
+			n += 1
+			local chipRow = UI.frame({ Size = UDim2.new(1, -8, 0, 24), LayoutOrder = n, BackgroundTransparency = 1, ZIndex = 54, Parent = info })
+			local chip = UI.frame({ Size = UDim2.fromOffset(110, 24), AnchorPoint = Vector2.new(ar and 1 or 0, 0), Position = UDim2.fromScale(ar and 1 or 0, 0), BackgroundColor3 = col, ZIndex = 55, Parent = chipRow })
+			UI.corner(chip, 12)
+			UI.text({ Text = T("ty_" .. ty), Size = UDim2.fromScale(1, 1), TextSize = 14, TextColor3 = c.bg, ZIndex = 56, Parent = chip })
+			UI.text({ Text = Locale.f(lang, "kills", dex.kills[kind] or 0), Size = UDim2.new(1, -124, 1, 0), Position = UDim2.fromOffset(ar and 0 or 124, 0), TextXAlignment = UI.align(lang), TextSize = 15, TextColor3 = c.dim, ZIndex = 55, Parent = chipRow })
+			line({ Text = T("tyd_" .. ty), TextSize = 16, TextColor3 = c.dim })
+			local homes = {}
+			for _, h in ipairs(Bestiary.homes(kind)) do table.insert(homes, T("biome_" .. h)) end
+			line({ Text = T("livesIn") .. ":  " .. table.concat(homes, ar and "، " or ", "), TextSize = 16, TextColor3 = c.text })
+			local ab = Bestiary.abilities[kind]
+			if ab then
+				line({ Text = T("abilities"), TextSize = 18, TextColor3 = c.gold })
+				for _, a in ipairs(ab) do line({ Text = "•  " .. T("ab_" .. a), TextSize = 15, TextColor3 = c.text }) end
+				local w = Locale.t(lang, "weak_" .. kind)
+				if (dex.kills[kind] or 0) > 0 and w ~= "weak_" .. kind then
+					line({ Text = Locale.f(lang, "weakness", w), TextSize = 16, TextColor3 = Color3.fromRGB(255, 140, 110) })
+				else
+					line({ Text = T("weakHidden"), TextSize = 15, TextColor3 = c.dim })
+				end
+			end
+		end
+
+		for i, kind in ipairs(reg.kinds) do
+			local seen = dex.seen[kind]
+			local ty = Bestiary.kinds[kind]
+			local on = kind == indexSel
+			local card = UI.button({ Text = "", LayoutOrder = i, BackgroundColor3 = on and c.card2 or (seen and c.card or c.panel), AutoButtonColor = true, ZIndex = 54, Parent = grid }, function()
+				indexSel = kind
+				for _, cd in ipairs(grid:GetChildren()) do
+					if cd:IsA("GuiButton") then
+						local st = cd:FindFirstChildWhichIsA("UIStroke")
+						local mine = cd:GetAttribute("Kind") == kind
+						cd.BackgroundColor3 = mine and c.card2 or (dex.seen[cd:GetAttribute("Kind")] and c.card or c.panel)
+						if st then st.Thickness = mine and 3 or 1.5 st.Color = mine and c.gold or (cd:GetAttribute("Col") or c.card2) end
+					end
+				end
+				details(kind)
+			end)
+			card:SetAttribute("Kind", kind)
+			local sc = seen and (TYPE_COLOR[ty] or c.card2) or c.card2
+			card:SetAttribute("Col", sc)
 			UI.corner(card, 12)
-			UI.stroke(card, seen and (TYPE_COLOR[ty] or c.card2) or c.card2, 2)
-			local view = UI.frame({ Size = UDim2.new(1, -12, 0, 104), Position = UDim2.fromOffset(6, 6), BackgroundColor3 = c.bg, ZIndex = 55, Parent = card })
+			UI.stroke(card, on and c.gold or sc, on and 3 or 1.5)
+			local view = UI.frame({ Size = UDim2.new(1, -12, 0, 90), Position = UDim2.fromOffset(6, 6), BackgroundColor3 = c.bg, ZIndex = 55, Parent = card })
 			UI.corner(view, 10)
 			if seen then
 				mobView(view, kind)
-				UI.text({ Text = T("mob_" .. kind), Size = UDim2.new(1, -8, 0, 24), Position = UDim2.fromOffset(4, 112), TextSize = 16, ZIndex = 55, Parent = card })
-				local chip = UI.frame({ Size = UDim2.fromOffset(84, 20), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 138), BackgroundColor3 = TYPE_COLOR[ty] or c.card2, ZIndex = 55, Parent = card })
-				UI.corner(chip, 10)
-				UI.text({ Text = T("ty_" .. ty), Size = UDim2.fromScale(1, 1), TextSize = 13, TextColor3 = c.bg, ZIndex = 56, Parent = chip })
-				local killsN = dex.kills and dex.kills[kind] or 0
-				local weak = (ty == "boss" and killsN > 0) and Locale.t(lang, "weak_" .. kind) or nil
-				UI.text({ Text = Locale.f(lang, "kills", killsN), Size = UDim2.new(1, -8, 0, 18), Position = UDim2.fromOffset(4, 162), TextSize = 13, TextColor3 = c.dim, ZIndex = 55, Parent = card })
-				if weak and weak ~= "weak_" .. kind then
-					card.Size = card.Size
-					UI.text({ Text = Locale.f(lang, "weakness", weak), Size = UDim2.new(1, -8, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.fromOffset(4, 112), TextWrapped = true, TextSize = 12, TextColor3 = Color3.fromRGB(255, 150, 120), BackgroundColor3 = Color3.fromRGB(20, 16, 18), BackgroundTransparency = 0.25, ZIndex = 58, Parent = card })
-				end
+				UI.text({ Text = T("mob_" .. kind), Size = UDim2.new(1, -10, 0, 30), Position = UDim2.fromOffset(5, 98), TextTruncate = Enum.TextTruncate.AtEnd, TextSize = 15, ZIndex = 55, Parent = card })
+				local dot = UI.frame({ Size = UDim2.fromOffset(10, 10), Position = UDim2.fromOffset(12, 12), BackgroundColor3 = TYPE_COLOR[ty] or c.card2, ZIndex = 57, Parent = card })
+				UI.corner(dot, 5)
 			else
-				UI.text({ Text = "?", Size = UDim2.fromScale(1, 1), TextSize = 54, TextColor3 = c.card2, ZIndex = 56, Parent = view })
-				UI.text({ Text = T("unknown"), Size = UDim2.new(1, -8, 0, 40), Position = UDim2.fromOffset(4, 120), TextWrapped = true, TextSize = 14, TextColor3 = c.dim, ZIndex = 55, Parent = card })
+				UI.text({ Text = "?", Size = UDim2.fromScale(1, 1), TextSize = 44, TextColor3 = c.card2, ZIndex = 56, Parent = view })
+				UI.text({ Text = T("unknown"), Size = UDim2.new(1, -10, 0, 30), Position = UDim2.fromOffset(5, 98), TextSize = 14, TextColor3 = c.dim, ZIndex = 55, Parent = card })
 			end
-			UI.enter(card, i * 0.03, 10)
 		end
+		details(indexSel)
 	end
 
 	---------------------------------------------------------------- world map (only what you have explored)
@@ -1997,7 +2111,7 @@ function M.start(gui, remotes)
 	end
 	act("state")
 	task.delay(5, function() if state then UI.toast(root, T("tip")) end end)
-	return { bagModal = bagModal, shopModal = shopModal, menuModal = menuModal, skillsModal = skillsModal, adminWarnModal = adminWarnModal }
+	return { bagModal = bagModal, shopModal = shopModal, menuModal = menuModal, skillsModal = skillsModal, adminWarnModal = adminWarnModal, indexModal = indexModal }
 end
 
 return M

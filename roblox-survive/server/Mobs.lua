@@ -1352,6 +1352,7 @@ local function populate()
 					if not st.dead and (st.hrp.Position - r.Position).Magnitude < 45 then pcall(ctx.seen, pl, st.kind) end
 				end
 			end
+			if r.Position.Y < -26 then continue end -- underground: the caverns spawn their own creatures
 			-- one spawn attempt per player per tick, in the biome of the chosen spot
 			local a = rng:NextNumber(0, math.pi * 2)
 			local dist = rng:NextNumber(70, 140)
@@ -1416,6 +1417,9 @@ local function cavePopulate()
 		local surface = cave:GetAttribute("Type") == "bandit"
 		local spotsF = cave:FindFirstChild("Spots")
 		local list = CAVE_MOBS[cave:GetAttribute("Type") or ""]
+		-- skip caverns nobody is near (there are hundreds underground)
+		local center = cave:GetAttribute("Center")
+		if center and not nearestPlayer(center, (cave:GetAttribute("Radius") or 40) + 100) then list = nil end
 		if spotsF and list then
 			local spots = spotsF:GetChildren()
 			-- is anyone close to this cave?
@@ -1553,6 +1557,8 @@ function Mobs.start(c)
 			task.wait(4)
 			local ok, err = pcall(populate)
 			if not ok then warn("Mobs populate:", err) Debug.log("mobs.populate", err) end
+			local okC, errC = pcall(cavePopulate)
+			if not okC then warn("Mobs cavePopulate:", errC) Debug.log("mobs.cave", errC) end
 			if reports < 6 and #Players:GetPlayers() > 0 then
 				reports += 1
 				local counts = {}
