@@ -1537,11 +1537,16 @@ function M.start(gui, remotes)
 					if not maxed then act("powerUp", k) task.delay(0.5, function() if modalKind == "skills" then skillsModal() end end) end
 				end)
 				if k ~= "blast" and lvl > 0 then
+					-- an on/off switch: green with the knob on the right when the aura is working
 					local on = not (pw.off and pw.off[k])
-					UI.button({ Text = on and T("pwOn") or T("pwOff"), Size = UDim2.fromOffset(120, 36), AnchorPoint = Vector2.new(bx, 0), Position = UDim2.new(bx, ar and 12 or -12, 0, 64), BackgroundColor3 = on and c.accent or c.card2, TextColor3 = on and c.bg or c.text, TextSize = 15, ZIndex = 55, Parent = r }, function()
+					local sw = UI.button({ Text = "", Size = UDim2.fromOffset(120, 36), AnchorPoint = Vector2.new(bx, 0), Position = UDim2.new(bx, ar and 12 or -12, 0, 64), BackgroundColor3 = on and c.accent or c.card2, ZIndex = 55, Parent = r }, function()
 						act("powerToggle", k)
 						task.delay(0.5, function() if modalKind == "skills" then skillsModal() end end)
 					end)
+					UI.corner(sw, 18)
+					local knob = UI.frame({ Size = UDim2.fromOffset(28, 28), AnchorPoint = Vector2.new(on and 1 or 0, 0.5), Position = UDim2.new(on and 1 or 0, on and -4 or 4, 0.5, 0), BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 56, Parent = sw })
+					UI.corner(knob, 14)
+					UI.text({ Text = on and T("pwOn") or T("pwOff"), Size = UDim2.new(1, -40, 1, 0), Position = UDim2.fromOffset(on and 6 or 34, 0), TextSize = 15, TextColor3 = on and c.bg or c.text, ZIndex = 56, Parent = sw })
 				end
 				UI.enter(r, i * 0.05, 10)
 			end
@@ -2531,7 +2536,15 @@ function M.start(gui, remotes)
 		elseif key == "sleepStart" or key == "woke" then return
 		elseif key == "bossSpawn" then text = Locale.f(lang, "bossSpawnX", T("mob_" .. tostring(a or "guardian")))
 		elseif key == "bossDown" then text = Locale.f(lang, "bossDownX", T("mob_" .. tostring(a or "guardian")))
-		else text = T(key) end
+		elseif key == "powerUnlocked" or key == "powerUp" then text = T(key) .. ": " .. T(tostring(a)) Effects.ui("skill")
+		else
+			-- messages with numbers or names in them (%d / %s) get their values filled in
+			text = T(key)
+			if text:find("%%") and a ~= nil then
+				local ok, res = pcall(Locale.f, lang, key, a, b)
+				text = ok and res or text
+			end
+		end
 		local color = (key == "bossSpawn" or key == "died") and Color3.fromRGB(90, 30, 30) or nil
 		if key == "picked" then
 			local ore = (a == "stone" or a == "iron" or a == "gold" or a == "diamond" or a == "crystal" or a == "obsidian")
