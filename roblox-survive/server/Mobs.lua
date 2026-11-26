@@ -823,9 +823,11 @@ local function kill(m, s, player)
 		if sp > 0 then ctx.addSp(player, sp) end
 		local over = {}
 		local double = ctx.lucky(player, 0.03)
+		local loot = s.looting or 0
 		for _, d in ipairs(def.drops) do
-			if rng:NextNumber() < d[4] then
-				local n = rng:NextInteger(d[2], d[3]) * (double and 2 or 1)
+			-- Looting: drops are likelier and bigger
+			if rng:NextNumber() < math.min(1, d[4] * (1 + 0.5 * loot)) then
+				local n = (rng:NextInteger(d[2], d[3]) + rng:NextInteger(0, loot)) * (double and 2 or 1)
 				local rest = ctx.giveItem(player, { id = d[1], n = n })
 				if n - rest > 0 then ctx.notify(player, "picked", d[1], n - rest) end
 				if rest > 0 then table.insert(over, { id = d[1], n = rest }) end
@@ -1072,6 +1074,7 @@ function Mobs.damage(m, amount, player, src)
 	if now < (s.guardUntil or 0) then mult *= 0.2 end
 	amount *= mult
 	if mult >= 1.5 and player then ctx.notify(player, "weakHit") end
+	s.looting = src and src.looting or nil
 	s.hp -= amount
 	m:SetAttribute("HP", math.max(0, s.hp))
 	local hl = Instance.new("Highlight")
@@ -1154,7 +1157,7 @@ local buildList, buildAt = nil, 0
 local function blockedBy(from, dir, len)
 	if not buildList or os.clock() - buildAt > 30 then
 		buildList = {}
-		for _, n in ipairs({ "Villages", "Cabins", "Outposts", "Camp", "BanditCamps", "BlackMarkets", "Houses", "Furnaces", "CraftingTables" }) do
+		for _, n in ipairs({ "Villages", "Cabins", "Outposts", "Camp", "BanditCamps", "BlackMarkets", "Houses", "Furnaces", "CraftingTables", "Smiths" }) do
 			local f = workspace:FindFirstChild(n)
 			if f then table.insert(buildList, f) end
 		end

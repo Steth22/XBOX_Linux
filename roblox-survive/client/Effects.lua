@@ -548,6 +548,33 @@ function handlers.explode(pos)
 		end)
 	end
 end
+-- a supply crate was opened: a burst of confetti and a fanfare
+function handlers.celebrate(pos)
+	E.play("levelUp", pos, 1)
+	E.play("skill", pos, 0.8)
+	E.sparkle(pos, Color3.fromRGB(255, 215, 90), 60)
+	local a = Instance.new("Part")
+	a.Anchored, a.CanCollide, a.CanQuery, a.CanTouch = true, false, false, false
+	a.Transparency = 1
+	a.Size = Vector3.new(1, 1, 1)
+	a.Position = pos
+	a.Parent = workspace
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	pe.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 90)), ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 220, 80)), ColorSequenceKeypoint.new(0.66, Color3.fromRGB(90, 200, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 120, 255)) })
+	pe.LightEmission = 0.8
+	pe.Size = NumberSequence.new(0.7, 0.2)
+	pe.Speed = NumberRange.new(18, 30)
+	pe.SpreadAngle = Vector2.new(60, 60)
+	pe.Acceleration = Vector3.new(0, -30, 0)
+	pe.Lifetime = NumberRange.new(1.4, 2.2)
+	pe.Rotation = NumberRange.new(0, 360)
+	pe.RotSpeed = NumberRange.new(-300, 300)
+	pe.EmissionDirection = Enum.NormalId.Top
+	pe.Parent = a
+	pe:Emit(120)
+	game:GetService("Debris"):AddItem(a, 3)
+end
 function handlers.craft(pos)
 	E.play("place", pos, 0.9, 0.7)
 	E.dust(pos, Color3.fromRGB(170, 130, 80), 10, 1)

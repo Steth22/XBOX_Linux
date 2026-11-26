@@ -70,7 +70,7 @@ check2("Effects handlers", function()
 	fire("hitTree", tree:GetPivot().Position, tree) fire("treeFall", tree) fire("hitRock", p) fire("rockBreak", p) fire("pick", p)
 	fire("hitMob", p, "wolf") fire("mobDie", p, "guardian") fire("mobAttack", p, "zombie") fire("hurt", rig)
 	fire("shoot", p, p + Vector3.new(30, 0, 0), "arrow") fire("shoot", p, p + Vector3.new(30, 0, 0), "ammo")
-	fire("levelUp", rig) fire("cook", p) fire("craft", p) fire("place", p) fire("crate", p)
+	fire("levelUp", rig) fire("cook", p) fire("celebrate", p) fire("craft", p) fire("place", p) fire("crate", p)
 	task.wait(2.5)
 end)
 check2("crafting recipes", function()
@@ -212,5 +212,59 @@ check2("a house is built, upgraded to the top and its chests work", function()
 	Data.room = oldRoom
 	m:Destroy()
 	char:Destroy()
+end)
+check2("enchantments, books, the anvil and the supply crate", function()
+	local Items = require(game:GetService("ReplicatedStorage").Shared.Items)
+	local Inventory = require(SSS2.Services.Inventory)
+	-- books exist for every level, one per bag square, with a model
+	for _, k in ipairs(Items.ENCH_ORDER) do
+		for l = 1, Items.ENCH[k].max do
+			local id = "book_" .. k .. "_" .. l
+			assert(Items.get(id) and Items.stack(id) == 1 and Items.model(id), "book " .. id)
+			assert(Items.enchPrice(k, l) >= 1000, "price " .. id)
+		end
+	end
+	assert(Items.enchPrice("sharpness", 5) > Items.enchPrice("sharpness", 1), "price grows with level")
+	-- what fits where
+	assert(Items.canEnchant("iron_sword", "sharpness") and not Items.canEnchant("iron_sword", "protection"), "sword")
+	assert(Items.canEnchant("iron_pickaxe", "fortune") and not Items.canEnchant("iron_pickaxe", "fire_aspect"), "pickaxe")
+	assert(Items.canEnchant("iron_armor", "protection") and not Items.canEnchant("iron_armor", "sharpness"), "armor")
+	-- the anvil
+	local r = Items.anvil({ id = "iron_sword", n = 1, d = 100 }, { id = "book_sharpness_3", n = 1 })
+	assert(r and r.out.e.sharpness == 3 and r.out.d == 100 and r.price >= 1000, "sword + book")
+	r = Items.anvil({ id = "iron_sword", n = 1, e = { sharpness = 3 } }, { id = "book_sharpness_3", n = 1 })
+	assert(r and r.out.e.sharpness == 4, "same level goes up one")
+	local _, err = Items.anvil({ id = "iron_sword", n = 1, e = { sharpness = 5 } }, { id = "book_sharpness_5", n = 1 })
+	assert(err == "enchMaxed", "max " .. tostring(err))
+	_, err = Items.anvil({ id = "iron_armor", n = 1, e = { protection = 2 } }, { id = "book_fire_protection_1", n = 1 })
+	assert(err == "enchConflict", "protections clash " .. tostring(err))
+	_, err = Items.anvil({ id = "iron_pickaxe", n = 1 }, { id = "book_protection_1", n = 1 })
+	assert(err == "enchNotFit", "doesn't fit " .. tostring(err))
+	r = Items.anvil({ id = "book_looting_2", n = 1 }, { id = "book_looting_2", n = 1 })
+	assert(r and r.out.id == "book_looting_3", "two books")
+	assert(Items.cleanEnch("iron_sword", { sharpness = 9, protection = 2, nonsense = 1 }).sharpness == 5, "clean")
+	-- enchanted items never stack and keep their enchantments in the bag
+	local inv = Inventory.new()
+	inv.bag = true
+	Inventory.add(inv, "book_fortune_1", 1)
+	Inventory.add(inv, "book_fortune_1", 1)
+	local books = 0
+	for i = 1, 20 do if inv.slots[i] and inv.slots[i].id == "book_fortune_1" then books += 1 end end
+	assert(books == 2, "books in two squares")
+	Inventory.add(inv, "iron_sword", 1, 50, { sharpness = 2 })
+	local fixed = Inventory.fix(inv)
+	local found = false
+	for i = 1, 20 do if fixed.slots[i] and fixed.slots[i].id == "iron_sword" then found = fixed.slots[i].e and fixed.slots[i].e.sharpness == 2 end end
+	assert(found, "enchantment saved")
+	-- iron and diamond gear is no longer sold
+	for shop in pairs(Items.shops) do
+		for _, id in ipairs({ "iron_sword", "diamond_pickaxe", "iron_armor" }) do assert(not Items.inShop(shop, id), id .. " sold at " .. shop) end
+	end
+	for _, id in ipairs({ "obsidian_sword", "obsidian_armor", "crystal_sword", "crystal_armor", "obsidian_pickaxe" }) do assert(Items.get(id) and Items.model(id), "new " .. id) end
+	-- supply crate loot
+	local Drops = require(SSS2.Services.Drops)
+	for _, l in ipairs(Drops._loot) do assert(l[1] == "coins" or l[1] == "book" or Items.get(l[1]), "loot " .. l[1]) end
+	for _ = 1, 50 do assert(Items.get(Drops._book()), "random book") end
+	require(SSS2.Services.Smith)
 end)
 return { results, results2 }

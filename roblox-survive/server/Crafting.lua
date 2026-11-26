@@ -198,6 +198,8 @@ function C.move(player, room, a, b, one)
 		-- bag -> cell: one item (tap) or the whole stack (drag)
 		local sl = inv.slots[a]
 		if not sl then return true end
+		-- tools, armor and books keep their wear and enchantments: they don't go on the table
+		if sl.d or sl.e or Items.stack(sl.id) == 1 then ctx.notify(player, "cantCraftWith") return true end
 		local cur = g[cb]
 		if cur and cur.id ~= sl.id then return true end
 		local want = one and 1 or sl.n

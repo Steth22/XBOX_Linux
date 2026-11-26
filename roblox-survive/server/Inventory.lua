@@ -23,7 +23,7 @@ function Inv.fix(inv)
 	for i = 1, TOTAL do
 		local v = inv.slots[i]
 		if type(v) == "table" and Items.get(v.id) and type(v.n) == "number" and v.n >= 1 then
-			s[i] = { id = v.id, n = math.min(math.floor(v.n), Items.stack(v.id)) }
+			s[i] = { id = v.id, n = math.min(math.floor(v.n), Items.stack(v.id)), e = Items.cleanEnch(v.id, v.e) }
 			local dur = Items.get(v.id).dur
 			if dur then s[i].d = math.clamp(tonumber(v.d) or dur, 1, dur) end
 		else
@@ -39,9 +39,11 @@ function Inv.fix(inv)
 	local off = false
 	if type(inv.off) == "table" and type(inv.off.id) == "string" then
 		local d = Items.get(inv.off.id)
-		if d and d.kind == "light" then off = { id = inv.off.id, n = 1, d = d.dur and math.clamp(tonumber(inv.off.d) or d.dur, 1, d.dur) or nil } end
+		if d and d.kind == "light" then off = { id = inv.off.id, n = 1, d = d.dur and math.clamp(tonumber(inv.off.d) or d.dur, 1, d.dur) or nil, e = Items.cleanEnch(inv.off.id, inv.off.e) } end
 	end
-	return { slots = s, bag = (inv.bag == "big" and "big") or inv.bag == true, armor = armor, off = off }
+	-- the enchantments on the armor being worn
+	local armorE = armor and Items.cleanEnch(armor, inv.armorE) or false
+	return { slots = s, bag = (inv.bag == "big" and "big") or inv.bag == true, armor = armor, armorE = armorE or false, off = off }
 end
 
 function Inv.usable(inv, i)
@@ -71,13 +73,14 @@ function Inv.space(inv, id)
 end
 
 -- returns leftover that did not fit. `d` = durability for a single tool (defaults to full)
-function Inv.add(inv, id, n, d)
+-- `e` = enchantments: an enchanted item never joins another stack
+function Inv.add(inv, id, n, d, e)
 	local def = Items.get(id)
 	if not def then return n end
 	local max = Items.stack(id)
 	for i = 1, limit(inv) do
 		local s = inv.slots[i]
-		if n > 0 and s and s.id == id and s.n < max then
+		if n > 0 and s and s.id == id and s.n < max and not e and not s.e then
 			local put = math.min(n, max - s.n)
 			s.n += put
 			n -= put
@@ -86,7 +89,7 @@ function Inv.add(inv, id, n, d)
 	for i = 1, limit(inv) do
 		if n > 0 and not inv.slots[i] then
 			local put = math.min(n, max)
-			inv.slots[i] = { id = id, n = put }
+			inv.slots[i] = { id = id, n = put, e = e }
 			if def.dur then inv.slots[i].d = d or def.dur end
 			n -= put
 		end
@@ -157,7 +160,7 @@ function Inv.fixStash(st)
 		for i = 1, STASH_LIMIT do
 			local v = st.slots[i]
 			if type(v) == "table" and Items.get(v.id) and type(v.n) == "number" and v.n >= 1 then
-				out.slots[i] = { id = v.id, n = math.min(math.floor(v.n), Items.stack(v.id)), d = tonumber(v.d) }
+				out.slots[i] = { id = v.id, n = math.min(math.floor(v.n), Items.stack(v.id)), d = tonumber(v.d), e = Items.cleanEnch(v.id, v.e) }
 			else
 				out.slots[i] = false
 			end
@@ -175,7 +178,7 @@ function Inv.stashPut(st, it)
 	local cap = Inv.stashCap(st)
 	local max = Items.stack(it.id)
 	local n = it.n
-	if not it.d then
+	if not it.d and not it.e then
 		for i = 1, cap do
 			local s = st.slots[i]
 			if n > 0 and s and s.id == it.id and s.n < max then
@@ -188,7 +191,7 @@ function Inv.stashPut(st, it)
 	for i = 1, cap do
 		if n > 0 and not st.slots[i] then
 			local put = math.min(n, max)
-			st.slots[i] = { id = it.id, n = put, d = it.d }
+			st.slots[i] = { id = it.id, n = put, d = it.d, e = it.e }
 			n -= put
 		end
 	end
@@ -199,7 +202,7 @@ function Inv.stashView(st)
 	local out = {}
 	for i = 1, Inv.stashCap(st) do
 		local s = st.slots[i]
-		out[i] = s and { id = s.id, n = s.n, d = s.d } or false
+		out[i] = s and { id = s.id, n = s.n, d = s.d, e = s.e } or false
 	end
 	return out
 end
@@ -210,12 +213,12 @@ function Inv.takeAll(inv)
 	for i = 1, TOTAL do
 		local s = inv.slots[i]
 		if s then
-			table.insert(out, { id = s.id, n = s.n, d = s.d })
+			table.insert(out, { id = s.id, n = s.n, d = s.d, e = s.e })
 			inv.slots[i] = false
 		end
 	end
 	if inv.off then
-		table.insert(out, { id = inv.off.id, n = 1, d = inv.off.d })
+		table.insert(out, { id = inv.off.id, n = 1, d = inv.off.d, e = inv.off.e })
 		inv.off = false
 	end
 	return out
@@ -226,7 +229,7 @@ function Inv.view(inv)
 	local out = {}
 	for i = 1, TOTAL do
 		local s = inv.slots[i]
-		out[i] = s and { id = s.id, n = s.n, d = s.d } or false
+		out[i] = s and { id = s.id, n = s.n, d = s.d, e = s.e } or false
 	end
 	return out
 end

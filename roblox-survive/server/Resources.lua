@@ -127,6 +127,8 @@ function R.hit(player, node, def, bonus)
 	ctx.fx(kind == "tree" and "hitTree" or "hitRock", node:GetPivot().Position, node)
 	if hp <= 0 then
 		local n = rng:NextInteger(rw.min, rw.max)
+		-- Fortune: up to one more per level
+		if def.fortune then n += rng:NextInteger(0, def.fortune) end
 		if power >= 3 then n += 1 end
 		if ctx.lucky(player, 0.03) then n *= 2 end
 		n = math.min(n, ctx.space(player, rw.id))

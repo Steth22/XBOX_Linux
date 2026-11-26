@@ -42,6 +42,8 @@ local TIERS = {
 	{ key = "stone", ar = "حجري", en = "Stone", head = Color3.fromRGB(128, 128, 134), mat = Enum.Material.Slate, power = 1, mult = 1.35, dur = 1.6, price = 2.3 },
 	{ key = "iron", ar = "حديدي", en = "Iron", head = Color3.fromRGB(196, 200, 208), mat = Enum.Material.Metal, power = 2, mult = 1.8, dur = 2.5, price = 5.5 },
 	{ key = "diamond", ar = "ألماسي", en = "Diamond", head = Color3.fromRGB(110, 225, 250), mat = Enum.Material.Glass, power = 4, mult = 2.6, dur = 4.5, price = 15 },
+	{ key = "crystal", ar = "كريستالي", en = "Crystal", head = Color3.fromRGB(196, 120, 255), mat = Enum.Material.Glass, power = 4, mult = 2.85, dur = 3.6, price = 18 },
+	{ key = "obsidian", ar = "أوبسيديان", en = "Obsidian", head = Color3.fromRGB(58, 36, 84), mat = Enum.Material.Glass, power = 6, mult = 3.2, dur = 6.5, price = 25 },
 }
 for _, t in ipairs(TIERS) do
 	I.defs[t.key .. "_axe"] = { ar = "فأس " .. t.ar, en = t.en .. " Axe", kind = "tool", class = "axe", stack = 1, tree = 3 + t.power, rock = 1 + math.floor(t.power / 2), dmg = math.floor(10 * t.mult), dur = math.floor(150 * t.dur), buy = math.floor(30 * t.price), tier = t }
@@ -54,6 +56,8 @@ end
 -- armor: worn on the body, reduces damage taken
 I.defs.leather_armor = { ar = "درع جلدي", en = "Leather Armor", kind = "armor", stack = 1, reduce = 0.15, buy = 140, color = Color3.fromRGB(140, 96, 60), mat = Enum.Material.Fabric }
 I.defs.iron_armor = { ar = "درع حديدي", en = "Iron Armor", kind = "armor", stack = 1, reduce = 0.30, buy = 480, color = Color3.fromRGB(150, 155, 166), mat = Enum.Material.Metal }
+I.defs.crystal_armor = { ar = "درع الكريستال", en = "Crystal Armor", kind = "armor", stack = 1, reduce = 0.42, warm = 6, cool = 6, buy = 1800, color = Color3.fromRGB(190, 120, 250), mat = Enum.Material.Glass }
+I.defs.obsidian_armor = { ar = "درع الأوبسيديان", en = "Obsidian Armor", kind = "armor", stack = 1, reduce = 0.55, buy = 2600, color = Color3.fromRGB(52, 34, 76), mat = Enum.Material.Glass }
 I.defs.diamond_armor = { ar = "درع ألماسي", en = "Diamond Armor", kind = "armor", stack = 1, reduce = 0.45, buy = 1400, color = Color3.fromRGB(80, 176, 214), mat = Enum.Material.Metal }
 
 -- weapons and gear sold at the outposts
@@ -157,6 +161,16 @@ I.shops = {
 		{ key = "potions", ids = { "potion_speed", "potion_strength", "potion_regen", "potion_stone", "potion_vision", "potion_warmth", "potion_antidote" } },
 	},
 }
+-- iron and diamond tools, weapons and armor are made at the crafting table, never sold
+I.CRAFT_ONLY = { iron_axe = true, diamond_axe = true, iron_pickaxe = true, diamond_pickaxe = true, iron_sword = true, diamond_sword = true, iron_armor = true, diamond_armor = true }
+for _, cats in pairs(I.shops) do
+	for ci = #cats, 1, -1 do
+		local cat = cats[ci]
+		local keep = {}
+		for _, id in ipairs(cat.ids) do if not I.CRAFT_ONLY[id] then table.insert(keep, id) end end
+		if #keep == 0 then table.remove(cats, ci) else cat.ids = keep end
+	end
+end
 function I.inShop(shop, id)
 	for _, cat in ipairs(I.shops[shop] or {}) do
 		for _, x in ipairs(cat.ids) do if x == id then return true end end
@@ -171,6 +185,11 @@ I.shop = {
 	"leather_armor", "iron_armor", "diamond_armor",
 	"bow", "arrow", "pistol", "ammo", "trap", "campfire", "bandage", "berries",
 }
+do
+	local keep = {}
+	for _, id in ipairs(I.shop) do if not I.CRAFT_ONLY[id] then table.insert(keep, id) end end
+	I.shop = keep
+end
 
 -- a token costs some of every resource (bought from the secret trader; it unlocks and levels powers)
 I.TOKEN_COST = { { "wood", 20 }, { "stone", 20 }, { "iron", 6 }, { "gold", 4 }, { "diamond", 1 }, { "hide", 2 }, { "crystal", 2 }, { "obsidian", 1 } }
@@ -200,6 +219,14 @@ I.recipes = {
 	{ out = "leather_armor", shape = { "H.H", "HHH", "HHH" } },
 	{ out = "iron_armor", shape = { "I.I", "III", "III" } },
 	{ out = "diamond_armor", shape = { "D.D", "DDD", "DDD" } },
+	{ out = "crystal_armor", shape = { "C.C", "CCC", "CCC" } },
+	{ out = "obsidian_armor", shape = { "O.O", "OOO", "OOO" } },
+	{ out = "crystal_axe", shape = { "CC", "CS", ".S" } },
+	{ out = "crystal_pickaxe", shape = { "CCC", ".S.", ".S." } },
+	{ out = "crystal_sword", shape = { "C", "C", "S" } },
+	{ out = "obsidian_axe", shape = { "OO", "OS", ".S" } },
+	{ out = "obsidian_pickaxe", shape = { "OOO", ".S.", ".S." } },
+	{ out = "obsidian_sword", shape = { "O", "O", "S" } },
 	{ out = "bow", shape = { ".SH", "S.H", ".SH" } },
 	{ out = "arrow", n = 8, shape = { "T", "S", "W" } },
 	{ out = "dynamite", n = 2, shape = { ".S.", "TCT", "TCT" } },
@@ -249,6 +276,115 @@ function I.craft(cells)
 		end
 	end
 	return nil
+end
+
+---------------------------------------------------------------- enchantments (Minecraft style)
+-- on = what they go on: melee (swords, spears, hammers, axes as weapons), ranged, tool (axe, pickaxe, hammer),
+-- armor, any (everything that wears out). Levels go from 1 to max. `group`: only one of a group on an item.
+I.ENCH = {
+	sharpness = { ar = "الحدة", en = "Sharpness", max = 5, on = { melee = true, ranged = true }, weight = 450, desc = { ar = "ضرر أعلى", en = "More damage" } },
+	looting = { ar = "الغنيمة", en = "Looting", max = 3, on = { melee = true, ranged = true }, weight = 900, group = "gain", desc = { ar = "غنائم أكثر من الكائنات", en = "More drops from creatures" } },
+	fortune = { ar = "الحظ", en = "Fortune", max = 3, on = { tool = true }, weight = 900, group = "gain", desc = { ar = "موارد أكثر", en = "More resources" } },
+	unbreaking = { ar = "الصلابة", en = "Unbreaking", max = 3, on = { melee = true, ranged = true, tool = true }, weight = 500, desc = { ar = "تعيش الأداة أطول", en = "Lasts longer" } },
+	fire_aspect = { ar = "لهب", en = "Fire Aspect", max = 2, on = { melee = true }, weight = 1000, group = "touch", desc = { ar = "يحرق الكائن", en = "Sets creatures on fire" } },
+	health_steal = { ar = "سرقة الصحة", en = "Health Steal", max = 4, on = { melee = true, ranged = true }, weight = 1100, group = "touch", desc = { ar = "تستعيد صحة مع كل ضربة", en = "Heals you as you hit" } },
+	protection = { ar = "الحماية", en = "Protection", max = 4, on = { armor = true }, weight = 700, group = "guard", desc = { ar = "ضرر أقل من كل شيء", en = "Less damage from everything" } },
+	fire_protection = { ar = "الحماية من النار", en = "Fire Protection", max = 5, on = { armor = true }, weight = 420, group = "guard", desc = { ar = "تقاوم الحر والنار والحمم", en = "Resists heat, fire and lava" } },
+	cold_protection = { ar = "الحماية من البرد", en = "Cold Protection", max = 5, on = { armor = true }, weight = 420, group = "guard", desc = { ar = "تقاوم البرد", en = "Resists the cold" } },
+}
+I.ENCH_ORDER = { "sharpness", "looting", "fortune", "unbreaking", "fire_aspect", "health_steal", "protection", "fire_protection", "cold_protection" }
+local ROMAN = { "I", "II", "III", "IV", "V" }
+I.ROMAN = ROMAN
+-- every enchanted book is its own item: book_<enchantment>_<level> (one per bag square)
+for _, k in ipairs(I.ENCH_ORDER) do
+	local e = I.ENCH[k]
+	for lvl = 1, e.max do
+		I.defs["book_" .. k .. "_" .. lvl] = { ar = "كتاب " .. e.ar .. " " .. ROMAN[lvl], en = e.en .. " " .. ROMAN[lvl] .. " Book", kind = "book", stack = 1, ench = k, lvl = lvl, sell = 0 }
+	end
+end
+-- which places an item fits for enchanting
+function I.enchSlots(id)
+	local d = I.defs[id]
+	if not d then return {} end
+	local out = {}
+	if d.kind == "armor" then out.armor = true end
+	if d.kind == "light" then out.light = true end
+	if d.kind == "ranged" then out.ranged = true end
+	if d.kind == "tool" then
+		if d.class == "axe" or d.class == "pickaxe" or d.class == "hammer" then out.tool = true end
+		if d.class == "sword" or d.class == "spear" or d.class == "hammer" or d.class == "axe" then out.melee = true end
+	end
+	return out
+end
+function I.canEnchant(id, k)
+	local e = I.ENCH[k]
+	if not e then return false end
+	for place in pairs(I.enchSlots(id)) do if e.on[place] then return true end end
+	return false
+end
+-- the enchantment already on the item that can't go with k, or nil
+function I.enchConflict(ench, k)
+	local g = I.ENCH[k] and I.ENCH[k].group
+	if not g or type(ench) ~= "table" then return nil end
+	for other in pairs(ench) do
+		if other ~= k and I.ENCH[other] and I.ENCH[other].group == g then return other end
+	end
+	return nil
+end
+-- keeps only valid enchantments for that item (data from the save or the network)
+function I.cleanEnch(id, e)
+	if type(e) ~= "table" then return nil end
+	local out, n = {}, 0
+	for k, v in pairs(e) do
+		local def = I.ENCH[k]
+		local lvl = tonumber(v)
+		if def and lvl and I.canEnchant(id, k) then
+			out[k] = math.clamp(math.floor(lvl), 1, def.max)
+			n += 1
+		end
+	end
+	return n > 0 and out or nil
+end
+-- the blacksmith's price for putting enchantment k at level lvl on an item (never below 1000)
+function I.enchPrice(k, lvl)
+	local e = I.ENCH[k]
+	if not e then return 0 end
+	local p = 1000 + e.weight * (lvl ^ 1.6)
+	return math.floor(p / 50 + 0.5) * 50
+end
+-- the blacksmith's anvil: an item (or a book) on the left, a book in the middle.
+-- Returns { out = item, price, k, lvl } or nil and the reason ("enchNotFit" / "enchConflict" / "enchMaxed" / "needBook").
+function I.anvil(item, book)
+	if not item or not book then return nil, "needBook" end
+	local bd = I.defs[book.id]
+	if not bd or bd.kind ~= "book" then return nil, "needBook" end
+	local k, L = bd.ench, bd.lvl
+	local max = I.ENCH[k].max
+	local idef = I.defs[item.id]
+	if not idef then return nil, "needBook" end
+	if idef.kind == "book" then
+		-- two of the same book make the next level
+		if item.id ~= book.id then return nil, "enchSameBook" end
+		if L >= max then return nil, "enchMaxed" end
+		return { out = { id = "book_" .. k .. "_" .. (L + 1), n = 1 }, price = I.enchPrice(k, L + 1), k = k, lvl = L + 1 }
+	end
+	if not I.canEnchant(item.id, k) then return nil, "enchNotFit" end
+	local e = item.e or {}
+	local clash = I.enchConflict(e, k)
+	if clash then return nil, "enchConflict", clash end
+	local cur = e[k] or 0
+	local new = (L > cur and L) or ((L == cur and cur < max) and cur + 1) or nil
+	if not new then return nil, "enchMaxed" end
+	local ne = {}
+	for kk, v in pairs(e) do ne[kk] = v end
+	ne[k] = new
+	return { out = { id = item.id, n = 1, d = item.d, e = ne }, price = I.enchPrice(k, new), k = k, lvl = new }
+end
+
+function I.enchName(k, lvl, lang)
+	local e = I.ENCH[k]
+	if not e then return "" end
+	return (lang == "en" and e.en or e.ar) .. " " .. (ROMAN[lvl] or tostring(lvl))
 end
 
 function I.get(id) return I.defs[id] end
@@ -631,6 +767,16 @@ SPECS.berries = { P(Vector3.new(0.55, 0.55, 0.55), nil, Color3.fromRGB(150, 30, 
 	P(Vector3.new(0.5, 0.06, 0.3), CFrame.new(0.2, 0.88, -0.2) * A(0, 0, r(20)), Color3.fromRGB(70, 130, 60), Enum.Material.Grass) }
 -- stick: a thin wooden rod
 SPECS.stick = { P(Vector3.new(0.22, 0.22, 2.2), CFrame.new(0, 0, 0) * A(r(30), 0, r(20)), WOOD, Enum.Material.Wood) }
+-- an enchanted book: purple cover with glowing runes and gold corners
+SPECS.ench_book = { P(Vector3.new(1.5, 0.42, 1.9), nil, Color3.fromRGB(110, 50, 170), Enum.Material.Fabric),
+	P(Vector3.new(1.4, 0.34, 1.82), CFrame.new(0.06, 0, 0), Color3.fromRGB(246, 238, 214), Enum.Material.SmoothPlastic),
+	P(Vector3.new(1.52, 0.1, 1.92), CFrame.new(0, 0.2, 0), Color3.fromRGB(130, 60, 200), Enum.Material.Fabric),
+	P(Vector3.new(0.7, 0.04, 0.7), CFrame.new(0.05, 0.27, 0), Color3.fromRGB(220, 140, 255), Enum.Material.Neon),
+	P(Vector3.new(0.12, 0.04, 1.4), CFrame.new(0.05, 0.27, 0), Color3.fromRGB(200, 120, 255), Enum.Material.Neon),
+	P(Vector3.new(0.28, 0.12, 0.28), CFrame.new(0.6, 0.22, 0.8), GOLD, Enum.Material.Metal),
+	P(Vector3.new(0.28, 0.12, 0.28), CFrame.new(0.6, 0.22, -0.8), GOLD, Enum.Material.Metal),
+	P(Vector3.new(0.2, 0.46, 1.92), CFrame.new(-0.7, 0, 0), Color3.fromRGB(80, 30, 120), Enum.Material.Fabric) }
+for id, d in pairs(I.defs) do if d.kind == "book" then SPECS[id] = SPECS.ench_book end end
 -- token: a thick gold coin with a glowing purple gem set in it
 SPECS.token = { P(Vector3.new(0.3, 1.5, 1.5), nil, Color3.fromRGB(236, 184, 60), Enum.Material.Metal, CYL),
 	P(Vector3.new(0.34, 1.2, 1.2), nil, Color3.fromRGB(200, 150, 40), Enum.Material.Metal, CYL),
@@ -712,12 +858,13 @@ SPECS.shadow_blade = recolor(swordSpec(STEEL, Color3.fromRGB(40, 30, 50), Enum.M
 SPECS.magma_blade = recolor(swordSpec(STEEL, Color3.fromRGB(60, 40, 36), Enum.Material.Metal), Color3.fromRGB(255, 110, 30), Enum.Material.Neon)
 
 ---------------------------------------------------------------- armor (as a chest piece on a stand)
-for _, id in ipairs({ "leather_armor", "iron_armor", "diamond_armor" }) do
+for _, id in ipairs({ "leather_armor", "iron_armor", "diamond_armor", "crystal_armor", "obsidian_armor" }) do
 	local d = I.defs[id]
 	local c, dk, lt = d.color, d.color:Lerp(Color3.new(0, 0, 0), 0.25), d.color:Lerp(Color3.new(1, 1, 1), 0.25)
 	local strap = Color3.fromRGB(70, 48, 32)
-	local edgeMat = id == "diamond_armor" and Enum.Material.Neon or d.mat
-	local edgeC = id == "diamond_armor" and d.color:Lerp(Color3.new(1, 1, 1), 0.5) or dk
+	local shiny = id == "diamond_armor" or id == "crystal_armor" or id == "obsidian_armor"
+	local edgeMat = shiny and Enum.Material.Neon or d.mat
+	local edgeC = (id == "obsidian_armor" and Color3.fromRGB(170, 90, 255)) or (shiny and d.color:Lerp(Color3.new(1, 1, 1), 0.5)) or dk
 	if id == "leather_armor" then
 		SPECS[id] = { P(Vector3.new(1.6, 1.5, 0.85), nil, c, d.mat),
 			P(Vector3.new(0.18, 1.8, 0.1), CFrame.new(0, 0, -0.46) * A(0, 0, r(35)), strap, Enum.Material.Fabric),

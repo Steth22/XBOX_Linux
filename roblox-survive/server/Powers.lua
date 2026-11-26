@@ -10,6 +10,14 @@ P.MAX = 5
 local ctx, Mobs, Data, Inventory
 local hits = {} -- [mob model] = { fire = n, ice = n }
 local burning = {} -- [mob model] = { untilT, dps, owner }
+-- sets a creature on fire (the Fire Aspect enchantment uses it too)
+function P.ignite(m, secs, dps, owner)
+	local b = burning[m]
+	local untilT = os.clock() + secs
+	if b and b.untilT > untilT and b.dps >= dps then return end
+	burning[m] = { untilT = untilT, dps = dps, owner = owner }
+	m:SetAttribute("Burning", true)
+end
 
 -- tokens to go from level (n - 1) to level n
 function P.cost(n) return n end

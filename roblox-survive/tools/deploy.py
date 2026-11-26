@@ -31,6 +31,8 @@ FILES = [
  ("ServerScriptService/Services/Crafting","ModuleScript","server/Crafting.lua"),
  ("ServerScriptService/Services/Homes","ModuleScript","server/Homes.lua"),
  ("ServerScriptService/Services/Shutters","ModuleScript","server/Shutters.lua"),
+ ("ServerScriptService/Services/Smith","ModuleScript","server/Smith.lua"),
+ ("ServerScriptService/Services/Drops","ModuleScript","server/Drops.lua"),
  ("ServerScriptService/Services/Weather","ModuleScript","server/Weather.lua"),
  ("ServerScriptService/Services/Powers","ModuleScript","server/Powers.lua"),
  ("ServerScriptService/Services/Achieve","ModuleScript","server/Achieve.lua"),

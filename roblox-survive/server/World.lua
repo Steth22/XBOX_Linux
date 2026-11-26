@@ -21,6 +21,7 @@ local Bestiary = require(ReplicatedStorage.Shared.Bestiary)
 local Furnace = require(script.Parent.Furnace)
 local Crafting = require(script.Parent.Crafting)
 local Homes = require(script.Parent.Homes)
+local Smith = require(script.Parent.Smith)
 local Weather = require(script.Parent.Weather)
 local Powers = require(script.Parent.Powers)
 local Achieve = require(script.Parent.Achieve)
@@ -46,6 +47,7 @@ local lastHit = {} -- [Player] = what hurt them last (shown on the death screen)
 local placedOnce = {} -- [Player] = already put at their saved spot this visit
 local spawnBed = {} -- [Player] = the bed they respawn at (a placed bed only lives on this server)
 local makeBed -- defined with the placing code
+local enchantHit -- defined with the swing code
 local awaitingReady = {} -- [Player] = true until their loading screen has finished
 local lamp = {} -- [Player] = hotbar/bag slot of the lantern hanging in the left hand
 local deathBag = {} -- [Player] = { model, x, z } items left where the player died
@@ -192,7 +194,7 @@ local function snapshot(player)
 		hp = hum and hum.Health or 0, maxHp = hum and hum.MaxHealth or 100,
 		skills = room.skills, night = ReplicatedStorage:GetAttribute("Night") == true, clock = Lighting.ClockTime,
 		day = ReplicatedStorage:GetAttribute("Day") or 1,
-		armor = room.inv.armor or false,
+		armor = room.inv.armor or false, armorE = room.inv.armorE or false,
 		off = room.inv.off or false,
 		powers = Powers.of(room),
 		boost = boost(),
@@ -259,7 +261,7 @@ end
 function ctx.giveItem(player, it)
 	local room = Data.room(player)
 	if not room then return it.n end
-	local rest = Inventory.add(room.inv, it.id, it.n, it.d)
+	local rest = Inventory.add(room.inv, it.id, it.n, it.d, it.e)
 	push(player)
 	return rest
 end
@@ -291,6 +293,13 @@ function ctx.hurt(player, amount, cause)
 	local room = Data.room(player)
 	local armor = room and room.inv.armor and Items.get(room.inv.armor)
 	if armor then amount *= (1 - armor.reduce) end
+	-- armor enchantments
+	local ae = room and room.inv.armorE
+	if type(ae) == "table" then
+		if ae.protection then amount *= (1 - 0.05 * ae.protection) end
+		if ae.fire_protection and (cause == "heat" or cause == "lava" or cause == "fire" or cause == "magma" or cause == "lavalizard") then amount *= (1 - 0.15 * ae.fire_protection) end
+		if ae.cold_protection and cause == "cold" then amount *= (1 - 0.15 * ae.cold_protection) end
+	end
 	if hasBuff(player, "stone") then amount *= 0.6 end
 	if sleeping[player] and ctx.wake then ctx.wake(player) end
 	if hum.Health - amount <= 0 and (not luckCd[player] or os.clock() - luckCd[player] > 90) then
@@ -416,6 +425,9 @@ local function useDurability(player, index)
 	local slot = room and room.inv.slots[index]
 	if not slot or not slot.d then return end
 	if ctx.lucky(player, 0.04) then return end
+	-- Unbreaking: a chance that the use costs nothing
+	local ub = slot.e and slot.e.unbreaking
+	if ub and rng:NextNumber() < ub / (ub + 1) then return end
 	slot.d -= 1
 	if slot.d <= 0 then
 		room.inv.slots[index] = false
@@ -424,6 +436,15 @@ local function useDurability(player, index)
 	end
 end
 
+
+-- Fire Aspect sets the creature on fire, Health Steal heals you by part of the damage
+function enchantHit(player, m, dmg, e)
+	if e.fire_aspect then pcall(Powers.ignite, m, 2 + 1.5 * e.fire_aspect, 3 + 3 * e.fire_aspect, player) end
+	if e.health_steal then
+		local _, hum = hrpOf(player)
+		if hum and hum.Health > 0 then hum.Health = math.min(hum.MaxHealth, hum.Health + dmg * 0.04 * e.health_steal) end
+	end
+end
 
 local function swing(player, index, def)
 	if not cd(player, "swing", 0.55) then return end
@@ -447,7 +468,10 @@ local function swing(player, index, def)
 	end
 	if best then
 		local slotNow = Data.room(player) and Data.room(player).inv.slots[index]
-		Mobs.damage(best, (def.dmg or 5) * (1 + 0.1 * str) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1), player, { id = slotNow and slotNow.id, class = def.class, lamp = lamp[player] ~= nil })
+		local e = slotNow and slotNow.e or {}
+		local dmg = (def.dmg or 5) * (1 + 0.1 * str) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1) * (1 + 0.15 * (e.sharpness or 0))
+		Mobs.damage(best, dmg, player, { id = slotNow and slotNow.id, class = def.class, lamp = lamp[player] ~= nil, looting = e.looting })
+		enchantHit(player, best, dmg, e)
 		useDurability(player, index)
 		return
 	end
@@ -468,7 +492,10 @@ local function swing(player, index, def)
 		end
 	end
 	local node = Resources.pick(parts, hrp.Position)
-	if node and Resources.hit(player, node, def, math.floor(str / 3)) then
+	local slotE = Data.room(player) and Data.room(player).inv.slots[index]
+	local fort = slotE and slotE.e and slotE.e.fortune
+	local hitDef = fort and setmetatable({ fortune = fort }, { __index = def }) or def
+	if node and Resources.hit(player, node, hitDef, math.floor(str / 3)) then
 		useDurability(player, index)
 	end
 end
@@ -503,7 +530,12 @@ local function shoot(player, index, dir)
 	ctx.fx("anim", char, def.ammo == "arrow" and "bow" or "gun")
 	if res then
 		local m = Mobs.modelOf(res.Instance)
-		if m then Mobs.damage(m, def.dmg * (1 + 0.1 * skill(player, "strength")) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1), player, { id = slot.id, class = "ranged", lamp = lamp[player] ~= nil }) end
+		if m then
+			local e = slot.e or {}
+			local dmg = def.dmg * (1 + 0.1 * skill(player, "strength")) * (hasBuff(player, "strength") and 1.5 or 1) * ((adminOf(player) or {}).dmg or 1) * (1 + 0.15 * (e.sharpness or 0))
+			Mobs.damage(m, dmg, player, { id = slot.id, class = "ranged", lamp = lamp[player] ~= nil, looting = e.looting })
+			enchantHit(player, m, dmg, e)
+		end
 		local victim = Players:GetPlayerFromCharacter(res.Instance:FindFirstAncestorOfClass("Model"))
 		if victim and victim ~= player and serverRec and serverRec.pvp then
 			ctx.hurt(victim, def.dmg * 0.6, "@" .. player.DisplayName)
@@ -619,7 +651,7 @@ function select(player, index)
 		if d and d.kind == "light" and i >= 1 and i <= Config.HOTBAR then
 			-- a light goes into the off hand (swapping with whatever was there)
 			local prev = room.inv.off
-			room.inv.off = { id = sl.id, n = 1, d = sl.d }
+			room.inv.off = { id = sl.id, n = 1, d = sl.d, e = sl.e }
 			if sl.n > 1 then
 				sl.n -= 1
 				if prev then
@@ -627,7 +659,7 @@ function select(player, index)
 					if rest > 0 then room.inv.off = prev sl.n += 1 notify(player, "bagFull") push(player) return end
 				end
 			else
-				room.inv.slots[i] = prev and { id = prev.id, n = 1, d = prev.d } or false
+				room.inv.slots[i] = prev and { id = prev.id, n = 1, d = prev.d, e = prev.e } or false
 			end
 			lamp[player] = true
 			setLamp(player, true)
@@ -1192,6 +1224,10 @@ end
 function actions.move(player, room, a, b)
 	a, b = tonumber(a), tonumber(b)
 	if not a or not b then return end
+	if a >= 400 or b >= 400 then
+		if Smith.move(player, room, a, b) then revalidate(player) end
+		return
+	end
 	if a >= 300 or b >= 300 then
 		if Crafting.move(player, room, a, b) then revalidate(player) end
 		return
@@ -1210,20 +1246,21 @@ function actions.move(player, room, a, b)
 		if not d then return end
 		if b == EQ_ARMOR then
 			if d.kind ~= "armor" then notify(player, "wrongSlot") return end
-			local old = inv.armor
+			local old, oldE = inv.armor, inv.armorE
 			inv.armor = sl.id
-			inv.slots[a] = old and { id = old, n = 1 } or false
+			inv.armorE = sl.e or false
+			inv.slots[a] = old and { id = old, n = 1, e = oldE or nil } or false
 			wearArmor(player, inv.armor)
 			notify(player, "armorOn")
 		else
 			if d.kind ~= "light" then notify(player, "wrongSlot") return end
 			local old = inv.off
-			inv.off = { id = sl.id, n = 1, d = sl.d }
+			inv.off = { id = sl.id, n = 1, d = sl.d, e = sl.e }
 			if sl.n > 1 then
 				sl.n -= 1
-				if old and Inventory.add(inv, old.id, 1, old.d) > 0 then inv.off = old sl.n += 1 notify(player, "bagFull") push(player) return end
+				if old and Inventory.add(inv, old.id, 1, old.d, old.e) > 0 then inv.off = old sl.n += 1 notify(player, "bagFull") push(player) return end
 			else
-				inv.slots[a] = old and { id = old.id, n = 1, d = old.d } or false
+				inv.slots[a] = old and { id = old.id, n = 1, d = old.d, e = old.e } or false
 			end
 			lamp[player] = true
 			setLamp(player, true)
@@ -1239,16 +1276,17 @@ function actions.move(player, room, a, b)
 		if a == EQ_ARMOR then
 			if not inv.armor then return end
 			if there and not (td and td.kind == "armor") then return end
-			local old = inv.armor
+			local old, oldE = inv.armor, inv.armorE
 			inv.armor = there and there.id or false
-			inv.slots[b] = { id = old, n = 1 }
+			inv.armorE = there and there.e or false
+			inv.slots[b] = { id = old, n = 1, e = oldE or nil }
 			wearArmor(player, inv.armor or nil)
 		else
 			if not inv.off then return end
 			if there and not (td and td.kind == "light" and there.n == 1) then return end
 			local old = inv.off
-			inv.off = there and { id = there.id, n = 1, d = there.d } or false
-			inv.slots[b] = { id = old.id, n = 1, d = old.d }
+			inv.off = there and { id = there.id, n = 1, d = there.d, e = there.e } or false
+			inv.slots[b] = { id = old.id, n = 1, d = old.d, e = old.e }
 			lamp[player] = inv.off and true or nil
 			setLamp(player, inv.off ~= false)
 		end
@@ -1599,7 +1637,7 @@ function actions.stashPut(player, room, i)
 	if not nearStash(player) or not i or not Inventory.usable(room.inv, i) then return end
 	local s = room.inv.slots[i]
 	if not s then return end
-	local stored = Inventory.stashPut(room.stash, { id = s.id, n = s.n, d = s.d })
+	local stored = Inventory.stashPut(room.stash, { id = s.id, n = s.n, d = s.d, e = s.e })
 	if stored <= 0 then notify(player, "stashFull") return end
 	Inventory.removeSlot(room.inv, i, stored)
 	revalidate(player)
@@ -1610,7 +1648,7 @@ function actions.stashTake(player, room, j)
 	if not nearStash(player) or not j then return end
 	local s = room.stash.slots[j]
 	if not s then return end
-	local rest = Inventory.add(room.inv, s.id, s.n, s.d)
+	local rest = Inventory.add(room.inv, s.id, s.n, s.d, s.e)
 	if rest >= s.n then notify(player, "bagFull") return end
 	if rest > 0 then s.n = rest else room.stash.slots[j] = false end
 	push(player)
@@ -1634,6 +1672,7 @@ function actions.houseInfo(player) notify(player, "openHouse", Homes.info(player
 function actions.chestPut(player, room, n, i) Homes.chestPut(player, n, i) end
 function actions.chestTake(player, room, n, k) Homes.chestTake(player, n, k) end
 function actions.closeCraft(player) Crafting.close(player) revalidate(player) end
+function actions.closeSmith(player) Smith.close(player) revalidate(player) end
 -- a tap: one item from bag slot a into grid cell b (301..309)
 function actions.craftOne(player, room, a, b)
 	a, b = tonumber(a), tonumber(b)
@@ -1890,7 +1929,7 @@ function World.start(r)
 		if m then
 			local p = m:GetPivot().Position
 			local copy = {}
-			for _, it in ipairs(items) do table.insert(copy, { id = it.id, n = it.n, d = it.d }) end
+			for _, it in ipairs(items) do table.insert(copy, { id = it.id, n = it.n, d = it.d, e = it.e }) end
 			r.lostBag = { pos = { math.floor(p.X * 10) / 10, math.floor(p.Y * 10) / 10, math.floor(p.Z * 10) / 10 }, items = copy, expires = expires }
 		else
 			r.lostBag = nil
@@ -1908,6 +1947,10 @@ function World.start(r)
 	if not okC then Debug.log("start.craft", errC) end
 	local okHm, errHm = pcall(function() Homes.start(ctx, Inventory, Data, Furnace, Crafting) end)
 	if not okHm then Debug.log("start.homes", errHm) end
+	local okDr, errDr = pcall(function() require(script.Parent.Drops).start(ctx, Inventory, Data) end)
+	if not okDr then Debug.log("start.drops", errDr) end
+	local okSm, errSm = pcall(function() Smith.start(ctx, Inventory, Data, Furnace) end)
+	if not okSm then Debug.log("start.smith", errSm) end
 	local okSh, errSh = pcall(function() require(script.Parent.Shutters).start(vendors, ctx) end)
 	if not okSh then Debug.log("start.shutters", errSh) end
 

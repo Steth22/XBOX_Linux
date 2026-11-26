@@ -243,7 +243,7 @@ function Data.loadRoom(player, code)
 					for i = 1, House.CHEST_SLOTS do
 						local v = type(src) == "table" and (src[i] or src[tostring(i)])
 						if type(v) == "table" and Items.get(v.id) and tonumber(v.n) and v.n >= 1 then
-							slots[i] = { id = v.id, n = math.min(math.floor(v.n), Items.stack(v.id)), d = tonumber(v.d) }
+							slots[i] = { id = v.id, n = math.min(math.floor(v.n), Items.stack(v.id)), d = tonumber(v.d), e = Items.cleanEnch(v.id, v.e) }
 						else
 							slots[i] = false
 						end

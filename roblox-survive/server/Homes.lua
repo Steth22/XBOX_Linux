@@ -345,7 +345,7 @@ function Homes.chestPut(player, n, i)
 	if not s or not box then return end
 	local max = Items.stack(s.id)
 	local left = s.n
-	if not s.d then
+	if not s.d and not s.e then
 		for k = 1, House.CHEST_SLOTS do
 			local b = box[k]
 			if left > 0 and b and b.id == s.id and b.n < max then
@@ -358,7 +358,7 @@ function Homes.chestPut(player, n, i)
 	for k = 1, House.CHEST_SLOTS do
 		if left > 0 and not box[k] then
 			local put = math.min(left, max)
-			box[k] = { id = s.id, n = put, d = s.d }
+			box[k] = { id = s.id, n = put, d = s.d, e = s.e }
 			left -= put
 		end
 	end
@@ -376,7 +376,7 @@ function Homes.chestTake(player, n, k)
 	local box = room.house.chests[n]
 	local s = box and box[k]
 	if not s then return end
-	local rest = Inventory.add(room.inv, s.id, s.n, s.d)
+	local rest = Inventory.add(room.inv, s.id, s.n, s.d, s.e)
 	if rest >= s.n then ctx.notify(player, "bagFull") return end
 	if rest > 0 then s.n = rest else box[k] = false end
 	ctx.notify(player, "chest", Homes.chestView(player, n))

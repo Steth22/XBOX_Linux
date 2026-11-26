@@ -43,6 +43,16 @@ function M.start(gui, remotes)
 	local refreshModal
 	local furnaceData, refreshFurnace, furnaceModal -- the furnace window (built further down)
 	local craftData, refreshCraft, craftModal -- the crafting table window
+	local smithData, refreshSmith, smithModal -- the blacksmith's anvil
+	-- "Sharpness III, Unbreaking II" for an item's enchantments
+	local function enchText(e)
+		if type(e) ~= "table" then return "" end
+		local parts = {}
+		for _, k in ipairs(Items.ENCH_ORDER) do
+			if e[k] then table.insert(parts, Items.enchName(k, e[k], lang)) end
+		end
+		return table.concat(parts, lang == "en" and ", " or "، ")
+	end
 	local achModal -- the achievements window
 	local furnaceBagSize = ""
 	local craftBagSize = ""
@@ -114,7 +124,8 @@ function M.start(gui, remotes)
 			else
 				w.durBg.Visible = false
 			end
-			UI.tween(st, 0.15, { Color = selected and c.gold or c.card2, Thickness = selected and 3.5 or 2 })
+			local magic = data and (data.e or (Items.get(data.id) and Items.get(data.id).kind == "book"))
+			UI.tween(st, 0.15, { Color = selected and c.gold or (magic and Color3.fromRGB(190, 120, 255)) or c.card2, Thickness = (selected or magic) and 3 or 2 })
 		end
 		return w
 	end
@@ -136,7 +147,7 @@ function M.start(gui, remotes)
 		return p.X >= a.X and p.X <= a.X + s.X and p.Y >= a.Y and p.Y <= a.Y + s.Y
 	end
 	local function targetAt(p)
-		if modalKind ~= "bag" and modalKind ~= "furnace" and modalKind ~= "craft" then return nil end
+		if modalKind ~= "bag" and modalKind ~= "furnace" and modalKind ~= "craft" and modalKind ~= "smith" then return nil end
 		for btn, reg in pairs(slotsReg) do
 			if btn.Parent and btn:IsDescendantOf(root) and inside(btn, p) then return btn, reg end
 		end
@@ -218,7 +229,9 @@ function M.start(gui, remotes)
 				local data = state and (press.index == 100 and state.armor and { id = state.armor, n = 1 } or press.index == 101 and state.off
 					or press.index == 201 and fd.input or press.index == 202 and fd.fuel or press.index == 203 and fd.out
 					or (press.index >= 301 and press.index <= 309 and craftData and craftData.cells[press.index - 300])
-					or (press.index == 310 and craftData and craftData.out) or state.slots[press.index])
+					or (press.index == 310 and craftData and craftData.out)
+					or (press.index == 401 and smithData and smithData.item) or (press.index == 402 and smithData and smithData.book)
+					or (press.index == 403 and smithData and smithData.out) or state.slots[press.index])
 				if not data then press = nil return end
 				startDrag(data)
 			end
@@ -404,6 +417,7 @@ function M.start(gui, remotes)
 			if thisKind == "shop" and not rebuilding then cinematic(false) end
 			if thisKind == "furnace" then act("closeFurnace") end
 			if thisKind == "craft" then act("closeCraft") end
+			if thisKind == "smith" then act("closeSmith") end
 		end)
 		closeModal = close
 		return content, panel
@@ -497,7 +511,7 @@ function M.start(gui, remotes)
 		local ar = lang == "ar"
 		-- equipment slots (100 = armor, 101 = off hand); drag items in and out like any bag slot
 		if bagEq[100] and bagEq[100].button.Parent then
-			bagEq[100].set(state.armor and { id = state.armor, n = 1 } or nil, pending == 100)
+			bagEq[100].set(state.armor and { id = state.armor, n = 1, e = state.armorE or nil } or nil, pending == 100)
 			bagEq[101].set(state.off or nil, pending == 101)
 		end
 		local d = pending and state.slots[pending]
@@ -509,6 +523,12 @@ function M.start(gui, remotes)
 			local idx = pending
 			local function btn(text, color, cb)
 				UI.button({ Text = text, Size = UDim2.fromOffset(112, 44), BackgroundColor3 = color, TextColor3 = c.text, TextSize = 16, ZIndex = 54, Parent = row }, cb)
+			end
+			local extra = enchText(d.e)
+			local bd = Items.get(d.id)
+			if bd and bd.kind == "book" then extra = lang == "en" and Items.ENCH[bd.ench].desc.en or Items.ENCH[bd.ench].desc.ar end
+			if extra ~= "" then
+				UI.text({ Text = extra, Size = UDim2.new(1, 0, 0, 18), Position = UDim2.fromOffset(0, -12), TextSize = 13, TextColor3 = Color3.fromRGB(200, 140, 255), ZIndex = 54, Parent = below })
 			end
 			UI.text({ Text = Items.name(d.id, lang) .. (d.n > 1 and ("  x" .. d.n) or ""), Size = UDim2.fromOffset(110, 44), TextWrapped = true, TextSize = 15, TextColor3 = c.gold, ZIndex = 54, Parent = row })
 			btn(T("drop1"), c.card2, function() act("discard", idx, 1) end)
@@ -553,9 +573,10 @@ function M.start(gui, remotes)
 		end
 	end
 
+	local houseData, chestData, houseModal, chestModal
+	do
 	---------------------------------------------------------------- the player's house and its chests
 	local House = require(Shared:WaitForChild("House"))
-	local houseData, chestData = nil, nil
 	local housePick = nil
 	-- a small 3D picture of a house design at a level
 	local function housePreview(parent, key, lvl, z)
@@ -599,7 +620,7 @@ function M.start(gui, remotes)
 		end
 		return row
 	end
-	local function houseModal()
+	function houseModal()
 		local h = houseData
 		if not h then return end
 		local content = openModal("house", T("house"), UDim2.fromOffset(860, 540))
@@ -675,7 +696,7 @@ function M.start(gui, remotes)
 		end)
 	end
 
-	local function chestModal()
+	function chestModal()
 		local v = chestData
 		if not v then return end
 		local content = openModal("chest", Locale.f(lang, "chestN", v.n), UDim2.fromOffset(820, 520))
@@ -699,6 +720,8 @@ function M.start(gui, remotes)
 		UI.corner(right, 12)
 		UI.pad(right, 6)
 		grid(right, v.slots, House.CHEST_SLOTS, function(k) if v.slots[k] then act("chestTake", v.n, k) end end)
+	end
+
 	end
 
 	-- a crate's contents (its own items, not your storage)
@@ -1659,6 +1682,8 @@ function M.start(gui, remotes)
 	-- underground: the nearest dwarf trader is always marked, so you can find him
 	local dwarfMarker = makeMarker(Color3.fromRGB(255, 170, 70), "coin")
 	local dwarfSpots = nil
+	-- the supply crate: marked for everyone, with the time left
+	local dropMarker = makeMarker(Color3.fromRGB(255, 210, 90), "key")
 	RunService.Heartbeat:Connect(function()
 		local char = player.Character
 		local cam = workspace.CurrentCamera
@@ -1670,7 +1695,22 @@ function M.start(gui, remotes)
 			deathMarker.bb.Enabled = false
 			for _, mk in pairs(playerMarkers) do mk.bb.Enabled = false end
 			dwarfMarker.bb.Enabled = false
+			dropMarker.bb.Enabled = false
 			return
+		end
+		local dropRaw = ReplicatedStorage:GetAttribute("SupplyDrop")
+		local dx, dy, dz, dexp = nil, nil, nil, nil
+		if type(dropRaw) == "string" and dropRaw ~= "" then
+			dx, dy, dz, dexp = string.match(dropRaw, "([%-%d]+),([%-%d]+),([%-%d]+),(%d+)")
+		end
+		if dx then
+			local p = Vector3.new(tonumber(dx), tonumber(dy) + 7, tonumber(dz))
+			local left = math.max(0, tonumber(dexp) - os.time())
+			dropMarker.anchor.Position = p
+			dropMarker.bb.Enabled = left > 0
+			dropMarker.label.Text = T("o_drop") .. "  " .. Locale.f(lang, "meters", math.floor((p - from).Magnitude)) .. "  " .. left .. "s"
+		else
+			dropMarker.bb.Enabled = false
 		end
 		-- your items
 		if state and state.death then
@@ -2370,6 +2410,7 @@ function M.start(gui, remotes)
 		refreshFurnace()
 	end
 
+	do
 	---------------------------------------------------------------- crafting table (bag on the left, 3x3 grid on the right)
 	local craftW, craftBag, craftGhost, craftRecipe = {}, {}, {}, nil
 	function refreshCraft()
@@ -2517,6 +2558,118 @@ function M.start(gui, remotes)
 		refreshCraft()
 	end
 
+	end
+
+	do
+	---------------------------------------------------------------- the blacksmith's anvil (bag on the left; item + book = result on the right)
+	local smithW, smithBag, smithInfo, smithPrice = {}, {}, nil, nil
+	local PURPLE = Color3.fromRGB(190, 120, 255)
+	function refreshSmith()
+		if modalKind ~= "smith" or not state or not smithData then return end
+		for i, w in pairs(smithBag) do if w.button.Parent then w.set(state.slots[i], pending == i) end end
+		local v = smithData
+		if smithW[401] then
+			smithW[401].set(v.item or nil, false)
+			smithW[402].set(v.book or nil, false)
+			smithW[403].set(v.out or nil, false)
+		end
+		if smithPrice and smithPrice.Parent then
+			if v.out then
+				smithPrice.Text = Locale.f(lang, "smithCost", Format.number(v.price or 0))
+				smithPrice.TextColor3 = (state.coins or 0) >= (v.price or 0) and c.gold or c.danger
+			elseif v.err then
+				smithPrice.Text = v.err == "enchConflict" and Locale.f(lang, "enchConflict", Items.ENCH[v.clash] and (lang == "en" and Items.ENCH[v.clash].en or Items.ENCH[v.clash].ar) or "") or T(v.err)
+				smithPrice.TextColor3 = c.danger
+			else
+				smithPrice.Text = T("smithTip")
+				smithPrice.TextColor3 = c.dim
+			end
+		end
+		if smithInfo and smithInfo.Parent then
+			local it = v.out or v.item
+			local txt = it and enchText(it.e) or ""
+			smithInfo.Text = txt ~= "" and txt or (it and T("noEnchants") or "")
+		end
+	end
+	function smithModal()
+		local content = openModal("smith", T("smith"), UDim2.fromOffset(880, 470))
+		smithW, smithBag = {}, {}
+		local function tapBag(i)
+			local sl = state and state.slots[i]
+			if not sl then return end
+			local d = Items.get(sl.id)
+			if d and d.kind == "book" and smithData and smithData.item then act("move", i, 402)
+			elseif d and (d.kind == "book" or next(Items.enchSlots(sl.id))) then act("move", i, 401)
+			else UI.toast(root, T("enchNotFit")) end
+		end
+		local left = UI.frame({ Size = UDim2.new(0, 452, 1, 0), BackgroundColor3 = c.card, BackgroundTransparency = 0.5, ZIndex = 53, Parent = content })
+		UI.corner(left, 14)
+		UI.text({ Text = T("yourItems"), Size = UDim2.new(1, -24, 0, 30), Position = UDim2.fromOffset(12, 6), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = c.dim, ZIndex = 54, Parent = left })
+		local hb = UI.frame({ Size = UDim2.new(1, 0, 0, 60), Position = UDim2.fromOffset(0, 42), BackgroundTransparency = 1, ZIndex = 54, Parent = left })
+		UI.list(hb, 8, Enum.FillDirection.Horizontal)
+		for i = 1, Config.HOTBAR do
+			local w = slotWidget(hb, 60, i)
+			w.button.ZIndex = 55
+			register(w, i, function() tapBag(i) end)
+			smithBag[i] = w
+		end
+		local bigF = state.bag == "big"
+		local cell = bigF and 40 or 60
+		local grid = UI.frame({ Size = UDim2.new(1, 0, 0, 3 * (cell + 6)), Position = UDim2.fromOffset(0, 124), BackgroundTransparency = 1, ZIndex = 54, Parent = left })
+		UI.new("UIGridLayout", { CellSize = UDim2.fromOffset(cell, cell), CellPadding = UDim2.fromOffset(bigF and 4 or 6, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = grid })
+		for k = 1, bigF and Config.BIG_BAG or Config.BAG do
+			local i = Config.HOTBAR + k
+			local w = slotWidget(grid, cell, k)
+			if state.bag then
+				register(w, i, function() tapBag(i) end)
+				smithBag[i] = w
+			else
+				local shade = UI.frame({ Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, ZIndex = 8, Parent = w.button })
+				UI.corner(shade, 12)
+				Icons.draw("lock", shade, 22, c.dim, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+			end
+		end
+		UI.text({ Text = T("smithHelp"), Size = UDim2.new(1, -24, 0, 54), Position = UDim2.new(0, 12, 1, -60), TextWrapped = true, TextSize = 14, TextColor3 = c.dim, TextXAlignment = UI.align(lang), ZIndex = 54, Parent = left })
+		-- right: item + book -> result, like Minecraft's anvil (left to right in both languages)
+		local right = UI.frame({ Size = UDim2.new(1, -468, 1, 0), Position = UDim2.fromOffset(468, 0), BackgroundColor3 = c.card, ZIndex = 53, Parent = content })
+		UI.corner(right, 14)
+		UI.stroke(right, PURPLE, 1.5)
+		local area = UI.frame({ Size = UDim2.fromOffset(360, 120), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 22), BackgroundTransparency = 1, ZIndex = 54, Parent = right })
+		local function slotAt(idx, size, x, label, onTap)
+			local holder = UI.frame({ Size = UDim2.fromOffset(size, size + 22), Position = UDim2.fromOffset(x, (90 - size) / 2), BackgroundTransparency = 1, ZIndex = 54, Parent = area })
+			local w = slotWidget(holder, size, 0)
+			w.button.ZIndex = 55
+			UI.text({ Text = label, Size = UDim2.new(1, 30, 0, 18), Position = UDim2.new(0, -15, 0, size + 3), TextSize = 13, TextColor3 = c.dim, ZIndex = 55, Parent = holder })
+			register(w, idx, onTap)
+			smithW[idx] = w
+			return w
+		end
+		slotAt(401, 70, 0, T("smithItem"), function() act("move", 401, 0) end)
+		UI.text({ Text = "+", Size = UDim2.fromOffset(40, 70), Position = UDim2.fromOffset(74, 10), TextSize = 34, TextColor3 = c.dim, ZIndex = 55, Parent = area })
+		slotAt(402, 70, 118, T("smithBook"), function() act("move", 402, 0) end)
+		local arrow = UI.frame({ Size = UDim2.fromOffset(48, 30), Position = UDim2.fromOffset(196, 30), BackgroundTransparency = 1, ZIndex = 54, Parent = area })
+		local bar = UI.frame({ Size = UDim2.fromOffset(34, 8), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromScale(0, 0.5), BackgroundColor3 = PURPLE, ZIndex = 55, Parent = arrow })
+		UI.corner(bar, 4)
+		for _, rot in ipairs({ 40, -40 }) do
+			local h = UI.frame({ Size = UDim2.fromOffset(20, 8), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -2, 0.5, rot > 0 and -6 or 6), Rotation = rot, BackgroundColor3 = PURPLE, ZIndex = 55, Parent = arrow })
+			UI.corner(h, 4)
+		end
+		local ow = slotAt(403, 84, 260, T("fOut"), function() act("move", 403, 0) end)
+		ow.stroke.Color = PURPLE
+		smithPrice = UI.text({ Text = "", Size = UDim2.new(1, -24, 0, 30), Position = UDim2.fromOffset(12, 160), TextWrapped = true, TextSize = 17, ZIndex = 54, Parent = right })
+		smithInfo = UI.text({ Text = "", Size = UDim2.new(1, -24, 0, 60), Position = UDim2.fromOffset(12, 196), TextWrapped = true, TextSize = 15, TextColor3 = PURPLE, ZIndex = 54, Parent = right })
+		-- the list of enchantments and their top levels
+		local list = UI.scroll({ Size = UDim2.new(1, -24, 1, -268), Position = UDim2.fromOffset(12, 262), ZIndex = 54, Parent = right })
+		UI.list(list, 2)
+		for n, k in ipairs(Items.ENCH_ORDER) do
+			local e = Items.ENCH[k]
+			UI.text({ Text = Items.enchName(k, e.max, lang) .. "  -  " .. (lang == "en" and e.desc.en or e.desc.ar), Size = UDim2.new(1, -8, 0, 20), LayoutOrder = n, TextXAlignment = UI.align(lang), TextSize = 13, TextColor3 = c.dim, ZIndex = 55, Parent = list })
+		end
+		refreshSmith()
+	end
+
+	end
+
 	function refreshModal(force)
 		if modalKind == "bag" then
 			if bagShape ~= (tostring(state.bag) .. tostring(state.armor)) then bagModal() else refreshBag() end
@@ -2537,7 +2690,8 @@ function M.start(gui, remotes)
 		elseif modalKind == "skills" and force then skillsModal()
 		elseif modalKind == "furnace" then refreshFurnace()
 		elseif modalKind == "craft" and force and craftBagSize ~= tostring(state.bag) then craftModal()
-		elseif modalKind == "craft" then refreshCraft() end
+		elseif modalKind == "craft" then refreshCraft()
+		elseif modalKind == "smith" then refreshSmith() end
 	end
 
 	local half = (Config.HOTBAR * 74) / 2 + 42
@@ -2973,6 +3127,12 @@ function M.start(gui, remotes)
 			end
 			return
 		end
+		if key == "openSmith" or key == "smith" then
+			smithData = a
+			if key == "openSmith" and state then pending = nil smithModal()
+			elseif modalKind == "smith" then refreshSmith() end
+			return
+		end
 		if key == "openHouse" then
 			houseData = a
 			if state then houseModal() end
@@ -3037,6 +3197,14 @@ function M.start(gui, remotes)
 		elseif key == "needWoodStone" then text = Locale.f(lang, "needWoodStone", a or 0, b or 0)
 		elseif key == "houseGave" then text = Locale.f(lang, "houseGave", a or 0)
 		elseif key == "houseUp" then text = Locale.f(lang, "houseUp", a or 1) Effects.ui("skill")
+		elseif key == "enchanted" then text = Locale.f(lang, "enchanted", Items.enchName(a, b or 1, lang)) Effects.ui("skill")
+		elseif key == "dropOpened" then text = Locale.f(lang, "dropOpened", tostring(a or "?")) Effects.ui("skill")
+		elseif key == "dropLoot" then
+			local parts = {}
+			for _, it in ipairs(type(a) == "table" and a or {}) do
+				table.insert(parts, (it.id == "coins" and T("coins") or Items.name(it.id, lang)) .. " x" .. tostring(it.n))
+			end
+			text = T("dropGot") .. "  " .. table.concat(parts, lang == "en" and ", " or "، ")
 		elseif key == "crafted" then text = Locale.f(lang, "crafted", Items.name(a, lang) .. ((b or 1) > 1 and (" x" .. b) or "")) Effects.ui("pop")
 		elseif key == "buffEnd" then text = Locale.f(lang, "buffEnd", T("buff_" .. tostring(a)))
 		elseif key == "sleepCount" then

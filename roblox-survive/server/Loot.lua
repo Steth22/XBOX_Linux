@@ -94,7 +94,7 @@ function Loot.drop(pos, items, ownerId, life)
 		for _, it in ipairs(b.items) do
 			local rest = ctx.giveItem(player, it)
 			if rest > 0 then
-				table.insert(left, { id = it.id, n = rest, d = it.d })
+				table.insert(left, { id = it.id, n = rest, d = it.d, e = it.e })
 			end
 		end
 		b.items = left
@@ -144,7 +144,7 @@ function Loot.dropItem(pos, it)
 	pr:SetAttribute("Count", it.n)
 	pr.Parent = m.PrimaryPart
 	m.Parent = folder
-	local data = { id = it.id, n = it.n, d = it.d }
+	local data = { id = it.id, n = it.n, d = it.d, e = it.e }
 	pr.Triggered:Connect(function(player)
 		if not alive(player) then return end -- the dead can't loot (not even their own bag)
 		if not m.Parent then return end
