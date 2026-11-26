@@ -163,6 +163,24 @@ local POSES = {
 	lantern = { arm = { 0, 0, 0 }, larm = { 85, 0, 10 }, waist = { 0, 10, 0 } },
 }
 E.POSE_LIST = { "none", "sword", "slash", "guard", "victory", "point", "lantern" }
+-- one joint at a time (photo mode's pose editor); angles in degrees
+local JOINTS = {
+	arm = { { "RightUpperArm", "RightShoulder" }, "Torso", "Right Shoulder" },
+	larm = { { "LeftUpperArm", "LeftShoulder" }, "Torso", "Left Shoulder" },
+	rlow = { { "RightLowerArm", "RightElbow" }, "Torso", "Right Shoulder" },
+	llow = { { "LeftLowerArm", "LeftElbow" }, "Torso", "Left Shoulder" },
+	head = { { "Head", "Neck" }, "Torso", "Neck" },
+	waist = { { "UpperTorso", "Waist" }, "HumanoidRootPart", "RootJoint" },
+	rleg = { { "RightUpperLeg", "RightHip" }, "Torso", "Right Hip" },
+	lleg = { { "LeftUpperLeg", "LeftHip" }, "Torso", "Left Hip" },
+}
+E.JOINT_LIST = { "arm", "larm", "rlow", "llow", "head", "waist", "rleg", "lleg" }
+function E.setJoint(char, key, rx, ry, rz)
+	local j = JOINTS[key]
+	if not j then return end
+	local v = motor(char, j[1], j[2], j[3])
+	if v then v.Value = CFrame.Angles(math.rad(rx or 0), math.rad(ry or 0), math.rad(rz or 0)) end
+end
 function E.pose(char, name)
 	local arm, base = motor(char, { "RightUpperArm", "RightShoulder" }, "Torso", "Right Shoulder")
 	local larm, lbase = motor(char, { "LeftUpperArm", "LeftShoulder" }, "Torso", "Left Shoulder")

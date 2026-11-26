@@ -1411,7 +1411,26 @@ function ADMIN.clock(player, room, ad, v)
 	ReplicatedStorage:SetAttribute("Night", Lighting.ClockTime < 6 or Lighting.ClockTime > 18.5)
 end
 function ADMIN.freezeTime(player, room, ad, on) ReplicatedStorage:SetAttribute("TimeFrozen", on == true or nil) end
-function ADMIN.holdMobs(player, room, ad, on) Mobs.held = on == true end
+function ADMIN.holdMobs(player, room, ad, on)
+	Mobs.held = on == true
+	-- held creatures are pinned so photo mode can move them about
+	for _, m in ipairs(Mobs.folder():GetChildren()) do
+		local root = m.PrimaryPart
+		if root then root.Anchored = Mobs.held end
+	end
+end
+-- photo mode: put a creature exactly here (only creatures, only while they are held)
+function ADMIN.photoMove(player, room, ad, v)
+	if type(v) ~= "table" or typeof(v[1]) ~= "Instance" or typeof(v[2]) ~= "CFrame" then return end
+	local m = v[1]
+	if m.Parent ~= Mobs.folder() or not m:IsA("Model") then return end
+	if not Mobs.held then ADMIN.holdMobs(player, room, ad, true) end
+	if m.PrimaryPart then m.PrimaryPart.Anchored = true end
+	m:PivotTo(v[2])
+end
+function ADMIN.photoRemove(player, room, ad, m)
+	if typeof(m) == "Instance" and m.Parent == Mobs.folder() then m:Destroy() end
+end
 function ADMIN.time(player, room, ad, v)
 	if v == "skip" then Survival.skipNight() return end
 	Lighting.ClockTime = v == "night" and 21 or 8
@@ -1452,7 +1471,7 @@ function actions.admin(player, room, cmd, arg)
 	if not isAdmin(player) or type(cmd) ~= "string" or not ADMIN[cmd] then return end
 	admin[player] = admin[player] or {}
 	ADMIN[cmd](player, room, admin[player], arg)
-	push(player)
+	if string.sub(cmd, 1, 5) ~= "photo" then push(player) end
 end
 
 -- room owner tools: kick, ban, lock, moderators (moderators may kick and ban too)

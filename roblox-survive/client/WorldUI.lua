@@ -1838,7 +1838,7 @@ function M.start(gui, remotes)
 			btn(w, T("ad_skip"), nil, function() act("admin", "time", "skip") end)
 			btn(w, T("ad_photo"), c.blue, function()
 				if closeModal then closeModal() end
-				require(script.Parent:WaitForChild("Photo")).start({ T = T, act = act, Effects = Effects, UI = UI, gui = gui })
+				require(script.Parent:WaitForChild("Photo")).start({ T = T, act = act, Effects = Effects, UI = UI, Icons = Icons, gui = gui, lang = lang })
 			end)
 			for _, wx in ipairs({ "clear", "wind", "rain", "storm", "tornado" }) do
 				btn(w, T("wx_" .. wx), wx == "tornado" and c.danger or nil, function() act("admin", "weather", wx) end)
