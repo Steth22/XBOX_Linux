@@ -71,7 +71,7 @@ local function ownedRooms(player, profile)
 		if rec then
 			table.insert(keep, code)
 			local left = math.max(0, Config.ROOM_TTL - (os.time() - (rec.last or 0)))
-			table.insert(out, { code = code, name = type(rec.name) == "string" and rec.name or nil, maxPlayers = rec.maxPlayers or 8, access = Rooms.access(rec), hours = math.ceil(left / 3600) })
+			table.insert(out, { code = code, name = type(rec.name) == "string" and rec.name or nil, pvp = rec.pvp == true, maxPlayers = rec.maxPlayers or 8, access = Rooms.access(rec), hours = math.ceil(left / 3600) })
 		elseif why == "error" then
 			table.insert(keep, code)
 		end
@@ -248,6 +248,7 @@ function actions.roomSettings(player, profile, code, settings)
 	local ok = Rooms.update(code, function(rec)
 		if rec.owner ~= player.UserId then return end
 		rec.maxPlayers = maxP
+		if type(settings.pvp) == "boolean" then rec.pvp = settings.pvp end
 		if valid then
 			rec.room = mode
 			rec.public = mode == "public"

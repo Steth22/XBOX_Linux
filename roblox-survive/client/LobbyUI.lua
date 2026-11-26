@@ -288,8 +288,8 @@ function M.start(gui, remotes)
 
 	local roomsModal
 	local function settingsModal(room)
-		local content = openModal(T("roomSettings") .. "  " .. room.code, UDim2.fromOffset(560, 510))
-		local sel = { maxPlayers = room.maxPlayers or 8, access = room.access or "friends" }
+		local content = openModal(T("roomSettings") .. "  " .. room.code, UDim2.fromOffset(560, 590))
+		local sel = { maxPlayers = room.maxPlayers or 8, access = room.access or "friends", pvp = room.pvp == true }
 		-- the room's name
 		UI.text({ Text = T("roomName"), Size = UDim2.new(1, 0, 0, 30), TextXAlignment = UI.align(lang), TextSize = 20, TextColor3 = c.dim, ZIndex = 53, Parent = content })
 		local nameBox = UI.new("TextBox", {
@@ -334,6 +334,21 @@ function M.start(gui, remotes)
 			end)
 		end
 		mark()
+		-- player fighting on / off
+		UI.text({ Text = T("pvp"), Size = UDim2.new(1, 0, 0, 30), Position = UDim2.fromOffset(0, 200), TextXAlignment = UI.align(lang), TextSize = 20, TextColor3 = c.dim, ZIndex = 53, Parent = content })
+		local pchips = UI.frame({ Size = UDim2.new(1, 0, 0, 50), Position = UDim2.fromOffset(0, 234), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		UI.list(pchips, 10, Enum.FillDirection.Horizontal)
+		local pbtn = {}
+		local function markP()
+			for v, bt in pairs(pbtn) do
+				local on = sel.pvp == v
+				bt.BackgroundColor3 = on and (v and c.danger or c.accent) or c.card
+				bt.TextColor3 = on and (v and c.text or c.bg) or c.text
+			end
+		end
+		pbtn[false] = UI.button({ Text = T("pvpOff"), Size = UDim2.fromOffset(160, 48), TextSize = 18, ZIndex = 54, Parent = pchips }, function() sel.pvp = false markP() end)
+		pbtn[true] = UI.button({ Text = T("pvpOn"), Size = UDim2.fromOffset(160, 48), TextSize = 18, ZIndex = 54, Parent = pchips }, function() sel.pvp = true markP() end)
+		markP()
 		UI.button({ Text = T("save"), Size = UDim2.fromOffset(240, 54), Position = UDim2.new(lang == "ar" and 1 or 0, lang == "ar" and -240 or 0, 1, -54), ZIndex = 53, Parent = content }, function()
 			local newName = nameBox.Text
 			if newName ~= (room.name or "") then

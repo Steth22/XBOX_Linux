@@ -36,6 +36,7 @@ local sleeping = {} -- [Player] = bed model
 local beds = {} -- [Player] = bed model they own
 local lastHit = {} -- [Player] = what hurt them last (shown on the death screen)
 local placedOnce = {} -- [Player] = already put at their saved spot this visit
+local spawnBed = {} -- [Player] = the bed they respawn at (a placed bed only lives on this server)
 local lamp = {} -- [Player] = hotbar/bag slot of the lantern hanging in the left hand
 local deathBag = {} -- [Player] = { model, x, z } items left where the player died
 local mapDirty = {} -- [Player] = explored cells changed since the last send
@@ -170,6 +171,7 @@ local function snapshot(player)
 		dex = room.dex,
 		isOwner = serverRec ~= nil and serverRec.owner == player.UserId,
 		locked = serverRec ~= nil and serverRec.locked == true,
+		pvp = serverRec ~= nil and serverRec.pvp == true,
 		ownerId = serverRec and serverRec.owner or 0,
 		stash = Inventory.stashView(room.stash), stashLvl = room.stash.lvl,
 		stashCost = room.stash.lvl < Config.STASH_MAX_LVL and Config.stashCost(room.stash.lvl) or nil,
@@ -367,6 +369,22 @@ local function swing(player, index, def)
 		useDurability(player, index)
 		return
 	end
+	if serverRec and serverRec.pvp then
+		local victim, vd
+		for _, other in ipairs(Players:GetPlayers()) do
+			local oh = other ~= player and hrpOf(other)
+			if oh then
+				local rel = hrp.CFrame:PointToObjectSpace(oh.Position)
+				local d = rel.Magnitude
+				if rel.Z < 0 and -rel.Z <= reach + 2 and math.abs(rel.X) < 3.5 and math.abs(rel.Y) < 4 and (not vd or d < vd) then victim, vd = other, d end
+			end
+		end
+		if victim then
+			ctx.hurt(victim, (def.dmg or 5) * (1 + 0.1 * str) * 0.6, "@" .. player.DisplayName)
+			useDurability(player, index)
+			return
+		end
+	end
 	local node = Resources.pick(parts, hrp.Position)
 	if node and Resources.hit(player, node, def, math.floor(str / 3)) then
 		useDurability(player, index)
@@ -404,6 +422,10 @@ local function shoot(player, index, dir)
 	if res then
 		local m = Mobs.modelOf(res.Instance)
 		if m then Mobs.damage(m, def.dmg * (1 + 0.1 * skill(player, "strength")) * (hasBuff(player, "strength") and 1.5 or 1), player) end
+		local victim = Players:GetPlayerFromCharacter(res.Instance:FindFirstAncestorOfClass("Model"))
+		if victim and victim ~= player and serverRec and serverRec.pvp then
+			ctx.hurt(victim, def.dmg * 0.6, "@" .. player.DisplayName)
+		end
 	end
 	useDurability(player, index)
 	push(player)
@@ -672,9 +694,18 @@ local function onCharacter(player, char)
 	Appearance.apply(char, profile and profile.look)
 	local spawn = workspace:FindFirstChild("ForestSpawn")
 	local saved = Data.room(player) and Data.room(player).pos
-	if saved and not placedOnce[player] then
-		-- back where the player left the room
-		char:PivotTo(CFrame.new(saved[1], saved[2] + 3, saved[3]))
+	local room0 = Data.room(player)
+	local bedSpot = room0 and room0.spawn
+	if bedSpot and not bedSpot.village and not (spawnBed[player] and spawnBed[player].Parent) then
+		room0.spawn = nil -- that bed is gone
+		bedSpot = nil
+	end
+	local target = nil
+	if saved and not placedOnce[player] then target = Vector3.new(saved[1], saved[2], saved[3])
+	elseif bedSpot then target = Vector3.new(bedSpot[1], bedSpot[2], bedSpot[3]) end
+	if target then
+		-- back where the player left the room, or at their bed
+		char:PivotTo(CFrame.new(target + Vector3.new(0, 3, 0)))
 		-- far from the camp the ground may still be rebuilding: hold the player until it is solid
 		local root = char:FindFirstChild("HumanoidRootPart")
 		if root and not workspace:GetAttribute("TerrainReady") then
@@ -828,8 +859,19 @@ function ctx.wake(player)
 	announceSleep()
 	push(player)
 end
+local function setSpawn(player, bed)
+	local room = Data.room(player)
+	if not room then return end
+	local p = (bed:GetPivot() * CFrame.new(3.4, 1, 0)).Position
+	local village = bed:IsA("BasePart")
+	local same = spawnBed[player] == bed
+	spawnBed[player] = bed
+	room.spawn = { math.floor(p.X * 10) / 10, math.floor(p.Y * 10) / 10, math.floor(p.Z * 10) / 10, village = village }
+	if not same then notify(player, "spawnSet") end
+end
 function ctx.sleep(player, bed)
 	if sleeping[player] then ctx.wake(player) return end
+	setSpawn(player, bed) -- any bed you use becomes your respawn point
 	if not isNight() then notify(player, "notTired") return end
 	local occupant = bed:GetAttribute("Sleeper")
 	if occupant and occupant ~= player.UserId then notify(player, "bedTaken") return end
@@ -841,7 +883,8 @@ function ctx.sleep(player, bed)
 	hum.PlatformStand = true
 	hrp.Anchored = true
 	-- lie on the mattress, head on the pillow
-	hrp.CFrame = bed:GetPivot() * CFrame.new(0, 1.9, 0.4) * CFrame.Angles(math.rad(90), 0, 0)
+	local top = bed:IsA("BasePart") and (bed.CFrame * CFrame.new(0, bed.Size.Y / 2 + 0.55, 0.4)) or (bed:GetPivot() * CFrame.new(0, 1.9, 0.4))
+	hrp.CFrame = top * CFrame.Angles(math.rad(90), 0, 0)
 	notify(player, "sleepStart")
 	announceSleep()
 	push(player)
@@ -1329,6 +1372,20 @@ function World.start(r)
 		if not ok then warn("start", name, err) Debug.log("start." .. name, err) end
 	end
 	Debug.log("world", "started")
+	for _, d in ipairs(workspace:FindFirstChild("Villages") and workspace.Villages:GetDescendants() or {}) do
+		if d:IsA("BasePart") and d.Name == "Bed" then
+			local pr = Instance.new("ProximityPrompt")
+			pr.ActionText = "Sleep"
+			pr.ObjectText = "Bed"
+			pr.HoldDuration = 0.5
+			pr.MaxActivationDistance = 9
+			pr.RequiresLineOfSight = false
+			pr:SetAttribute("Key", "sleep")
+			pr:SetAttribute("Obj", "bed")
+			pr.Parent = d
+			pr.Triggered:Connect(function(pl) ctx.sleep(pl, d) end)
+		end
+	end
 	local okV, errV = pcall(function() require(script.Parent.Villages).start(ctx, Mobs) end)
 	if not okV then Debug.log("start.villages", errV) end
 
@@ -1388,6 +1445,7 @@ function World.start(r)
 		buffs[player] = nil
 		lastHit[player] = nil
 		placedOnce[player] = nil
+		spawnBed[player] = nil
 		lamp[player] = nil
 		deathBag[player] = nil
 		mapDirty[player] = nil
@@ -1431,6 +1489,13 @@ function World.start(r)
 				for _, pl in ipairs(Players:GetPlayers()) do Rooms.setPresence(pl.UserId, serverCode) end
 			end
 			if serverCode and tick % 1200 == 0 then Rooms.touch(serverCode) end
+			-- pick up setting changes made in the lobby (fighting, access...)
+			if serverCode and serverCode ~= "TEST00" and tick % 20 == 0 then
+				task.spawn(function()
+					local r = Rooms.get(serverCode)
+					if r then serverRec = r end
+				end)
+			end
 			if serverCode and serverCode ~= "TEST00" and tick % 45 == 0 then
 				local clock, day = Lighting.ClockTime, ReplicatedStorage:GetAttribute("Day") or 1
 				task.spawn(Rooms.update, serverCode, function(rec) rec.clock = clock rec.day = math.max(rec.day or 1, day) end)
