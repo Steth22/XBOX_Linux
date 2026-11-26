@@ -21,6 +21,7 @@ local Bestiary = require(ReplicatedStorage.Shared.Bestiary)
 local Furnace = require(script.Parent.Furnace)
 local Weather = require(script.Parent.Weather)
 local Powers = require(script.Parent.Powers)
+local Achieve = require(script.Parent.Achieve)
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 
 local MessagingService = game:GetService("MessagingService")
@@ -43,6 +44,7 @@ local lastHit = {} -- [Player] = what hurt them last (shown on the death screen)
 local placedOnce = {} -- [Player] = already put at their saved spot this visit
 local spawnBed = {} -- [Player] = the bed they respawn at (a placed bed only lives on this server)
 local makeBed -- defined with the placing code
+local awaitingReady = {} -- [Player] = true until their loading screen has finished
 local lamp = {} -- [Player] = hotbar/bag slot of the lantern hanging in the left hand
 local deathBag = {} -- [Player] = { model, x, z } items left where the player died
 local mapDirty = {} -- [Player] = explored cells changed since the last send
@@ -172,6 +174,8 @@ local function skill(player, name)
 end
 
 ---------------------------------------------------------------- state
+-- more players in the room = more XP and coins for everyone (+10% per extra player, up to +50%)
+local function boost() return 1 + math.min(0.5, 0.1 * (#Players:GetPlayers() - 1)) end
 local function snapshot(player)
 	local room, profile = Data.room(player), Data.profile(player)
 	if not room or not profile then return nil end
@@ -189,6 +193,8 @@ local function snapshot(player)
 		armor = room.inv.armor or false,
 		off = room.inv.off or false,
 		powers = Powers.of(room),
+		boost = boost(),
+		ach = Achieve.view(player),
 		buffs = (function()
 			local out = {}
 			for k, t in pairs(buffs[player] or {}) do
@@ -263,8 +269,9 @@ function ctx.lucky(player, perLevel)
 end
 function ctx.reward(player, xp, coins)
 	if not Data.room(player) then return end
-	Data.addCoins(player, coins or 0)
-	local gained, level = Data.addXp(player, xp or 0)
+	local b = boost()
+	Data.addCoins(player, math.floor((coins or 0) * b + 0.5))
+	local gained, level = Data.addXp(player, math.floor((xp or 0) * b + 0.5))
 	if gained > 0 then
 		notify(player, "levelUp", level)
 		ctx.feed("level", player.DisplayName, level)
@@ -278,6 +285,7 @@ function ctx.hurt(player, amount, cause)
 	if type(cause) == "string" then lastHit[player] = cause end
 	local adm = adminOf(player)
 	if adm and adm.god then return end
+	if player.Character and player.Character:FindFirstChildOfClass("ForceField") then return end
 	local room = Data.room(player)
 	local armor = room and room.inv.armor and Items.get(room.inv.armor)
 	if armor then amount *= (1 - armor.reduce) end
@@ -337,6 +345,8 @@ function ctx.killed(player, kind)
 	if not room or not room.dex or not Bestiary.kinds[kind] then return end
 	room.dex.seen[kind] = true
 	room.dex.kills[kind] = (room.dex.kills[kind] or 0) + 1
+	Achieve.bump(player, "kills", 1)
+	if Bestiary.kinds[kind] == "boss" then Achieve.bump(player, "bosses", 1) end
 	for _, region in ipairs(Bestiary.completed(room.dex.kills)) do
 		if not room.dex.medals[region] then
 			room.dex.medals[region] = true
@@ -795,6 +805,17 @@ local function onCharacter(player, char)
 	end
 	task.defer(wearNecklace, player)
 	task.defer(Powers.apply, player)
+	-- spawn shield: on joining it lasts until the loading screen is gone (the client says "ready"),
+	-- then 5 more seconds; after a respawn it lasts 5 seconds
+	local ff = Instance.new("ForceField")
+	ff.Name = "SpawnShield"
+	ff.Visible = true
+	ff.Parent = char
+	if awaitingReady[player] then
+		task.delay(60, function() if ff.Parent and awaitingReady[player] then awaitingReady[player] = nil ff:Destroy() end end)
+	else
+		task.delay(5, function() if ff.Parent then ff:Destroy() end end)
+	end
 	hum.BreakJointsOnDeath = false
 	hum.MaxHealth = 100
 	hum.Health = 100
@@ -1296,7 +1317,10 @@ function actions.sell(player, room, id)
 	Inventory.remove(room.inv, id, n)
 	local total = n * def.sell
 	local ORES = { stone = true, iron = true, gold = true, diamond = true, crystal = true, obsidian = true }
-	if ORES[id] and nearVendor(player, "dwarf") then total = math.floor(total * 1.5) end
+	if ORES[id] and nearVendor(player, "dwarf") then
+		total = math.floor(total * 1.5)
+		Achieve.bump(player, "dwarfSales", 1)
+	end
 	room.coins += total
 	notify(player, "sold", total)
 	ctx.reward(player, math.max(1, math.floor(total / 8)), 0)
@@ -1542,6 +1566,14 @@ function actions.stashUpgrade(player, room)
 end
 
 function actions.closeFurnace(player) Furnace.close(player) end
+-- the loading screen is done: 5 more seconds of shield, then you're on your own
+function actions.ready(player)
+	if not awaitingReady[player] then return end
+	awaitingReady[player] = nil
+	local char = player.Character
+	local ff = char and char:FindFirstChild("SpawnShield")
+	if ff then task.delay(5, function() if ff.Parent then ff:Destroy() end end) end
+end
 function actions.powerUp(player, room, kind) Powers.upgrade(player, room, tostring(kind)) end
 function actions.powerToggle(player, room, kind) Powers.toggle(player, room, tostring(kind)) end
 -- the secret trader's token: paid with some of every resource
@@ -1554,6 +1586,7 @@ function actions.buyToken(player, room)
 	for _, c in ipairs(Items.TOKEN_COST) do Inventory.remove(room.inv, c[1], c[2]) end
 	Inventory.add(room.inv, "token", 1)
 	notify(player, "boughtToken")
+	Achieve.bump(player, "tokens", 1)
 	if player.Character then ctx.fx("skillUp", player.Character) end
 	push(player)
 end
@@ -1649,8 +1682,10 @@ local function onJoin(player)
 		local okP, owns = pcall(function() return game:GetService("MarketplaceService"):UserOwnsGamePassAsync(player.UserId, Config.ADMIN_PASS) end)
 		adminPass[player] = okP and owns == true
 	end
+	awaitingReady[player] = true
 	local loaded = Data.loadRoom(player, serverCode)
 	ctx.feed(loaded and loaded._new and "newPlayer" or "join", player.DisplayName)
+	for _, pl in ipairs(Players:GetPlayers()) do if pl ~= player then task.defer(push, pl) end end
 	-- put back what only lived on the old server: the player's own bed and the bag left where they died
 	local room = Data.room(player)
 	if room then
@@ -1771,6 +1806,8 @@ function World.start(r)
 			r.lostBag = nil
 		end
 	end
+	ctx.bump = Achieve.bump
+	pcall(function() Achieve.start(ctx, Data, Inventory) end)
 	local okP, errP = pcall(function() Powers.start(ctx, Mobs, Data, Inventory) end)
 	if not okP then Debug.log("start.powers", errP) end
 	local okW, errW = pcall(function() Weather.start(ctx) end)
@@ -1826,7 +1863,9 @@ function World.start(r)
 		selected[player] = nil
 		cooldown[player] = nil
 		luckCd[player] = nil
+		awaitingReady[player] = nil
 		Rooms.clearPresence(player.UserId)
+		task.defer(function() for _, pl in ipairs(Players:GetPlayers()) do push(pl) end end)
 	end)
 
 	task.spawn(function()

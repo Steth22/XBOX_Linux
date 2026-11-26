@@ -29,7 +29,7 @@ check("Inventory", function()
 	assert(not Inv.usable(inv, 6)); inv.bag = true; assert(Inv.usable(inv, 6) and not Inv.usable(inv, 21))
 end)
 check("Data/Rooms/World/Lobby/Resources require", function()
-	for _, n in ipairs({"Data", "Rooms", "Resources", "World", "Lobby", "Furnace", "Powers", "Weather"}) do
+	for _, n in ipairs({"Data", "Rooms", "Resources", "World", "Lobby", "Furnace", "Powers", "Weather", "Achieve"}) do
 		local m = require(SSS.Services[n])
 		assert(type(m) == "table", n)
 	end
@@ -96,6 +96,10 @@ check("WorldUI build", function()
 	state.powers = { fire = 2, ice = 0, blast = 1, off = { fire = true } }
 	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
 	api.skillsModal()
+	state.ach = { stats = { kills = 40, level = 12 }, done = { firstKill = true, level10 = true } }; state.boost = 1.2
+	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
+	api.achModal()
+	for _, h in ipairs(remotes.Notify.OnClientEvent.handlers) do h("achieved", "hunter") h("feed", { k = "achieved", a = "Me", b = "hunter" }) end
 	for _, h in ipairs(remotes.Notify.OnClientEvent.handlers) do
 		h("openFurnace", { id = "f1", input = { id = "meat_raw", n = 3 }, fuel = { id = "wood", n = 12 }, out = false, t = 1.5, time = 3, need = 5 })
 		h("furnace", { id = "f1", input = false, fuel = false, out = { id = "meat_cooked", n = 3 }, t = 0, time = 3, need = 5 })
@@ -115,7 +119,7 @@ check("LobbyUI build", function()
 	copy.Parent = src.Parent
 	local gui = Instance.new("ScreenGui")
 	local ret = { ok = true, lang = "ar", lifeXp = 12500, look = { skin = 2, shirt = 1, pants = 1, hat = "explorer", extra = "backpack" },
-		rooms = { { code = "ABC234", coins = 80, xp = 500, hours = 70 } }, owned = { { code = "ABC234", maxPlayers = 8, access = "friends", hours = 70 } }, limit = 1, friends = {}, board = { top = { { rank = 1, name = "A", xp = 136200 } }, meRank = nil, meXp = 12500, scanned = 1000 } }
+		rooms = { { code = "ABC234", coins = 80, xp = 500, hours = 70, pct = 42 }, { code = "XYZ789", coins = 5, xp = 10, hours = 20, pct = 7 } }, owned = { { code = "ABC234", maxPlayers = 8, access = "friends", hours = 70, pct = 42 } }, limit = 1, friends = {}, board = { top = { { rank = 1, name = "A", xp = 136200 } }, meRank = nil, meXp = 12500, scanned = 1000 } }
 	local remotes = { Lobby = { InvokeServer = function(_, action) return ret end }, Notify = { OnClientEvent = fakeEvent() } }
 	local api = require(copy).start(gui, remotes)
 	task.wait(1.5)

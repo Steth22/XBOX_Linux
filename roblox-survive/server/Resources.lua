@@ -133,6 +133,7 @@ function R.hit(player, node, def, bonus)
 		ctx.give(player, rw.id, n)
 		ctx.reward(player, rw.xp, rw.coins)
 		ctx.notify(player, "picked", rw.id, n)
+		if ctx.bump then ctx.bump(player, kind == "tree" and "trees" or "rocks", 1) end
 		if kind == "tree" then
 			ctx.fx("treeFall", node)
 			task.delay(1.7, function() setHidden(node, true) end)

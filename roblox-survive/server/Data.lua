@@ -71,6 +71,13 @@ function Data.loadProfile(player)
 		p.lang = (res.lang == "en") and "en" or "ar"
 		p.look = Appearance.sanitize(res.look)
 		p.lifeXp = math.max(0, tonumber(res.lifeXp) or 0)
+		-- achievements: counters and the ones already earned
+		if type(res.ach) == "table" then
+			local a = { stats = {}, done = {} }
+			for k, v in pairs(type(res.ach.stats) == "table" and res.ach.stats or {}) do if type(k) == "string" and tonumber(v) then a.stats[k] = tonumber(v) end end
+			for k, v in pairs(type(res.ach.done) == "table" and res.ach.done or {}) do if type(k) == "string" and v == true then a.done[k] = true end end
+			p.ach = a
+		end
 		p._recount = res.season ~= Config.XP_SEASON
 		if type(res.owned) == "table" then
 			for _, c in ipairs(res.owned) do
@@ -80,7 +87,7 @@ function Data.loadProfile(player)
 		if type(res.rooms) == "table" then
 			for _, r in ipairs(res.rooms) do
 				if type(r) == "table" and type(r.code) == "string" then
-					table.insert(p.rooms, { code = r.code, last = tonumber(r.last) or 0, coins = tonumber(r.coins) or 0, xp = tonumber(r.xp) or 0 })
+					table.insert(p.rooms, { code = r.code, last = tonumber(r.last) or 0, coins = tonumber(r.coins) or 0, xp = tonumber(r.xp) or 0, pct = tonumber(r.pct) })
 				end
 			end
 		end
@@ -121,13 +128,30 @@ end
 function Data.saveProfile(player)
 	local p = profiles[player]
 	if not p or p._noSave then return end
-	local copy = { lang = p.lang, look = p.look, lifeXp = p.lifeXp, season = Config.XP_SEASON, rooms = p.rooms, owned = p.owned }
+	local copy = { lang = p.lang, look = p.look, lifeXp = p.lifeXp, season = Config.XP_SEASON, rooms = p.rooms, owned = p.owned, ach = p.ach }
 	try(function()
 		profileStore:SetAsync("p_" .. player.UserId, copy)
 	end)
 end
 
-function Data.touchRoomList(player, code, coins, xp)
+-- how far the player has got in a room, 0..100: creatures discovered, necklaces, map explored
+function Data.progress(r)
+	local Best = require(game:GetService("ReplicatedStorage").Shared.Bestiary)
+	local seen, medals = 0, 0
+	for _ in pairs(r.dex and r.dex.seen or {}) do seen += 1 end
+	for _ in pairs(r.dex and r.dex.medals or {}) do medals += 1 end
+	local function share(ex)
+		if type(ex) ~= "string" or #ex == 0 then return 0 end
+		local _, n = ex:gsub("1", "")
+		return n / #ex
+	end
+	-- the surface counts for most of the map part; the caves for the rest
+	local mapPart = math.min(1, share(r.explored) * 0.75 + share(r.explored2) * 0.25)
+	local v = 0.4 * seen / math.max(1, Best.total()) + 0.3 * medals / #Best.regions + 0.3 * mapPart
+	return math.clamp(math.floor(v * 100 + 0.5), 0, 100)
+end
+
+function Data.touchRoomList(player, code, coins, xp, pct)
 	local p = profiles[player]
 	if not p then return end
 	local found
@@ -141,6 +165,7 @@ function Data.touchRoomList(player, code, coins, xp)
 	found.last = os.time()
 	found.coins = coins or found.coins or 0
 	found.xp = xp or found.xp or 0
+	if pct then found.pct = pct end
 	table.sort(p.rooms, function(a, b) return (a.last or 0) > (b.last or 0) end)
 	while #p.rooms > 10 do table.remove(p.rooms) end
 end
@@ -233,7 +258,7 @@ function Data.loadRoom(player, code)
 	if player.Parent then
 		rooms[player] = r
 		roomCodes[player] = code
-		Data.touchRoomList(player, code, r.coins, r.xp)
+		Data.touchRoomList(player, code, r.coins, r.xp, Data.progress(r))
 	end
 	return r
 end
@@ -251,7 +276,7 @@ function Data.saveRoom(player)
 	if Data.beforeSave and rooms[player] then pcall(Data.beforeSave, player, rooms[player]) end
 	local r, code = rooms[player], roomCodes[player]
 	if not r or not code then return end
-	Data.touchRoomList(player, code, r.coins, r.xp)
+	Data.touchRoomList(player, code, r.coins, r.xp, Data.progress(r))
 	if r._noSave then return end
 	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, dex = r.dex, pos = r.pos, explored = r.explored, explored2 = r.explored2, spawn = r.spawn, powers = r.powers, lostBag = r.lostBag, t = os.time() }
 	try(function()

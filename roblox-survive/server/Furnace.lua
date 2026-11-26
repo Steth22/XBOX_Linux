@@ -249,6 +249,7 @@ function F.start(c, inv, data, vendorParts)
 							if b.input.n <= 0 then b.input = false end
 							if b.out then b.out.n += 1 else b.out = { id = result, n = 1 } end
 							ctx.reward(player, 2, 0)
+							if ctx.bump then ctx.bump(player, "cooked", 1) end
 							local part = furnaces[fid]
 							if part then ctx.fx("cook", part.Position + Vector3.new(0, 2, 0)) end
 						end

@@ -42,6 +42,7 @@ function M.start(gui, remotes)
 	local pending = nil
 	local refreshModal
 	local furnaceData, refreshFurnace, furnaceModal -- the furnace window (built further down)
+	local achModal -- the achievements window
 	local furnaceBagSize = ""
 	local lastSig = ""
 	local lastMsig = nil
@@ -303,6 +304,11 @@ function M.start(gui, remotes)
 		end
 	end
 	local spText = chip(214, 70, "skill", c.blue)
+	-- boost tag hanging on the panel's top edge: more players in the room, more XP and coins
+	local boostTag = UI.frame({ Size = UDim2.fromOffset(112, 24), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -16, 0, 0), BackgroundColor3 = c.gold, Visible = false, ZIndex = 5, Parent = hud })
+	UI.corner(boostTag, 12)
+	UI.stroke(boostTag, Color3.fromRGB(120, 80, 20), 1.5)
+	local boostText = UI.text({ Text = "", Size = UDim2.fromScale(1, 1), TextSize = 14, TextColor3 = c.bg, ZIndex = 6, Parent = boostTag })
 	local dayFrame = UI.frame({ Size = UDim2.fromOffset(110, 34), Position = UDim2.fromOffset(290, 8), BackgroundColor3 = c.card, Parent = hud })
 	UI.corner(dayFrame, 17)
 	local clockIcon = UI.frame({ Size = UDim2.fromOffset(24, 24), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 7, 0.5, 0), BackgroundTransparency = 1, Parent = dayFrame })
@@ -1747,6 +1753,55 @@ function M.start(gui, remotes)
 		end
 	end
 
+	-- achievements: everything you can earn, your progress and the reward
+	function achModal()
+		local Ach = require(ReplicatedStorage.Shared.Achievements)
+		local content = openModal("ach", T("achievements"), UDim2.fromOffset(620, 560))
+		local data = state.ach or { stats = {}, done = {} }
+		local doneN = 0
+		for _ in pairs(data.done or {}) do doneN += 1 end
+		local ar = lang == "ar"
+		local head = UI.frame({ Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = c.card, ZIndex = 53, Parent = content })
+		UI.corner(head, 18)
+		UI.text({ Text = Locale.f(lang, "achCount", doneN, #Ach.list), Size = UDim2.new(1, -24, 1, 0), Position = UDim2.fromOffset(12, 0), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = c.gold, ZIndex = 54, Parent = head })
+		local list = UI.scroll({ Size = UDim2.new(1, 0, 1, -46), Position = UDim2.fromOffset(0, 46), ZIndex = 53, Parent = content })
+		UI.list(list, 8)
+		-- earned ones last, the closest to done first
+		local order = {}
+		for i, def in ipairs(Ach.list) do
+			local have = (data.stats or {})[def.stat] or 0
+			local done = (data.done or {})[def.key] == true
+			table.insert(order, { def = def, have = have, done = done, i = i, frac = math.min(1, have / def.goal) })
+		end
+		table.sort(order, function(a, b)
+			if a.done ~= b.done then return not a.done end
+			if a.frac ~= b.frac then return a.frac > b.frac end
+			return a.i < b.i
+		end)
+		for n, it in ipairs(order) do
+			local def = it.def
+			local r = UI.frame({ Size = UDim2.new(1, -8, 0, 74), BackgroundColor3 = it.done and c.card2 or c.card, LayoutOrder = n, ZIndex = 53, Parent = list })
+			UI.corner(r, 12)
+			UI.stroke(r, it.done and c.gold or c.card2, 1.5)
+			local badge = UI.frame({ Size = UDim2.fromOffset(52, 52), AnchorPoint = Vector2.new(ar and 1 or 0, 0.5), Position = UDim2.new(ar and 1 or 0, ar and -10 or 10, 0.5, 0), BackgroundColor3 = c.bg, ZIndex = 54, Parent = r })
+			UI.corner(badge, 26)
+			Icons.draw(def.icon, badge, 30, it.done and c.gold or c.dim, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+			local tx = ar and -74 or 74
+			UI.text({ Text = T("ach_" .. def.key), Size = UDim2.new(1, -230, 0, 24), Position = UDim2.new(ar and 1 or 0, tx, 0, 8), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 18, TextColor3 = it.done and c.gold or c.text, ZIndex = 54, Parent = r })
+			UI.text({ Text = T("achd_" .. def.key), Size = UDim2.new(1, -230, 0, 18), Position = UDim2.new(ar and 1 or 0, tx, 0, 32), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 13, TextColor3 = c.dim, ZIndex = 54, Parent = r })
+			local bar = UI.frame({ Size = UDim2.new(1, -230, 0, 8), Position = UDim2.new(ar and 1 or 0, tx, 0, 56), AnchorPoint = Vector2.new(ar and 1 or 0, 0), BackgroundColor3 = c.bg, ZIndex = 54, Parent = r })
+			UI.corner(bar, 4)
+			local fill = UI.frame({ Size = UDim2.fromScale(it.done and 1 or it.frac, 1), AnchorPoint = Vector2.new(ar and 1 or 0, 0), Position = UDim2.fromScale(ar and 1 or 0, 0), BackgroundColor3 = it.done and c.gold or c.accent, ZIndex = 55, Parent = bar })
+			UI.corner(fill, 4)
+			-- the reward, and how far you are
+			local bx = ar and 0 or 1
+			local rw = def.reward
+			local rewardText = rw.token and (rw.token .. "  " .. T("tokenWord")) or (Format.number(rw.coins) .. "  " .. T("coins"))
+			UI.text({ Text = it.done and T("achDone") or (Format.number(math.min(it.have, def.goal)) .. " / " .. Format.number(def.goal)), Size = UDim2.fromOffset(130, 22), AnchorPoint = Vector2.new(bx, 0), Position = UDim2.new(bx, ar and 12 or -12, 0, 10), TextXAlignment = ar and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right, TextSize = 15, TextColor3 = it.done and c.accent or c.text, ZIndex = 54, Parent = r })
+			UI.text({ Text = rewardText, Size = UDim2.fromOffset(130, 22), AnchorPoint = Vector2.new(bx, 0), Position = UDim2.new(bx, ar and 12 or -12, 0, 40), TextXAlignment = ar and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right, TextSize = 14, TextColor3 = c.gold, ZIndex = 54, Parent = r })
+		end
+	end
+
 	-- switching admin on can't be undone: warn first
 	local function adminWarnModal()
 		local content = openModal("adminWarn", T("adminWarnTitle"), UDim2.fromOffset(440, 250))
@@ -1780,10 +1835,15 @@ function M.start(gui, remotes)
 			end)
 			Icons.draw("lock", lb, 22, locked and c.bg or c.text, UDim2.new(0, 14, 0.5, 0), Vector2.new(0, 0.5))
 		end
-		local shift = 0
-		if state and state.canAdmin then
-			shift = 54
-			UI.button({ Text = T("adminTools"), Size = UDim2.new(1, 0, 0, 46), Position = UDim2.fromOffset(0, 62), BackgroundColor3 = c.gold, TextColor3 = c.bg, TextSize = 19, ZIndex = 54, Parent = content }, function()
+		local shift = 54
+		local hasAdmin = state and state.canAdmin
+		-- achievements (and the admin tools beside it, for those who have them)
+		local achB = UI.button({ Text = T("achievements"), Size = UDim2.new(hasAdmin and 0.5 or 1, hasAdmin and -5 or 0, 0, 46), Position = UDim2.new((hasAdmin and lang ~= "ar") and 0.5 or 0, (hasAdmin and lang ~= "ar") and 5 or 0, 0, 62), BackgroundColor3 = c.blue, TextColor3 = c.text, TextSize = 19, ZIndex = 54, Parent = content }, function()
+			achModal()
+		end)
+		Icons.draw("medal", achB, 24, c.text, UDim2.new(0, 14, 0.5, 0), Vector2.new(0, 0.5))
+		if hasAdmin then
+			UI.button({ Text = T("adminTools"), Size = UDim2.new(0.5, -5, 0, 46), Position = UDim2.new(lang == "ar" and 0.5 or 0, lang == "ar" and 5 or 0, 0, 62), BackgroundColor3 = c.gold, TextColor3 = c.bg, TextSize = 19, ZIndex = 54, Parent = content }, function()
 				if state.adminOn then
 					act("map")
 					adminModal()
@@ -1792,7 +1852,22 @@ function M.start(gui, remotes)
 				end
 			end)
 		end
-		UI.text({ Text = T("code") .. ":  " .. tostring(state and state.code or "...") .. ((state and state.locked) and ("   |   " .. T("roomLocked")) or ""), Size = UDim2.new(1, 0, 0, 36), Position = UDim2.fromOffset(0, 64 + shift), TextSize = 22, TextColor3 = c.gold, ZIndex = 53, Parent = content })
+		UI.text({ Text = T("code") .. ":  " .. tostring(state and state.code or "...") .. ((state and state.locked) and ("   |   " .. T("roomLocked")) or ""), Size = UDim2.new(1, -60, 0, 36), Position = UDim2.fromOffset(lang == "ar" and 60 or 0, 64 + shift), TextSize = 22, TextColor3 = c.gold, ZIndex = 53, Parent = content })
+		-- invite friends: a person icon with a little "+" in its corner
+		local inv = UI.button({ Text = "", Size = UDim2.fromOffset(46, 46), AnchorPoint = Vector2.new(lang == "ar" and 0 or 1, 0), Position = UDim2.new(lang == "ar" and 0 or 1, 0, 0, 59 + shift), BackgroundColor3 = c.accent, ZIndex = 54, Parent = content }, function()
+			local SocialService = game:GetService("SocialService")
+			local okC, can = pcall(function() return SocialService:CanSendGameInviteAsync(player) end)
+			if okC and can then
+				pcall(function() SocialService:PromptGameInvite(player) end)
+			else
+				UI.toast(root, T("inviteNo"))
+			end
+		end)
+		Icons.draw("friend", inv, 28, c.bg, UDim2.fromScale(0.5, 0.52), Vector2.new(0.5, 0.5))
+		local plus = UI.frame({ Size = UDim2.fromOffset(20, 20), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -3, 0, 3), BackgroundColor3 = c.gold, ZIndex = 56, Parent = inv })
+		UI.corner(plus, 10)
+		UI.stroke(plus, c.bg, 2)
+		Icons.draw("plus", plus, 13, c.bg, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 		-- everyone can see whether admin was switched on in this room
 		local adm = state and state.adminOn and state.code ~= "TEST00"
 		UI.text({ Text = adm and Locale.f(lang, "adminUsed", state.adminBy or "?") or T("adminNotUsed"), Size = UDim2.new(1, 0, 0, 24), Position = UDim2.fromOffset(0, 96 + shift), TextSize = 15, TextColor3 = adm and c.danger or c.dim, ZIndex = 53, Parent = content })
@@ -2225,6 +2300,10 @@ function M.start(gui, remotes)
 		UI.tween(xpFill, 0.35, { Size = UDim2.fromScale(math.clamp(s.into / math.max(1, s.need), 0, 1), 1) })
 		xpText.Text = Format.number(s.into) .. " / " .. Format.number(s.need) .. " XP"
 		dayText.Text = Locale.f(lang, "day", s.day or 1)
+		local bst = s.boost or 1
+		if bst > 1.001 and not boostTag.Visible then UI.enter(boostTag, 0, -10) end
+		boostTag.Visible = bst > 1.001
+		boostText.Text = "BOOST  x" .. string.format("%.1f", bst)
 		setCoins(s.coins)
 		spText.Text = Format.number(s.sp)
 		codeText.Text = tostring(s.code or "...")
@@ -2309,6 +2388,7 @@ function M.start(gui, remotes)
 			else text = Locale.f(lang, "f_death", nameTag(a), esc(T("cause_" .. tostring(b)))) end
 		elseif k == "level" then text = Locale.f(lang, "f_level", nameTag(a), tostring(b))
 		elseif k == "medal" then text = Locale.f(lang, "f_medal", nameTag(a), esc(T("biome_" .. tostring(b))))
+		elseif k == "achieved" then text = Locale.f(lang, "f_achieved", nameTag(a), esc(T("ach_" .. tostring(b))))
 		elseif k == "bossSpawn" then text = Locale.f(lang, "f_bossSpawn", mobTag(a))
 		elseif k == "bossDown" then text = Locale.f(lang, "f_bossDown", nameTag(b), mobTag(a))
 		elseif k == "blackMoved" then text = T("f_blackMoved")
@@ -2440,6 +2520,7 @@ function M.start(gui, remotes)
 		elseif key == "stashUp" then text = Locale.f(lang, "stashUp", a or 10)
 		elseif key == "discovered" then text = Locale.f(lang, "discovered", T("mob_" .. tostring(a))) Effects.ui("pop")
 		elseif key == "medalGot" then text = Locale.f(lang, "medalGot", T("biome_" .. tostring(a))) Effects.ui("skill")
+		elseif key == "achieved" then text = Locale.f(lang, "achieved", T("ach_" .. tostring(a))) Effects.ui("skill")
 		elseif key == "weakHit" then text = T("weakHit") Effects.ui("skill")
 		elseif key == "adminDone" then text = Locale.f(lang, "adminDone", a or 0)
 		elseif key == "drank" then text = Locale.f(lang, "drank", Items.name(a, lang)) Effects.ui("skill")
@@ -2481,7 +2562,7 @@ function M.start(gui, remotes)
 	end
 	act("state")
 	task.delay(5, function() if state then UI.toast(root, T("tip")) end end)
-	return { bagModal = bagModal, shopModal = shopModal, menuModal = menuModal, skillsModal = skillsModal, adminWarnModal = adminWarnModal, indexModal = indexModal }
+	return { bagModal = bagModal, shopModal = shopModal, menuModal = menuModal, skillsModal = skillsModal, adminWarnModal = adminWarnModal, indexModal = indexModal, achModal = achModal }
 end
 
 return M

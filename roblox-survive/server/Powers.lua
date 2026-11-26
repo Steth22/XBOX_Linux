@@ -42,6 +42,7 @@ function P.upgrade(player, room, kind)
 	pw[kind] += 1
 	pw.off[kind] = nil
 	ctx.notify(player, pw[kind] == 1 and "powerUnlocked" or "powerUp", "pw_" .. kind)
+	if ctx.bump then ctx.bump(player, "powers", 1) end
 	if player.Character then ctx.fx("skillUp", player.Character) end
 	P.apply(player)
 	ctx.push(player)

@@ -33,7 +33,7 @@ local function roomList(profile)
 	for _, r in ipairs(profile.rooms) do
 		local left = math.max(0, Config.ROOM_TTL - (os.time() - (r.last or 0)))
 		if left > 0 then
-			table.insert(out, { code = r.code, coins = r.coins or 0, xp = r.xp or 0, hours = math.ceil(left / 3600) })
+			table.insert(out, { code = r.code, coins = r.coins or 0, xp = r.xp or 0, pct = r.pct, hours = math.ceil(left / 3600) })
 		end
 	end
 	return out
@@ -70,7 +70,9 @@ local function ownedRooms(player, profile)
 		if rec then
 			table.insert(keep, code)
 			local left = math.max(0, Config.ROOM_TTL - (os.time() - (rec.last or 0)))
-			table.insert(out, { code = code, name = type(rec.name) == "string" and rec.name or nil, pvp = rec.pvp == true, admin = rec.admin == true, maxPlayers = rec.maxPlayers or 8, access = Rooms.access(rec), hours = math.ceil(left / 3600) })
+			local pct = nil
+			for _, pr in ipairs(profile.rooms) do if pr.code == code then pct = pr.pct end end
+			table.insert(out, { code = code, pct = pct, name = type(rec.name) == "string" and rec.name or nil, pvp = rec.pvp == true, admin = rec.admin == true, maxPlayers = rec.maxPlayers or 8, access = Rooms.access(rec), hours = math.ceil(left / 3600) })
 		elseif why == "error" then
 			table.insert(keep, code)
 		end
@@ -303,9 +305,23 @@ local function scene()
 	cc.TintColor = Color3.fromRGB(255, 240, 225)
 	cc.Parent = Lighting
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 0.6
-	bloom.Threshold = 1.4
+	bloom.Intensity = 0.7
+	bloom.Size = 30
+	bloom.Threshold = 1.25
 	bloom.Parent = Lighting
+	-- golden-hour light through the trees, and a soft background blur
+	local rays = Instance.new("SunRaysEffect")
+	rays.Intensity = 0.12
+	rays.Spread = 0.6
+	rays.Parent = Lighting
+	local dof = Instance.new("DepthOfFieldEffect")
+	dof.FarIntensity = 0.35
+	dof.FocusDistance = 22
+	dof.InFocusRadius = 18
+	dof.NearIntensity = 0
+	dof.Parent = Lighting
+	Lighting.GeographicLatitude = 30
+	pcall(function() Lighting.Technology = Enum.Technology.Future end)
 
 	local f = Instance.new("Folder")
 	f.Name = "LobbyScene"
@@ -371,7 +387,64 @@ local function scene()
 	light.Range = 30
 	light.Brightness = 2.5
 	light.Color = Color3.fromRGB(255, 160, 80)
+	light.Shadows = true
 	light.Parent = fire
+	-- embers rising from the fire, and a thin column of smoke
+	local embers = Instance.new("ParticleEmitter")
+	embers.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	embers.Color = ColorSequence.new(Color3.fromRGB(255, 200, 90), Color3.fromRGB(255, 90, 30))
+	embers.LightEmission = 1
+	embers.Size = NumberSequence.new(0.25, 0.05)
+	embers.Speed = NumberRange.new(4, 8)
+	embers.SpreadAngle = Vector2.new(18, 18)
+	embers.Lifetime = NumberRange.new(1.5, 2.6)
+	embers.Acceleration = Vector3.new(0.6, 1.2, 0)
+	embers.Rate = 14
+	embers.Parent = fire
+	local smoke = Instance.new("ParticleEmitter")
+	smoke.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	smoke.Color = ColorSequence.new(Color3.fromRGB(120, 116, 110))
+	smoke.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.15, 0.75), NumberSequenceKeypoint.new(1, 1) })
+	smoke.Size = NumberSequence.new(2, 9)
+	smoke.Speed = NumberRange.new(3, 5)
+	smoke.Lifetime = NumberRange.new(4, 6)
+	smoke.Acceleration = Vector3.new(1.2, 0.5, 0)
+	smoke.RotSpeed = NumberRange.new(-20, 20)
+	smoke.Rate = 4
+	smoke.Parent = fire
+	-- fireflies drifting among the trees and leaves falling across the view
+	local air = part("Air", Vector3.new(90, 14, 90), CFrame.new(0, 8, 10), Color3.new(), nil)
+	air.Transparency, air.CanCollide, air.CanQuery = 1, false, false
+	local flies = Instance.new("ParticleEmitter")
+	flies.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	flies.Color = ColorSequence.new(Color3.fromRGB(230, 255, 140))
+	flies.LightEmission = 1
+	flies.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(1, 0) })
+	flies.Speed = NumberRange.new(0.3, 1.2)
+	flies.SpreadAngle = Vector2.new(180, 180)
+	flies.Lifetime = NumberRange.new(4, 7)
+	flies.Rate = 6
+	flies.Parent = air
+	local leafBox = part("Leaves", Vector3.new(60, 1, 40), CFrame.new(0, 26, -6), Color3.new(), nil)
+	leafBox.Transparency, leafBox.CanCollide, leafBox.CanQuery = 1, false, false
+	local leaves = Instance.new("ParticleEmitter")
+	leaves.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	leaves.Color = ColorSequence.new(Color3.fromRGB(210, 140, 60), Color3.fromRGB(150, 160, 60))
+	leaves.Size = NumberSequence.new(0.35)
+	leaves.EmissionDirection = Enum.NormalId.Bottom
+	leaves.Speed = NumberRange.new(2, 4)
+	leaves.Lifetime = NumberRange.new(8, 11)
+	leaves.RotSpeed = NumberRange.new(-120, 120)
+	leaves.Rotation = NumberRange.new(0, 360)
+	leaves.Acceleration = Vector3.new(1.5, -0.4, 0)
+	leaves.Rate = 3
+	leaves.Parent = leafBox
+	-- distant hills behind the trees
+	for i = 1, 7 do
+		local a = math.rad(40 + i * 14)
+		local r = 150 + (i % 3) * 25
+		part("Hill", Vector3.new(90, 40 + (i % 4) * 12, 70), CFrame.new(math.cos(a) * r, 6, math.sin(a) * r) * CFrame.Angles(0, -a, 0), Color3.fromRGB(64, 88, 70):Lerp(Color3.fromRGB(150, 130, 140), 0.35), Enum.Material.Grass, BALL)
+	end
 	-- lanterns
 	for _, pos in ipairs({ Vector3.new(-10, 0, -4), Vector3.new(11, 0, -2) }) do
 		part("Post", Vector3.new(5, 0.4, 0.4), CFrame.new(pos + Vector3.new(0, 2.5, 0)) * UPR, Color3.fromRGB(80, 60, 44), Enum.Material.Wood, CYL)

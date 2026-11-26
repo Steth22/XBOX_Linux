@@ -82,10 +82,16 @@ function M.start(gui, remotes)
 		local cam = workspace.CurrentCamera
 		if not cam or not camPos or not camLook then return end
 		cam.CameraType = Enum.CameraType.Scriptable
-		cam.FieldOfView = 55
+		-- a slow cinematic move: a gentle arc around the fire, drifting in and out, breathing up and down
 		local t = os.clock()
-		local sway = Vector3.new(math.sin(t * 0.25) * 1.2, math.sin(t * 0.35) * 0.4, 0)
-		cam.CFrame = CFrame.lookAt(camPos.Position + sway, camLook.Position)
+		local look = camLook.Position
+		local base = camPos.Position - look
+		local arc = math.sin(t * 0.07) * math.rad(14)
+		local push = 1 + math.sin(t * 0.11) * 0.12
+		local off = CFrame.Angles(0, arc, 0):VectorToWorldSpace(base) * push
+		local bob = Vector3.new(0, math.sin(t * 0.21) * 0.5 + math.sin(t * 0.09) * 0.8, 0)
+		cam.FieldOfView = 52 + math.sin(t * 0.05) * 3
+		cam.CFrame = CFrame.lookAt(look + off + bob, look + Vector3.new(math.sin(t * 0.13) * 0.6, 0, 0))
 	end)
 
 	---------------------------------------------------------------- preview (look screen)
@@ -130,6 +136,13 @@ function M.start(gui, remotes)
 	local function travel(action, a)
 		if busy then return end
 		busy = true
+		-- the loading screen shows during the teleport (and the room's loader takes over on arrival)
+		pcall(function()
+			local Screen = require(game:GetService("ReplicatedFirst"):WaitForChild("Loading"):WaitForChild("Screen"))
+			local t = Screen.build()
+			t.set(0.05, T("teleporting"))
+			game:GetService("TeleportService"):SetTeleportGui(t.gui)
+		end)
 		local res = call(action, a)
 		if res.ok then
 			local veil = UI.frame({ Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, ZIndex = 200, Active = true, Parent = root })
@@ -177,14 +190,29 @@ function M.start(gui, remotes)
 		local row = UI.frame({ Size = UDim2.new(1, -8, 0, sub and 76 or 56), BackgroundColor3 = c.card, ZIndex = 53, Parent = list })
 		UI.corner(row, 12)
 		local ax, px = edge(true, 16, sub and 8 or 0)
-		UI.text({ Text = title, Size = UDim2.new(0.6, 0, 0, sub and 34 or 56), AnchorPoint = Vector2.new(ax, 0), Position = px, TextXAlignment = UI.align(lang), TextSize = sub and 26 or 20, TextColor3 = sub and c.gold or c.text, ZIndex = 54, Parent = row })
+		UI.text({ Text = title, Size = UDim2.new(0.52, 0, 0, sub and 34 or 56), AnchorPoint = Vector2.new(ax, 0), Position = px, TextXAlignment = UI.align(lang), TextSize = sub and 26 or 20, TextColor3 = sub and c.gold or c.text, ZIndex = 54, Parent = row })
 		if sub then
 			local _, p2 = edge(true, 16, 44)
-			UI.text({ Text = sub, Size = UDim2.new(0.66, 0, 0, 24), AnchorPoint = Vector2.new(ax, 0), Position = p2, TextXAlignment = UI.align(lang), TextSize = 15, TextColor3 = c.dim, ZIndex = 54, Parent = row })
+			UI.text({ Text = sub, Size = UDim2.new(0.52, 0, 0, 28), AnchorPoint = Vector2.new(ax, 0), Position = p2, TextXAlignment = UI.align(lang), TextYAlignment = Enum.TextYAlignment.Top, TextSize = 13, TextColor3 = c.dim, ZIndex = 54, Parent = row })
 		end
 		local bx, pbx = edge(false, 12)
 		UI.button({ Text = T("join"), Size = UDim2.fromOffset(112, 44), AnchorPoint = Vector2.new(bx, 0.5), Position = UDim2.new(pbx.X.Scale, pbx.X.Offset, 0.5, 0), ZIndex = 54, Parent = row }, onJoin)
 		return row
+	end
+
+	-- how far you have got in a room: a ring-like badge with the percent
+	local function progressBadge(row, pct, fromEdge)
+		if not pct then return end
+		local bx = lang == "ar" and 0 or 1
+		local b = UI.frame({ Size = UDim2.fromOffset(64, 44), AnchorPoint = Vector2.new(bx, 0.5), Position = UDim2.new(bx, lang == "ar" and fromEdge or -fromEdge, 0.5, 0), BackgroundColor3 = c.panel, ZIndex = 55, Parent = row })
+		UI.corner(b, 12)
+		local col = pct >= 100 and c.gold or (pct >= 50 and c.accent or c.blue)
+		UI.stroke(b, col, 2)
+		UI.text({ Text = pct .. "%", Size = UDim2.new(1, 0, 0, 24), Position = UDim2.fromOffset(0, 3), TextSize = 18, TextColor3 = col, ZIndex = 56, Parent = b })
+		local bar = UI.frame({ Size = UDim2.new(1, -14, 0, 5), Position = UDim2.new(0, 7, 1, -11), BackgroundColor3 = c.bg, ZIndex = 56, Parent = b })
+		UI.corner(bar, 3)
+		local fill = UI.frame({ Size = UDim2.fromScale(math.clamp(pct / 100, 0, 1), 1), BackgroundColor3 = col, ZIndex = 57, Parent = bar })
+		UI.corner(fill, 3)
 	end
 
 	local function pageFriends(content)
@@ -432,6 +460,7 @@ function M.start(gui, remotes)
 				settingsModal(r)
 			end)
 			Icons.draw("settings", gear, 24, c.text, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+			progressBadge(row, r.pct, 186)
 			UI.enter(row, n * 0.05, 14)
 		end
 		local visitedHeader = false
@@ -441,6 +470,7 @@ function M.start(gui, remotes)
 				n += 1
 				local sub = string.format("%s %s   |   %s %s   |   %s", T("coins"), Format.number(r.coins), T("xp"), Format.number(r.xp), Locale.f(lang, "hoursLeft", r.hours))
 				local row = joinRow(list, r.code, sub, function() travel("join", r.code) end)
+				progressBadge(row, r.pct, 130)
 				UI.enter(row, n * 0.05, 14)
 			end
 		end

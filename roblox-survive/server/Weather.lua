@@ -139,6 +139,11 @@ function W.start(c)
 				if flat < 20 and math.abs(hrp.Position.Y - ny) < 70 and os.clock() > (hitCd[pl] or 0) then
 					hitCd[pl] = os.clock() + 1.5
 					if ctx and ctx.hurt then ctx.hurt(pl, 9, "tornado") end
+					-- caught by the tornado and still standing a few seconds later
+					task.delay(4, function()
+						local h = pl.Character and pl.Character:FindFirstChildOfClass("Humanoid")
+						if h and h.Health > 0 and ctx.bump then ctx.bump(pl, "tornado", 1) end
+					end)
 				end
 			end
 		end
