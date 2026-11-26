@@ -39,7 +39,7 @@ const THREE_PATH = process.env.THREE || '/tmp/claude-0/-home-user-XBOX-Linux/c1e
     scene.add(g);
     const box = new THREE.Box3().setFromObject(g), sph = box.getBoundingSphere(new THREE.Sphere());
     const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
-    const dir = new THREE.Vector3(1, 0.85, 1.25).normalize();
+    const dir = new THREE.Vector3(...(${JSON.stringify((process.env.CAMDIR || '1,0.85,1.25').split(',').map(Number))})).normalize();
     cam.position.copy(sph.center).addScaledVector(dir, sph.radius / Math.tan(15 * Math.PI / 180) * 1.05); cam.lookAt(sph.center);
     const x = (k % cols) * cell, y = Math.floor(k / cols) * cell;
     const H = canvas.height;

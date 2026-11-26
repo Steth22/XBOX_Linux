@@ -141,173 +141,373 @@ local function base(kind, hrpSize, hip, at)
 	return m, hrp, nil
 end
 
+-- a part spanning two points given in `base`'s local space, welded to `base` (bones, legs, horns, tails)
+local function seg(m, base, a, b, th, color, material, depth)
+	local wa, wb = base.CFrame:PointToWorldSpace(a), base.CFrame:PointToWorldSpace(b)
+	local d = wb - wa
+	local len = d.Magnitude
+	if len < 0.01 then return nil end
+	local up = d.Unit
+	local right = math.abs(up.Y) < 0.95 and Vector3.yAxis:Cross(up).Unit or Vector3.xAxis
+	local back = right:Cross(up)
+	local p = Instance.new("Part")
+	p.Name = "Vis"
+	p.Size = Vector3.new(th, len + th * 0.25, depth or th)
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.CanCollide = false
+	p.CanTouch = false
+	p.CanQuery = true
+	p.Massless = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.CFrame = CFrame.fromMatrix((wa + wb) / 2, right, up, back)
+	p.Parent = m
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = base
+	w.Part1 = p
+	w.Parent = p
+	return p
+end
+
+---------------------------------------------------------------- four-legged animals
+-- body proportions per animal (multiplied by def.size). Front is -Z.
+local Q = {
+	default = { L = 2.6, H = 1.3, W = 1.25, neck = 0.8, neckAng = 35, head = Vector3.new(0.85, 0.8, 0.95), snout = { 0.5, 0.42, 0.6 }, ears = "pointy", tail = "thin" },
+	rabbit = { L = 2.1, H = 1.45, W = 1.3, neck = 0.25, neckAng = 60, head = Vector3.new(0.95, 0.9, 0.95), snout = { 0.6, 0.5, 0.32 }, ears = "long", tail = "puff", rump = 0.15 },
+	deer = { L = 2.6, H = 1.15, W = 1.0, neck = 1.5, neckAng = 60, head = Vector3.new(0.6, 0.62, 0.85), snout = { 0.42, 0.4, 0.62 }, ears = "side", tail = "puff" },
+	wolf = { L = 2.7, H = 1.15, W = 1.0, neck = 0.75, neckAng = 32, head = Vector3.new(0.82, 0.78, 0.82), snout = { 0.44, 0.36, 0.82 }, ears = "pointy", tail = "bushy", ruff = true },
+	fox = { L = 2.6, H = 1.0, W = 0.9, neck = 0.6, neckAng = 30, head = Vector3.new(0.8, 0.72, 0.78), snout = { 0.4, 0.32, 0.8 }, ears = "big", tail = "fox" },
+	boar = { L = 2.5, H = 1.35, W = 1.25, neck = 0.35, neckAng = 0, head = Vector3.new(0.95, 0.95, 1.0), snout = { 0.6, 0.55, 0.75 }, ears = "small", tail = "thin", withers = 0.18 },
+	bear = { L = 2.6, H = 1.55, W = 1.45, neck = 0.5, neckAng = 18, head = Vector3.new(1.0, 0.95, 1.0), snout = { 0.55, 0.5, 0.55 }, ears = "round", tail = "stub", withers = 0.25 },
+	camel = { L = 2.4, H = 1.2, W = 1.05, neck = 1.7, neckAng = 42, head = Vector3.new(0.55, 0.6, 0.95), snout = { 0.45, 0.45, 0.5 }, ears = "small", tail = "thin" },
+	goat = { L = 2.4, H = 1.2, W = 1.05, neck = 0.65, neckAng = 48, head = Vector3.new(0.68, 0.72, 0.85), snout = { 0.44, 0.42, 0.5 }, ears = "side", tail = "stub" },
+	mammoth = { L = 2.6, H = 1.65, W = 1.5, neck = 0.25, neckAng = 10, head = Vector3.new(1.25, 1.35, 1.05), snout = nil, ears = "flap", tail = "thin", withers = 0.35 },
+	hyena = { L = 2.5, H = 1.2, W = 1.0, neck = 0.65, neckAng = 26, head = Vector3.new(0.85, 0.8, 0.8), snout = { 0.48, 0.42, 0.55 }, ears = "round", tail = "bushy", withers = 0.28, rump = -0.18, ruff = true },
+	cat = { L = 3.0, H = 1.1, W = 1.05, neck = 0.5, neckAng = 15, head = Vector3.new(0.88, 0.8, 0.82), snout = { 0.5, 0.4, 0.38 }, ears = "round", tail = "long" },
+	monkey = { L = 1.8, H = 1.2, W = 1.0, neck = 0.3, neckAng = 55, head = Vector3.new(0.9, 0.9, 0.85), snout = { 0.55, 0.45, 0.3 }, ears = "monkey", tail = "curl", withers = 0.2 },
+	lizard = { L = 3.0, H = 0.75, W = 1.2, neck = 0.5, neckAng = 4, head = Vector3.new(0.8, 0.5, 1.0), snout = { 0.6, 0.34, 0.6 }, ears = "none", tail = "lizard" },
+}
+Q.hare, Q.snowwolf, Q.ashwolf, Q.alpha = Q.rabbit, Q.wolf, Q.wolf, Q.wolf
+Q.polarbear, Q.ram, Q.puma, Q.tiger, Q.lavalizard = Q.bear, Q.goat, Q.cat, Q.cat, Q.lizard
+
 local function quadruped(kind, def, at)
 	local s = def.size
+	local q = Q[kind] or Q.default
 	local m, hrp, hum = base(kind, Vector3.new(1.6, 1.4, 2.8) * s, def.hip, at)
 	local col = def.color
-	local dark = col:Lerp(Color3.new(0, 0, 0), 0.25)
-	vis(m, hrp, Vector3.new(1.6, 1.4, 2.8) * s, CFrame.new(), col)
-	vis(m, hrp, Vector3.new(1.15, 1.1, 1.2) * s, CFrame.new(0, 0.6 * s, -1.75 * s), col)
-	vis(m, hrp, Vector3.new(0.7, 0.6, 0.7) * s, CFrame.new(0, 0.42 * s, -2.55 * s), dark)
-	for _, x in ipairs({ -0.55, 0.55 }) do
-		for _, z in ipairs({ -0.95, 0.95 }) do
-			local phase = ((x < 0) == (z < 0)) and 0 or math.pi
-			limb(m, hrp, Vector3.new(0.42 * s, def.hip + 0.6 * s, 0.42 * s), CFrame.new(x * s, -0.1 * s, z * s), dark, phase)
+	local dark = col:Lerp(Color3.new(0, 0, 0), 0.32)
+	local light = col:Lerp(Color3.new(1, 1, 1), 0.3)
+	local fur = (kind == "mammoth" or kind == "ram" or kind == "polarbear" or kind == "yeti") and Enum.Material.Fabric or Enum.Material.SmoothPlastic
+	local L, H, W = q.L * s, q.H * s, q.W * s
+	local wi, ru = (q.withers or 0) * s, (q.rump or 0) * s
+	local function V(size, off, color, shape, mat) return vis(m, hrp, size, off, color, shape, mat or fur) end
+	local function S(a, b, th, color, mat, depth) return seg(m, hrp, a, b, th, color, mat or fur, depth) end
+	-- body: chest, barrel, rump, a lighter belly and a darker back line
+	local y0 = 0.05 * s
+	V(Vector3.new(W, H, L * 0.6), CFrame.new(0, y0 + (wi + ru) / 2, 0), col)
+	V(Vector3.new(W * 1.06, H * 1.08, L * 0.38), CFrame.new(0, y0 + wi + H * 0.03, -L * 0.32), col)
+	V(Vector3.new(W, H * 0.98, L * 0.34), CFrame.new(0, y0 + ru, L * 0.33), col)
+	V(Vector3.new(W * 0.8, H * 0.26, L * 0.72), CFrame.new(0, y0 - H * 0.4 + (wi + ru) / 2, -0.04 * L), light)
+	V(Vector3.new(W * 0.42, 0.12 * s, L * 0.8), CFrame.new(0, y0 + H / 2 + 0.04 * s + (wi + ru) / 2, 0), dark)
+	-- neck and head
+	local nb = Vector3.new(0, y0 + wi + H * 0.28, -L * 0.42)
+	local ang = math.rad(q.neckAng)
+	local nt = nb + Vector3.new(0, math.sin(ang), -math.cos(ang)) * q.neck * s
+	S(nb, nt, W * 0.55, col, nil, W * 0.62)
+	local hd = q.head * s
+	local hc = nt + Vector3.new(0, hd.Y * 0.15, -hd.Z * 0.25)
+	V(hd, CFrame.new(hc), col)
+	if q.snout then
+		local sn = q.snout
+		local sc = hc + Vector3.new(0, -hd.Y * 0.18, -(hd.Z / 2 + sn[3] * s / 2 - 0.06 * s))
+		V(Vector3.new(sn[1], sn[2], sn[3]) * s, CFrame.new(sc), kind == "monkey" and Color3.fromRGB(214, 178, 140) or light)
+		V(Vector3.new(sn[1] * 0.72, sn[2] * 0.42, 0.1) * s, CFrame.new(sc + Vector3.new(0, sn[2] * s * 0.22, -sn[3] * s / 2)), Color3.fromRGB(34, 28, 26))
+	end
+	-- ears
+	for _, x in ipairs({ -1, 1 }) do
+		local ep = hc + Vector3.new(x * hd.X * 0.32, hd.Y * 0.5, hd.Z * 0.15)
+		if q.ears == "pointy" or q.ears == "big" then
+			local e = q.ears == "big" and 1.4 or 1
+			V(Vector3.new(0.26 * e, 0.42 * e, 0.12) * s, CFrame.new(ep + Vector3.new(0, 0.16 * e * s, 0)) * CFrame.Angles(0, 0, math.rad(-x * 12)), dark)
+		elseif q.ears == "long" then
+			V(Vector3.new(0.22, 1.05, 0.14) * s, CFrame.new(ep + Vector3.new(0, 0.48 * s, 0.1 * s)) * CFrame.Angles(math.rad(14), 0, math.rad(-x * 8)), col)
+			V(Vector3.new(0.12, 0.85, 0.06) * s, CFrame.new(ep + Vector3.new(0, 0.48 * s, 0.03 * s)) * CFrame.Angles(math.rad(14), 0, math.rad(-x * 8)), Color3.fromRGB(230, 190, 190), nil, Enum.Material.SmoothPlastic)
+		elseif q.ears == "round" or q.ears == "small" then
+			local e = q.ears == "small" and 0.7 or 1
+			V(Vector3.new(0.3, 0.3, 0.3) * s * e, CFrame.new(ep + Vector3.new(0, 0.05 * s, 0)), dark, BALL)
+		elseif q.ears == "side" then
+			V(Vector3.new(0.45, 0.16, 0.22) * s, CFrame.new(ep + Vector3.new(x * 0.18 * s, -0.05 * s, 0)) * CFrame.Angles(0, 0, math.rad(x * 25)), col)
+		elseif q.ears == "flap" then
+			V(Vector3.new(0.12, 0.8, 0.7) * s, CFrame.new(ep + Vector3.new(x * 0.25 * s, -0.4 * s, 0.1 * s)), dark)
+		elseif q.ears == "monkey" then
+			V(Vector3.new(0.14, 0.36, 0.36) * s, CFrame.new(hc + Vector3.new(x * hd.X * 0.55, 0.05 * s, 0)), Color3.fromRGB(214, 178, 140), BALL)
 		end
 	end
-	if kind == "camel" then
-		vis(m, hrp, Vector3.new(1.0, 0.9, 1.1) * s, CFrame.new(0, 0.95 * s, 0.2 * s), col:Lerp(Color3.new(0, 0, 0), 0.08), BALL)
-		vis(m, hrp, Vector3.new(0.5, 1.5, 0.5) * s, CFrame.new(0, 1.0 * s, -1.55 * s) * CFrame.Angles(math.rad(25), 0, 0), col)
+	if q.ruff then
+		V(Vector3.new(W * 1.12, H * 0.7, L * 0.2), CFrame.new(nb + Vector3.new(0, -0.05 * s, 0.1 * s)), kind == "alpha" and Color3.fromRGB(240, 240, 244) or dark)
+	end
+	-- legs: a thigh that swings, a thinner shin and a hoof or paw
+	local legTotal = def.hip + 0.6 * s
+	local hoof = (kind == "deer" or kind == "goat" or kind == "ram" or kind == "camel" or kind == "boar" or kind == "mammoth") and Color3.fromRGB(46, 38, 32) or dark
+	for _, x in ipairs({ -1, 1 }) do
+		for _, z in ipairs({ -1, 1 }) do
+			local phase = ((x < 0) == (z < 0)) and 0 or math.pi
+			local front = z < 0
+			local total = legTotal + (front and wi or ru)
+			local thigh = total * 0.52
+			local shin = total - thigh + 0.08 * s
+			local lx = x * W * (kind == "lizard" and 0.62 or 0.32)
+			local tw = W * (kind == "mammoth" and 0.42 or 0.33)
+			local part = limb(m, hrp, Vector3.new(tw, thigh, tw * 1.1), CFrame.new(lx, -0.1 * s + (front and wi or ru), z * L * 0.34), col, phase, fur)
+			local sw = tw * (kind == "mammoth" and 0.95 or 0.66)
+			vis(m, part, Vector3.new(sw, shin, sw), CFrame.new(0, -thigh / 2 - shin / 2 + 0.08 * s, front and 0 or 0.04 * s), kind == "tiger" and col or col:Lerp(Color3.new(0, 0, 0), 0.12), nil, fur)
+			vis(m, part, Vector3.new(sw * 1.15, 0.16 * s, sw * 1.35), CFrame.new(0, -thigh / 2 - shin + 0.14 * s, -0.06 * s), hoof)
+		end
+	end
+	-- tail
+	local tb = Vector3.new(0, y0 + ru + H * 0.3, L * 0.5)
+	if q.tail == "thin" then
+		S(tb, tb + Vector3.new(0, -0.7, 0.35) * s, 0.14 * s, dark)
+	elseif q.tail == "stub" then
+		V(Vector3.new(0.3, 0.3, 0.3) * s, CFrame.new(tb + Vector3.new(0, 0, 0.08 * s)), col, BALL)
+	elseif q.tail == "puff" then
+		V(Vector3.new(0.5, 0.5, 0.5) * s, CFrame.new(tb + Vector3.new(0, 0, 0.12 * s)), Color3.fromRGB(245, 242, 236), BALL)
+	elseif q.tail == "bushy" or q.tail == "fox" then
+		local tip = tb + Vector3.new(0, -0.55, 1.25) * s
+		S(tb, tip, 0.42 * s, col, nil, 0.42 * s)
+		V(Vector3.new(0.5, 0.5, 0.5) * s, CFrame.new(tip), q.tail == "fox" and Color3.fromRGB(245, 242, 236) or dark, BALL)
+	elseif q.tail == "long" then
+		local mid = tb + Vector3.new(0, -0.6, 1.0) * s
+		S(tb, mid, 0.2 * s, col)
+		S(mid, mid + Vector3.new(0, 0.35, 0.9) * s, 0.18 * s, kind == "tiger" and Color3.fromRGB(30, 26, 24) or col)
+	elseif q.tail == "curl" then
+		local a1 = tb + Vector3.new(0, 0.7, 0.5) * s
+		S(tb, a1, 0.16 * s, col)
+		S(a1, a1 + Vector3.new(0, 0.6, -0.35) * s, 0.15 * s, col)
+	elseif q.tail == "lizard" then
+		local p = tb + Vector3.new(0, -0.15 * s, 0)
+		for i = 1, 4 do
+			local n = p + Vector3.new(math.sin(i) * 0.15, -0.05, 0.75) * s
+			S(p, n, (0.55 - i * 0.1) * s, col, nil, (0.4 - i * 0.07) * s)
+			p = n
+		end
+	end
+	-- what makes each animal itself
+	if kind == "deer" then
+		for _, x in ipairs({ -1, 1 }) do
+			local b0 = hc + Vector3.new(x * 0.2 * s, hd.Y * 0.5, 0.1 * s)
+			local b1 = b0 + Vector3.new(x * 0.35, 0.9, 0.15) * s
+			local antler = Color3.fromRGB(222, 204, 170)
+			S(b0, b1, 0.1 * s, antler)
+			S(b1, b1 + Vector3.new(x * 0.4, 0.5, -0.1) * s, 0.08 * s, antler)
+			S(b1, b1 + Vector3.new(-x * 0.05, 0.55, 0.25) * s, 0.08 * s, antler)
+			S(b0 + Vector3.new(x * 0.15, 0.4, 0.05) * s, b0 + Vector3.new(x * 0.1, 0.65, -0.35) * s, 0.07 * s, antler)
+		end
 	elseif kind == "goat" then
 		for _, x in ipairs({ -1, 1 }) do
-			vis(m, hrp, Vector3.new(0.14, 0.8, 0.14) * s, CFrame.new(x * 0.25 * s, 1.35 * s, -1.45 * s) * CFrame.Angles(math.rad(35), 0, math.rad(x * -12)), Color3.fromRGB(90, 80, 70))
+			local h0 = hc + Vector3.new(x * 0.18 * s, hd.Y * 0.5, 0.05 * s)
+			local h1 = h0 + Vector3.new(x * 0.1, 0.45, 0.35) * s
+			S(h0, h1, 0.13 * s, Color3.fromRGB(80, 70, 60))
+			S(h1, h1 + Vector3.new(x * 0.05, 0.05, 0.4) * s, 0.1 * s, Color3.fromRGB(80, 70, 60))
 		end
-	elseif kind == "polarbear" then
-		for _, x in ipairs({ -1, 1 }) do
-			vis(m, hrp, Vector3.new(0.42, 0.42, 0.42) * s, CFrame.new(x * 0.42 * s, 1.22 * s, -1.65 * s), col, BALL)
-		end
-		vis(m, hrp, Vector3.new(1.75, 1.0, 1.6) * s, CFrame.new(0, 0.55 * s, -0.7 * s), col)
-	elseif kind == "boar" then
-		for _, x in ipairs({ -1, 1 }) do
-			vis(m, hrp, Vector3.new(0.15, 0.6, 0.15) * s, CFrame.new(x * 0.3 * s, 0.25 * s, -2.75 * s) * CFrame.Angles(math.rad(-30), 0, math.rad(x * 15)), Color3.fromRGB(240, 232, 210))
-		end
-		vis(m, hrp, Vector3.new(0.5, 0.5, 2.6) * s, CFrame.new(0, 0.75 * s, 0), dark)
-	elseif kind == "bear" then
-		for _, x in ipairs({ -1, 1 }) do
-			vis(m, hrp, Vector3.new(0.45, 0.45, 0.45) * s, CFrame.new(x * 0.42 * s, 1.25 * s, -1.65 * s), dark, BALL)
-		end
-		vis(m, hrp, Vector3.new(1.75, 1.0, 1.6) * s, CFrame.new(0, 0.55 * s, -0.7 * s), col)
-	elseif kind == "alpha" then
-		vis(m, hrp, Vector3.new(0.3, 0.55, 0.2) * s, CFrame.new(-0.35 * s, 1.35 * s, -1.65 * s), dark)
-		vis(m, hrp, Vector3.new(0.3, 0.55, 0.2) * s, CFrame.new(0.35 * s, 1.35 * s, -1.65 * s), dark)
-		vis(m, hrp, Vector3.new(1.9, 1.5, 1.2) * s, CFrame.new(0, 0.35 * s, -1.0 * s), Color3.fromRGB(235, 235, 240), nil, Enum.Material.Fabric)
-		vis(m, hrp, Vector3.new(0.35, 0.35, 1.5) * s, CFrame.new(0, 0.3 * s, 1.95 * s) * CFrame.Angles(math.rad(25), 0, 0), col)
-	elseif kind == "rabbit" or kind == "hare" then
-		vis(m, hrp, Vector3.new(0.25, 1.1, 0.16) * s, CFrame.new(-0.25 * s, 1.55 * s, -1.6 * s), col)
-		vis(m, hrp, Vector3.new(0.25, 1.1, 0.16) * s, CFrame.new(0.25 * s, 1.55 * s, -1.6 * s), col)
-		vis(m, hrp, Vector3.new(0.6, 0.6, 0.6) * s, CFrame.new(0, 0.3 * s, 1.5 * s), Color3.fromRGB(245, 240, 235), BALL)
-	elseif kind == "deer" then
-		for _, x in ipairs({ -1, 1 }) do
-			vis(m, hrp, Vector3.new(0.12, 1.2, 0.12) * s, CFrame.new(x * 0.3 * s, 1.6 * s, -1.6 * s) * CFrame.Angles(0, 0, math.rad(-x * 25)), Color3.fromRGB(220, 200, 170))
-			vis(m, hrp, Vector3.new(0.1, 0.6, 0.1) * s, CFrame.new(x * 0.55 * s, 1.95 * s, -1.75 * s) * CFrame.Angles(math.rad(-30), 0, math.rad(-x * 50)), Color3.fromRGB(220, 200, 170))
-		end
-		vis(m, hrp, Vector3.new(0.4, 0.4, 0.3) * s, CFrame.new(0, 0.4 * s, 1.5 * s), Color3.fromRGB(245, 240, 235))
-	elseif kind == "fox" then
-		for _, x in ipairs({ -1, 1 }) do vis(m, hrp, Vector3.new(0.3, 0.55, 0.2) * s, CFrame.new(x * 0.32 * s, 1.35 * s, -1.65 * s), dark) end
-		vis(m, hrp, Vector3.new(0.7, 0.7, 1.8) * s, CFrame.new(0, 0.2 * s, 2.1 * s) * CFrame.Angles(math.rad(20), 0, 0), col, BALL, Enum.Material.Fabric)
-		vis(m, hrp, Vector3.new(0.5, 0.5, 0.6) * s, CFrame.new(0, -0.1 * s, 2.9 * s), Color3.fromRGB(240, 236, 228), BALL)
+		V(Vector3.new(0.22, 0.45, 0.2) * s, CFrame.new(hc + Vector3.new(0, -hd.Y * 0.62, -hd.Z * 0.45)), Color3.fromRGB(240, 236, 228))
 	elseif kind == "ram" then
-		vis(m, hrp, Vector3.new(1.9, 1.6, 3.0) * s, CFrame.new(0, 0.1 * s, 0), Color3.fromRGB(230, 224, 210), nil, Enum.Material.Fabric)
+		V(Vector3.new(W * 1.22, H * 1.06, L * 0.86), CFrame.new(0, y0 + 0.05 * s, 0.02 * s), Color3.fromRGB(232, 226, 212), nil, Enum.Material.Fabric)
 		for _, x in ipairs({ -1, 1 }) do
-			vis(m, hrp, Vector3.new(0.5, 0.9, 0.9) * s, CFrame.new(x * 0.62 * s, 0.95 * s, -1.75 * s), Color3.fromRGB(120, 100, 80), BALL)
-			vis(m, hrp, Vector3.new(0.35, 0.35, 0.8) * s, CFrame.new(x * 0.7 * s, 0.6 * s, -2.2 * s) * CFrame.Angles(math.rad(-30), 0, 0), Color3.fromRGB(120, 100, 80))
+			local c0 = hc + Vector3.new(x * 0.42 * s, hd.Y * 0.25, 0.1 * s)
+			local pts = { c0, c0 + Vector3.new(x * 0.2, 0.35, 0.25) * s, c0 + Vector3.new(x * 0.35, 0.05, 0.5) * s, c0 + Vector3.new(x * 0.35, -0.4, 0.3) * s, c0 + Vector3.new(x * 0.3, -0.45, -0.1) * s }
+			for i = 1, #pts - 1 do S(pts[i], pts[i + 1], (0.3 - i * 0.04) * s, Color3.fromRGB(150, 130, 100)) end
 		end
+	elseif kind == "boar" then
+		V(Vector3.new(0.3, 0.45, L * 0.75), CFrame.new(0, y0 + wi + H * 0.58, -0.1 * L), Color3.fromRGB(50, 38, 30), nil, Enum.Material.Fabric)
+		for _, x in ipairs({ -1, 1 }) do
+			local t0 = hc + Vector3.new(x * 0.22 * s, -hd.Y * 0.3, -hd.Z * 0.6)
+			S(t0, t0 + Vector3.new(x * 0.15, 0.4, -0.15) * s, 0.12 * s, Color3.fromRGB(240, 232, 210))
+		end
+	elseif kind == "bear" or kind == "polarbear" then
+		V(Vector3.new(W * 0.9, H * 0.4, L * 0.3), CFrame.new(0, y0 + wi + H * 0.45, -L * 0.28), col, nil, fur) -- shoulder hump
+	elseif kind == "camel" then
+		V(Vector3.new(W * 0.9, H * 0.85, W * 0.9), CFrame.new(0, y0 + H * 0.55, -L * 0.12), col:Lerp(Color3.new(0, 0, 0), 0.06), BALL)
+		V(Vector3.new(W * 0.8, H * 0.75, W * 0.8), CFrame.new(0, y0 + H * 0.5, L * 0.2), col:Lerp(Color3.new(0, 0, 0), 0.06), BALL)
 	elseif kind == "mammoth" then
-		vis(m, hrp, Vector3.new(1.9, 1.7, 3.0) * s, CFrame.new(0, 0.2 * s, 0), col:Lerp(Color3.new(0, 0, 0), 0.1), nil, Enum.Material.Fabric)
-		vis(m, hrp, Vector3.new(0.45, 1.8, 0.45) * s, CFrame.new(0, -0.2 * s, -2.75 * s) * CFrame.Angles(math.rad(-12), 0, 0), col, nil, Enum.Material.Fabric)
+		-- trunk curling down, long tusks, a shaggy coat
+		local tr0 = hc + Vector3.new(0, -hd.Y * 0.2, -hd.Z * 0.48)
+		local tr1 = tr0 + Vector3.new(0, -0.9, -0.35) * s
+		local tr2 = tr1 + Vector3.new(0, -0.8, 0.05) * s
+		S(tr0, tr1, 0.5 * s, col)
+		S(tr1, tr2, 0.38 * s, col)
+		S(tr2, tr2 + Vector3.new(0, -0.3, -0.2) * s, 0.3 * s, col)
 		for _, x in ipairs({ -1, 1 }) do
-			vis(m, hrp, Vector3.new(0.22, 0.22, 1.6) * s, CFrame.new(x * 0.4 * s, -0.1 * s, -2.7 * s) * CFrame.Angles(math.rad(30), math.rad(x * 12), 0), Color3.fromRGB(240, 232, 210))
-			vis(m, hrp, Vector3.new(0.5, 0.9, 0.12) * s, CFrame.new(x * 0.65 * s, 0.6 * s, -1.6 * s), col, nil, Enum.Material.Fabric)
+			local t0 = hc + Vector3.new(x * 0.4 * s, -hd.Y * 0.35, -hd.Z * 0.35)
+			local t1 = t0 + Vector3.new(x * 0.15, -0.6, -0.8) * s
+			S(t0, t1, 0.24 * s, Color3.fromRGB(240, 232, 210), Enum.Material.SmoothPlastic)
+			S(t1, t1 + Vector3.new(-x * 0.1, 0.45, -0.45) * s, 0.2 * s, Color3.fromRGB(240, 232, 210), Enum.Material.SmoothPlastic)
 		end
+		V(Vector3.new(W * 1.1, H * 0.4, L * 0.9), CFrame.new(0, y0 - H * 0.45, 0), dark, nil, Enum.Material.Fabric)
 	elseif kind == "hyena" then
-		vis(m, hrp, Vector3.new(1.5, 1.1, 1.3) * s, CFrame.new(0, 0.35 * s, -0.8 * s), col:Lerp(Color3.new(0, 0, 0), 0.1), nil, Enum.Material.Fabric)
-		for i = 1, 6 do vis(m, hrp, Vector3.new(0.35, 0.35, 0.35) * s, CFrame.new((i % 2 == 0 and 0.75 or -0.75) * s, 0.2 * s, (-1 + i * 0.32) * s), Color3.fromRGB(70, 56, 40), BALL) end
-		for _, x in ipairs({ -1, 1 }) do vis(m, hrp, Vector3.new(0.35, 0.4, 0.2) * s, CFrame.new(x * 0.35 * s, 1.3 * s, -1.65 * s), dark, BALL) end
-	elseif kind == "puma" or kind == "tiger" then
-		vis(m, hrp, Vector3.new(0.3, 0.3, 2.2) * s, CFrame.new(0, 0.2 * s, 2.3 * s) * CFrame.Angles(math.rad(15), 0, 0), col)
-		for _, x in ipairs({ -1, 1 }) do vis(m, hrp, Vector3.new(0.3, 0.3, 0.2) * s, CFrame.new(x * 0.35 * s, 1.25 * s, -1.65 * s), dark, BALL) end
-		if kind == "tiger" then
-			for i = -2, 3 do vis(m, hrp, Vector3.new(1.65, 1.45, 0.18) * s, CFrame.new(0, 0, i * 0.45 * s), Color3.fromRGB(30, 26, 24)) end
-			vis(m, hrp, Vector3.new(1.2, 0.5, 2.2) * s, CFrame.new(0, -0.5 * s, 0), Color3.fromRGB(240, 232, 220))
+		for i = 1, 10 do
+			V(Vector3.new(0.3, 0.3, 0.3) * s, CFrame.new(((i % 2) * 2 - 1) * W * 0.51, y0 + (i % 3 - 1) * 0.3 * s, (-0.45 + i * 0.09) * L), Color3.fromRGB(70, 54, 38), BALL)
 		end
-	elseif kind == "turtle" then
-		vis(m, hrp, Vector3.new(2.6, 1.5, 3.4) * s, CFrame.new(0, 0.35 * s, 0.1 * s), Color3.fromRGB(110, 86, 50), BALL)
-		vis(m, hrp, Vector3.new(2.7, 0.3, 3.5) * s, CFrame.new(0, -0.1 * s, 0.1 * s), Color3.fromRGB(80, 64, 40))
-	elseif kind == "monkey" then
-		for _, x in ipairs({ -1, 1 }) do vis(m, hrp, Vector3.new(0.2, 0.45, 0.45) * s, CFrame.new(x * 0.62 * s, 0.6 * s, -1.75 * s), Color3.fromRGB(210, 170, 130), BALL) end
-		vis(m, hrp, Vector3.new(0.25, 0.25, 2.6) * s, CFrame.new(0, 1.0 * s, 2.0 * s) * CFrame.Angles(math.rad(-50), 0, 0), col)
-		vis(m, hrp, Vector3.new(0.7, 0.5, 0.2) * s, CFrame.new(0, 0.42 * s, -2.9 * s), Color3.fromRGB(210, 170, 130))
-	elseif kind == "lavalizard" then
-		for i = 1, 4 do vis(m, hrp, Vector3.new(1.2 - i * 0.22, 0.7 - i * 0.1, 1.0) * s, CFrame.new(0, -0.1 * s, (1.4 + i * 0.9) * s), col) end
-		for i = 1, 7 do vis(m, hrp, Vector3.new(0.3, 0.3, 0.3) * s, CFrame.new((i % 2 == 0 and 0.55 or -0.55) * s, 0.65 * s, (-1.2 + i * 0.4) * s), def.glow, BALL, Enum.Material.Neon) end
-	elseif kind == "wolf" or kind == "snowwolf" or kind == "ashwolf" then
-		if kind == "ashwolf" then
-			for i = 1, 5 do vis(m, hrp, Vector3.new(0.25, 0.25, 0.25) * s, CFrame.new((i % 2 == 0 and 0.5 or -0.5) * s, 0.6 * s, (-1 + i * 0.45) * s), def.glow, BALL, Enum.Material.Neon) end
+	elseif kind == "tiger" then
+		for i = -3, 3 do
+			V(Vector3.new(W * 1.04, H * 0.86, 0.16 * s), CFrame.new(0, y0 + 0.12 * s, i * L * 0.12) * CFrame.Angles(math.rad(10), 0, 0), Color3.fromRGB(28, 24, 22))
 		end
-		vis(m, hrp, Vector3.new(0.3, 0.5, 0.2) * s, CFrame.new(-0.35 * s, 1.35 * s, -1.65 * s), dark)
-		vis(m, hrp, Vector3.new(0.3, 0.5, 0.2) * s, CFrame.new(0.35 * s, 1.35 * s, -1.65 * s), dark)
-		vis(m, hrp, Vector3.new(0.3, 0.3, 1.4) * s, CFrame.new(0, 0.3 * s, 1.9 * s) * CFrame.Angles(math.rad(25), 0, 0), col)
+		V(Vector3.new(hd.X * 1.02, hd.Y * 0.35, 0.12 * s), CFrame.new(hc + Vector3.new(0, hd.Y * 0.2, 0)), Color3.fromRGB(28, 24, 22))
+	elseif kind == "lizard" or kind == "lavalizard" then
+		for i = 1, 8 do
+			V(Vector3.new(0.3, 0.2, 0.3) * s, CFrame.new(((i % 2) * 2 - 1) * W * 0.3, y0 + H * 0.5, (-0.45 + i * 0.11) * L), def.glow or dark, nil, def.glow and Enum.Material.Neon or nil)
+		end
+	elseif kind == "ashwolf" then
+		for i = 1, 6 do
+			V(Vector3.new(0.22, 0.22, 0.22) * s, CFrame.new(((i % 2) * 2 - 1) * W * 0.4, y0 + H * 0.45, (-0.35 + i * 0.12) * L), def.glow, BALL, Enum.Material.Neon)
+		end
+	elseif kind == "alpha" then
+		V(Vector3.new(W * 1.25, H * 1.0, L * 0.3), CFrame.new(0, y0 + wi + H * 0.15, -L * 0.36), Color3.fromRGB(236, 236, 240), nil, Enum.Material.Fabric)
 	end
 	return m, hrp, hum
 end
 
-local function zombie(def, at, kind)
-	local m, hrp, hum = base(kind or "zombie", Vector3.new(2, 2, 1), 2, at)
-	local skin = def.color
-	local cloth = Color3.fromRGB(70, 66, 80)
-	vis(m, hrp, Vector3.new(2, 2, 1), CFrame.new(), cloth)
-	vis(m, hrp, Vector3.new(1.4, 1.45, 1.4), CFrame.new(0, 1.7, 0), skin, BALL)
-	for _, x in ipairs({ -1.25, 1.25 }) do
-		vis(m, hrp, Vector3.new(0.6, 0.6, 2.1), CFrame.new(x, 0.55, -0.85), cloth)
-		vis(m, hrp, Vector3.new(0.6, 0.6, 0.6), CFrame.new(x, 0.55, -2.0), skin, BALL)
+local function turtle(def, at)
+	local s = def.size
+	local m, hrp, hum = base("turtle", Vector3.new(2.2, 1, 2.8) * s, def.hip, at)
+	local col = def.color
+	local shell, rim = Color3.fromRGB(104, 84, 52), Color3.fromRGB(70, 56, 36)
+	-- stepped dome shell with plates
+	vis(m, hrp, Vector3.new(0.5, 2.7, 3.2) * s, CFrame.new(0, 0.05 * s, 0) * CFrame.Angles(0, 0, math.rad(90)), rim, CYL)
+	vis(m, hrp, Vector3.new(0.5, 2.3, 2.75) * s, CFrame.new(0, 0.45 * s, 0) * CFrame.Angles(0, 0, math.rad(90)), shell, CYL)
+	vis(m, hrp, Vector3.new(0.4, 1.6, 1.9) * s, CFrame.new(0, 0.8 * s, 0) * CFrame.Angles(0, 0, math.rad(90)), shell:Lerp(Color3.new(1, 1, 1), 0.08), CYL)
+	for i = 0, 5 do
+		local a = i / 6 * math.pi * 2
+		vis(m, hrp, Vector3.new(0.5, 0.12, 0.5) * s, CFrame.new(math.cos(a) * 0.75 * s, 0.72 * s, math.sin(a) * 0.9 * s) * CFrame.Angles(0, a, 0), rim)
 	end
-	for _, x in ipairs({ -0.5, 0.5 }) do
-		limb(m, hrp, Vector3.new(0.85, 2, 0.85), CFrame.new(x, -1, 0), Color3.fromRGB(56, 50, 46), x < 0 and 0 or math.pi)
+	vis(m, hrp, Vector3.new(0.6, 0.14, 0.6) * s, CFrame.new(0, 1.02 * s, 0), rim)
+	-- head on a neck, stubby legs, a little tail
+	seg(m, hrp, Vector3.new(0, 0, -1.3) * s, Vector3.new(0, 0.25, -1.85) * s, 0.42 * s, col)
+	vis(m, hrp, Vector3.new(0.6, 0.48, 0.7) * s, CFrame.new(0, 0.3 * s, -2.1 * s), col, BALL)
+	for _, x in ipairs({ -1, 1 }) do
+		for _, z in ipairs({ -1, 1 }) do
+			local p = limb(m, hrp, Vector3.new(0.5, def.hip + 0.45 * s, 0.6) * Vector3.new(s, 1, s), CFrame.new(x * 1.0 * s, -0.05 * s, z * 0.95 * s), col, ((x < 0) == (z < 0)) and 0 or math.pi)
+		end
+	end
+	seg(m, hrp, Vector3.new(0, 0, 1.5) * s, Vector3.new(0, -0.15, 1.9) * s, 0.18 * s, col)
+	return m, hrp, hum
+end
+
+local function gorilla(def, at)
+	-- hunched, long arms down to the ground, short legs
+	local m, hrp, hum = base("gorilla", Vector3.new(4.5, 5.5, 3), 2.6, at)
+	local fur, chest, skin = def.color, Color3.fromRGB(96, 96, 104), Color3.fromRGB(40, 36, 36)
+	vis(m, hrp, Vector3.new(4.6, 4.2, 3.4), CFrame.new(0, 0.6, -0.3) * CFrame.Angles(math.rad(-22), 0, 0), fur, nil, Enum.Material.Fabric)
+	vis(m, hrp, Vector3.new(3.0, 2.6, 0.4), CFrame.new(0, 0.7, -2.0) * CFrame.Angles(math.rad(-22), 0, 0), chest)
+	vis(m, hrp, Vector3.new(3.6, 2.2, 2.6), CFrame.new(0, -1.6, 0.6), fur, nil, Enum.Material.Fabric)
+	vis(m, hrp, Vector3.new(2.4, 2.6, 2.6), CFrame.new(0, 2.7, -2.0), fur, BALL, Enum.Material.Fabric)
+	vis(m, hrp, Vector3.new(2.2, 0.6, 0.9), CFrame.new(0, 3.3, -3.0), skin) -- brow
+	vis(m, hrp, Vector3.new(1.6, 1.0, 0.8), CFrame.new(0, 2.3, -3.15), skin) -- muzzle
+	vis(m, hrp, Vector3.new(1.6, 1.4, 1.4), CFrame.new(0, 3.9, -1.4), fur, BALL, Enum.Material.Fabric) -- crest
+	for _, x in ipairs({ -1, 1 }) do
+		local arm = limb(m, hrp, Vector3.new(1.7, 7.1, 1.7), CFrame.new(x * 3.0, 1.8, -1.9), fur, x < 0 and 0 or math.pi, Enum.Material.Fabric)
+		vis(m, arm, Vector3.new(1.9, 0.9, 2.1), CFrame.new(0, -3.45, -0.2), skin) -- knuckles
+		limb(m, hrp, Vector3.new(1.8, 3.0, 1.8), CFrame.new(x * 1.3, -2.4, 0.8), fur, x < 0 and math.pi or 0, Enum.Material.Fabric)
 	end
 	return m, hrp, hum
+end
+
+---------------------------------------------------------------- spiders, crabs, scorpions
+-- eight jointed legs: the thigh rises from the body and swings, the shin reaches down to the ground
+local function jointedLegs(m, hrp, n, spread, bodyY, ground, s, color, thick, zFrom, zTo)
+	for _, x in ipairs({ -1, 1 }) do
+		for i = 0, n - 1 do
+			local z = zFrom + (zTo - zFrom) * (n == 1 and 0.5 or i / (n - 1))
+			local th = math.rad(x * 125)
+			local up = 1.25 * s * spread
+			local part = limb(m, hrp, Vector3.new(thick, up, thick), CFrame.new(x * 0.55 * s, bodyY, z) * CFrame.Angles(0, math.rad(x * (i - (n - 1) / 2) * -14), th), color, (i % 2 == 0) == (x < 0) and 0 or math.pi)
+			local knee = Vector3.new(0, -up / 2, 0)
+			local kneeHrp = hrp.CFrame:PointToObjectSpace(part.CFrame:PointToWorldSpace(knee))
+			local foot = Vector3.new(kneeHrp.X + x * 0.55 * s * spread, ground, kneeHrp.Z + (z > 0 and 0.2 or -0.2) * s)
+			seg(m, part, knee, part.CFrame:PointToObjectSpace(hrp.CFrame:PointToWorldSpace(foot)), thick * 0.8, color:Lerp(Color3.new(0, 0, 0), 0.15))
+		end
+	end
 end
 
 local function spider(def, at, kind)
 	local m, hrp, hum = base(kind or "spider", Vector3.new(2.2, 1, 2.6), 1.2, at)
 	local col = def.color
-	vis(m, hrp, Vector3.new(2.2, 2.2, 2.2), CFrame.new(0, 0.1, 0.9), col, BALL)
-	vis(m, hrp, Vector3.new(1.3, 1.3, 1.3), CFrame.new(0, 0.1, -0.7), col:Lerp(Color3.new(1, 1, 1), 0.08), BALL)
-	vis(m, hrp, Vector3.new(0.9, 0.2, 0.9), CFrame.new(0, 1.2, 0.9), Color3.fromRGB(140, 40, 40))
-	for _, x in ipairs({ -1, 1 }) do
-		for i = 0, 3 do
-			local z = -0.9 + i * 0.6
-			vis(m, hrp, Vector3.new(2.0, 0.18, 0.18), CFrame.new(x * 1.3, 0.1, z) * CFrame.Angles(0, math.rad(x * (i - 1.5) * 12), math.rad(x * -25)), col)
-			limb(m, hrp, Vector3.new(0.18, 1.6, 0.18), CFrame.new(x * 2.2, 0.2, z), col, (i % 2 == 0) == (x < 0) and 0 or math.pi)
-		end
+	local ground = -(1.2 + 0.5)
+	vis(m, hrp, Vector3.new(2.5, 2.5, 2.5), CFrame.new(0, 0.35, 1.25), col, BALL)
+	vis(m, hrp, Vector3.new(1.4, 1.2, 1.5), CFrame.new(0, 0.1, -0.5), col:Lerp(Color3.new(1, 1, 1), 0.06), BALL)
+	vis(m, hrp, Vector3.new(0.9, 0.85, 0.85), CFrame.new(0, 0.15, -1.35), col, BALL)
+	if kind == "crawler" then
+		for i = 0, 2 do vis(m, hrp, Vector3.new(1.6 - i * 0.3, 0.2, 0.3), CFrame.new(0, 1.55 - i * 0.05, 0.7 + i * 0.5), col:Lerp(Color3.new(0, 0, 0), 0.3)) end
+	else
+		vis(m, hrp, Vector3.new(0.5, 0.12, 0.9), CFrame.new(0, 1.58, 1.25), Color3.fromRGB(170, 30, 30))
+		vis(m, hrp, Vector3.new(0.9, 0.12, 0.35), CFrame.new(0, 1.6, 1.25), Color3.fromRGB(170, 30, 30))
 	end
+	for _, x in ipairs({ -1, 1 }) do
+		seg(m, hrp, Vector3.new(x * 0.2, -0.05, -1.7), Vector3.new(x * 0.15, -0.55, -1.85), 0.18, Color3.fromRGB(20, 18, 20))
+	end
+	jointedLegs(m, hrp, 4, 1.25, 0.2, ground, 1, col, 0.2, -0.9, 0.6)
 	return m, hrp, hum
 end
 
 local function scorpion(kind, def, at)
 	local s = def.size
+	local crab = def.noTail
 	local m, hrp, hum = base(kind, Vector3.new(2.2, 0.8, 3) * s, 0.9 * s, at)
-	local col, dark = def.color, def.color:Lerp(Color3.new(0, 0, 0), 0.25)
-	vis(m, hrp, Vector3.new(2.0, 0.8, 2.8) * s, CFrame.new(), col)
-	vis(m, hrp, Vector3.new(1.4, 0.6, 1.0) * s, CFrame.new(0, 0.05 * s, -1.7 * s), dark)
-	for _, x in ipairs({ -1, 1 }) do
-		vis(m, hrp, Vector3.new(0.35, 0.35, 1.4) * s, CFrame.new(x * 1.1 * s, 0, -2.0 * s) * CFrame.Angles(0, math.rad(x * -20), 0), col)
-		vis(m, hrp, Vector3.new(0.7, 0.4, 0.9) * s, CFrame.new(x * 1.4 * s, 0, -2.8 * s), dark)
-		for i = 0, 2 do
-			limb(m, hrp, Vector3.new(0.2, 1.1, 0.2) * s, CFrame.new(x * 1.1 * s, -0.1 * s, (-0.8 + i * 0.8) * s) * CFrame.Angles(0, 0, math.rad(x * 30)), dark, (i % 2 == 0) == (x < 0) and 0 or math.pi)
+	local col, dark = def.color, def.color:Lerp(Color3.new(0, 0, 0), 0.28)
+	local light = col:Lerp(Color3.new(1, 1, 1), 0.2)
+	local ground = -(0.9 * s + 0.4 * s)
+	if crab then
+		-- wide flat shell
+		vis(m, hrp, Vector3.new(0.7, 2.6, 2.6) * s, CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90)), col, CYL)
+		vis(m, hrp, Vector3.new(0.3, 2.1, 2.1) * s, CFrame.new(0, 0.42 * s, 0.05 * s) * CFrame.Angles(0, 0, math.rad(90)), light, CYL)
+		vis(m, hrp, Vector3.new(2.3, 0.25, 0.3) * s, CFrame.new(0, -0.15 * s, -1.25 * s), dark)
+	else
+		for i = 0, 3 do
+			vis(m, hrp, Vector3.new(2.0 - i * 0.25, 0.75, 0.85) * s, CFrame.new(0, 0.05 * s, (-0.9 + i * 0.7) * s), i % 2 == 0 and col or light)
 		end
+		vis(m, hrp, Vector3.new(1.3, 0.6, 0.9) * s, CFrame.new(0, 0, -1.65 * s), dark)
+		-- tail arching over the back, ending in a stinger
+		local pts = { Vector3.new(0, 0.2, 1.6), Vector3.new(0, 0.9, 2.3), Vector3.new(0, 1.9, 2.5), Vector3.new(0, 2.7, 2.0), Vector3.new(0, 3.0, 1.2) }
+		for i = 1, #pts - 1 do
+			seg(m, hrp, pts[i] * s, pts[i + 1] * s, (0.6 - i * 0.07) * s, i % 2 == 0 and col or light, nil, (0.55 - i * 0.06) * s)
+		end
+		local st = pts[#pts] * s
+		vis(m, hrp, Vector3.new(0.45, 0.45, 0.45) * s, CFrame.new(st), dark, BALL)
+		seg(m, hrp, st, st + Vector3.new(0, -0.55, -0.45) * s, 0.14 * s, Color3.fromRGB(30, 24, 20))
 	end
-	-- curled tail with a stinger
-	if def.noTail then
-		vis(m, hrp, Vector3.new(2.4, 0.5, 2.0) * s, CFrame.new(0, 0.45 * s, 0.2 * s), col:Lerp(Color3.new(1, 1, 1), 0.1))
-		return m, hrp, hum
+	-- arms and claws (pincers)
+	for _, x in ipairs({ -1, 1 }) do
+		local sh = Vector3.new(x * 0.9, 0, -1.2) * s
+		local el = sh + Vector3.new(x * 0.6, 0.15, -0.7) * s
+		local wr = el + Vector3.new(-x * 0.15, 0.05, -0.8) * s
+		seg(m, hrp, sh, el, 0.32 * s, col)
+		seg(m, hrp, el, wr, 0.34 * s, col)
+		vis(m, hrp, Vector3.new(0.75, 0.5, 0.9) * s, CFrame.new(wr + Vector3.new(0, 0, -0.3 * s)), dark)
+		seg(m, hrp, wr + Vector3.new(x * 0.18, 0, -0.65) * s, wr + Vector3.new(x * 0.1, 0, -1.35) * s, 0.22 * s, dark)
+		seg(m, hrp, wr + Vector3.new(-x * 0.18, 0, -0.65) * s, wr + Vector3.new(-x * 0.02, 0, -1.2) * s, 0.18 * s, dark)
 	end
-	for i = 1, 4 do
-		vis(m, hrp, Vector3.new(0.55, 0.55, 0.7) * s * (1 - i * 0.08), CFrame.new(0, (0.2 + i * 0.45) * s, (1.4 + i * 0.35 - (i > 2 and (i - 2) * 0.5 or 0)) * s), col)
-	end
-	vis(m, hrp, Vector3.new(0.2, 0.2, 0.7) * s, CFrame.new(0, 2.2 * s, 1.6 * s) * CFrame.Angles(math.rad(-50), 0, 0), Color3.fromRGB(40, 30, 26))
+	jointedLegs(m, hrp, crab and 3 or 4, 0.9, 0, ground, s, dark, 0.2 * s, -0.6 * s, (crab and 0.8 or 1.0) * s)
 	return m, hrp, hum
 end
 
 local function bat(def, at)
 	local m, hrp, hum = base("bat", Vector3.new(1.4, 1.1, 1.6), def.hip, at)
 	local col = def.color
-	vis(m, hrp, Vector3.new(1.3, 1.2, 1.6), CFrame.new(), col, BALL, Enum.Material.Fabric)
-	vis(m, hrp, Vector3.new(0.9, 0.9, 0.9), CFrame.new(0, 0.35, -0.8), col, BALL, Enum.Material.Fabric)
+	local skin = col:Lerp(Color3.new(0, 0, 0), 0.35)
+	vis(m, hrp, Vector3.new(1.2, 1.3, 1.2), CFrame.new(0, -0.1, 0.1), col, BALL, Enum.Material.Fabric)
+	vis(m, hrp, Vector3.new(0.85, 0.8, 0.85), CFrame.new(0, 0.55, -0.55), col, BALL, Enum.Material.Fabric)
+	vis(m, hrp, Vector3.new(0.4, 0.3, 0.35), CFrame.new(0, 0.45, -0.98), skin)
 	for _, x in ipairs({ -1, 1 }) do
-		vis(m, hrp, Vector3.new(0.18, 0.5, 0.18), CFrame.new(x * 0.28, 0.9, -0.85) * CFrame.Angles(0, 0, math.rad(-x * 15)), col)
-		-- wings hang sideways from the shoulders and flap around the body axis
-		local joint = CFrame.fromMatrix(Vector3.new(x * 0.55, 0.2, 0), Vector3.new(0, 0, 1), Vector3.new(-x, 0, 0), Vector3.new(0, -x, 0))
-		limb(m, hrp, Vector3.new(1.1, 2.4, 0.1), joint, col:Lerp(Color3.new(0, 0, 0), 0.3), x < 0 and 0 or math.pi, Enum.Material.Fabric)
+		vis(m, hrp, Vector3.new(0.2, 0.6, 0.12), CFrame.new(x * 0.28, 1.05, -0.5) * CFrame.Angles(0, 0, math.rad(-x * 18)), skin)
+		seg(m, hrp, Vector3.new(x * 0.25, -0.7, 0.3), Vector3.new(x * 0.25, -1.05, 0.35), 0.1, skin)
+		-- wing: a membrane that flaps, with finger bones
+		local joint = CFrame.fromMatrix(Vector3.new(x * 0.5, 0.25, 0), Vector3.new(0, 0, 1), Vector3.new(-x, 0, 0), Vector3.new(0, -x, 0))
+		local wing = limb(m, hrp, Vector3.new(1.3, 2.6, 0.08), joint, skin, x < 0 and 0 or math.pi, Enum.Material.Fabric)
+		vis(m, wing, Vector3.new(0.9, 1.4, 0.07), CFrame.new(0.35, -0.6, 0) * CFrame.Angles(0, 0, math.rad(25)), skin, nil, Enum.Material.Fabric)
+		seg(m, wing, Vector3.new(-0.62, 1.3, 0), Vector3.new(-0.62, -1.3, 0), 0.1, col)
+		seg(m, wing, Vector3.new(-0.6, 0.6, 0), Vector3.new(0.6, -1.2, 0), 0.08, col)
+		seg(m, wing, Vector3.new(-0.6, 0.2, 0), Vector3.new(0.75, -0.2, 0), 0.08, col)
 	end
 	return m, hrp, hum
 end
@@ -315,45 +515,119 @@ end
 local function snake(def, at)
 	local m, hrp, hum = base("snake", Vector3.new(1, 0.8, 2), 0.1, at)
 	local col = def.color
-	vis(m, hrp, Vector3.new(1.1, 0.8, 1.3), CFrame.new(0, 0.1, -0.9), col:Lerp(Color3.new(0, 0, 0), 0.15), BALL)
-	for i = 0, 8 do
-		local x = math.sin(i * 0.9) * 0.7
-		vis(m, hrp, Vector3.new(0.85 - i * 0.06, 0.6 - i * 0.03, 1.1), CFrame.new(x, -0.05, i * 0.85), i % 2 == 0 and col or Color3.fromRGB(200, 180, 70), BALL)
+	local belly = Color3.fromRGB(214, 196, 110)
+	-- head (wide, flat) raised a little
+	vis(m, hrp, Vector3.new(0.95, 0.5, 1.15), CFrame.new(0, 0.35, -1.4), col:Lerp(Color3.new(0, 0, 0), 0.15))
+	vis(m, hrp, Vector3.new(0.7, 0.4, 0.4), CFrame.new(0, 0.32, -2.05), col:Lerp(Color3.new(0, 0, 0), 0.15))
+	-- a winding body of thick segments with a pattern
+	local prev = Vector3.new(0, 0.2, -0.9)
+	for i = 1, 9 do
+		local p = Vector3.new(math.sin(i * 0.8) * 0.75, -0.08, -0.9 + i * 0.8)
+		local th = 0.72 - i * 0.05
+		seg(m, hrp, prev, p, th, i % 2 == 0 and col or col:Lerp(belly, 0.35), nil, th * 0.8)
+		vis(m, hrp, Vector3.new(th, th * 0.8, th), CFrame.new(p), col, BALL)
+		if i % 2 == 1 then vis(m, hrp, Vector3.new(th * 0.55, 0.1, th * 0.5), CFrame.new(p + Vector3.new(0, th * 0.42, 0)) * CFrame.Angles(0, math.rad(45), 0), Color3.fromRGB(40, 50, 30)) end
+		prev = p
+	end
+	return m, hrp, hum
+end
+
+-- shared humanoid frame: chest, waist, shoulders, neck, jointed arms with hands, legs with boots
+local function humanoid(m, hrp, o)
+	local skin, shirt, pants, boots = o.skin, o.shirt, o.pants, o.boots or Color3.fromRGB(46, 36, 28)
+	local fab = Enum.Material.Fabric
+	vis(m, hrp, Vector3.new(2, 1.2, 1), CFrame.new(0, 0.4, 0) * CFrame.Angles(math.rad(o.hunch or 0), 0, 0), shirt, nil, fab)
+	vis(m, hrp, Vector3.new(1.8, 0.95, 0.92), CFrame.new(0, -0.55, 0), pants:Lerp(shirt, 0.5), nil, fab)
+	vis(m, hrp, Vector3.new(1.9, 0.28, 1.0), CFrame.new(0, -0.95, 0), Color3.fromRGB(52, 38, 28), nil, fab) -- belt
+	vis(m, hrp, Vector3.new(0.36, 0.3, 0.1), CFrame.new(0, -0.95, -0.52), Color3.fromRGB(200, 170, 90), nil, Enum.Material.Metal)
+	for _, x in ipairs({ -1, 1 }) do vis(m, hrp, Vector3.new(0.8, 0.8, 0.8), CFrame.new(x * 1.0, 0.82, 0), shirt, BALL, fab) end
+	local headY = 1.7
+	local hz = -(o.hunch or 0) / 60
+	vis(m, hrp, Vector3.new(0.5, 0.4, 0.5), CFrame.new(0, 1.12, hz * 0.5), skin, nil)
+	vis(m, hrp, Vector3.new(1.05, 1.15, 1.05), CFrame.new(0, headY, hz), skin)
+	vis(m, hrp, Vector3.new(1.12, 0.32, 1.12), CFrame.new(0, headY + 0.45, hz), o.hair or skin:Lerp(Color3.new(0, 0, 0), 0.5), nil, fab)
+	local arms = {}
+	for _, x in ipairs({ -1, 1 }) do
+		local arm
+		if o.reach then
+			-- arms held out in front (zombies)
+			arm = vis(m, hrp, Vector3.new(0.55, 0.55, 1.1), CFrame.new(x * 1.05, 0.75, -0.6), shirt, nil, fab)
+			vis(m, hrp, Vector3.new(0.48, 0.48, 1.0), CFrame.new(x * 1.05, 0.7, -1.55) * CFrame.Angles(math.rad(-6), 0, 0), skin)
+			vis(m, hrp, Vector3.new(0.5, 0.3, 0.55), CFrame.new(x * 1.05, 0.66, -2.2), skin)
+		else
+			arm = limb(m, hrp, Vector3.new(0.58, 1.1, 0.58), CFrame.new(x * 1.25, 0.85, 0), shirt, x < 0 and math.pi or 0, fab)
+			vis(m, arm, Vector3.new(0.5, 1.0, 0.5), CFrame.new(0, -1.0, -0.05), o.sleeves and shirt or skin, nil, o.sleeves and fab or nil)
+			vis(m, arm, Vector3.new(0.55, 0.5, 0.55), CFrame.new(0, -1.62, -0.05), o.gloves or skin, nil, o.gloves and fab or nil)
+		end
+		arms[x] = arm
+		local leg = limb(m, hrp, Vector3.new(0.78, 1.1, 0.8), CFrame.new(x * 0.48, -1.0, 0), pants, x < 0 and 0 or math.pi, fab)
+		vis(m, leg, Vector3.new(0.68, 0.95, 0.7), CFrame.new(0, -0.95, 0), pants, nil, fab)
+		vis(m, leg, Vector3.new(0.78, 0.42, 1.1), CFrame.new(0, -1.42, -0.15), boots, nil, fab)
+	end
+	return arms
+end
+
+local function zombie(def, at, kind)
+	local m, hrp, hum = base(kind or "zombie", Vector3.new(2, 2, 1), 2, at)
+	local skin = def.color
+	local ghoul = kind == "ghoul"
+	local shirt = ghoul and Color3.fromRGB(60, 58, 70) or Color3.fromRGB(86, 96, 120)
+	local pants = ghoul and Color3.fromRGB(40, 38, 46) or Color3.fromRGB(70, 60, 50)
+	humanoid(m, hrp, { skin = skin, shirt = shirt, pants = pants, hunch = 14, reach = true, hair = Color3.fromRGB(40, 36, 30) })
+	-- torn shirt and patches of skin
+	vis(m, hrp, Vector3.new(0.7, 0.5, 0.1), CFrame.new(0.4, 0.15, -0.53), skin)
+	vis(m, hrp, Vector3.new(0.5, 0.35, 0.1), CFrame.new(-0.55, 0.65, -0.55), skin:Lerp(Color3.new(0, 0, 0), 0.2))
+	for i = -2, 2 do vis(m, hrp, Vector3.new(0.3, 0.45, 0.1), CFrame.new(i * 0.4, -0.3, -0.5) * CFrame.Angles(0, 0, math.rad(i * 9)), shirt:Lerp(Color3.new(0, 0, 0), 0.3), nil, Enum.Material.Fabric) end
+	if ghoul then
+		for _, x in ipairs({ -1, 1 }) do vis(m, hrp, Vector3.new(0.14, 0.6, 0.14), CFrame.new(x * 0.35, 2.4, 0.1) * CFrame.Angles(0, 0, math.rad(-x * 20)), Color3.fromRGB(200, 196, 180)) end
 	end
 	return m, hrp, hum
 end
 
 local function human(kind, def, at)
 	local m, hrp, hum = base(kind, Vector3.new(2, 2, 1), 2, at)
-	local skin, cloth = def.color, def.cloth
 	local big = kind == "banditlord"
-	vis(m, hrp, Vector3.new(2, 2, 1), CFrame.new(), cloth, nil, Enum.Material.Fabric)
-	vis(m, hrp, Vector3.new(1.3, 1.3, 1.3), CFrame.new(0, 1.65, 0), skin, BALL)
-	vis(m, hrp, Vector3.new(1.42, 0.5, 1.42), CFrame.new(0, 1.55, 0), Color3.fromRGB(40, 32, 30), BALL, Enum.Material.Fabric) -- mask
-	vis(m, hrp, Vector3.new(1.5, 1.0, 1.5), CFrame.new(0, 2.05, 0.1), big and Color3.fromRGB(110, 30, 30) or Color3.fromRGB(60, 50, 44), BALL, Enum.Material.Fabric) -- hood
-	vis(m, hrp, Vector3.new(2.1, 0.3, 1.1), CFrame.new(0, -0.75, 0), Color3.fromRGB(50, 36, 26), nil, Enum.Material.Fabric)
-	if big then vis(m, hrp, Vector3.new(2.3, 3.2, 0.15), CFrame.new(0, -0.4, 0.62), Color3.fromRGB(130, 30, 30), nil, Enum.Material.Fabric) end
-	for _, x in ipairs({ -1.25, 1.25 }) do
-		limb(m, hrp, Vector3.new(0.75, 2, 0.75), CFrame.new(x, 0.9, 0), cloth, x < 0 and math.pi or 0, Enum.Material.Fabric)
+	local arms = humanoid(m, hrp, { skin = def.color, shirt = big and Color3.fromRGB(120, 34, 34) or Color3.fromRGB(150, 130, 100), pants = Color3.fromRGB(64, 56, 48), gloves = Color3.fromRGB(50, 40, 32), hair = Color3.fromRGB(40, 32, 26) })
+	-- leather vest, a face scarf and a hood
+	vis(m, hrp, Vector3.new(2.06, 1.1, 1.06), CFrame.new(0, 0.4, 0), def.cloth, nil, Enum.Material.Fabric)
+	vis(m, hrp, Vector3.new(0.6, 1.0, 0.12), CFrame.new(0, 0.4, -0.54), Color3.fromRGB(150, 130, 100), nil, Enum.Material.Fabric)
+	vis(m, hrp, Vector3.new(1.12, 0.45, 1.12), CFrame.new(0, 1.5, 0), big and Color3.fromRGB(30, 24, 22) or Color3.fromRGB(120, 40, 36), nil, Enum.Material.Fabric)
+	vis(m, hrp, Vector3.new(1.3, 1.0, 1.3), CFrame.new(0, 2.05, 0.12), big and Color3.fromRGB(110, 30, 30) or Color3.fromRGB(70, 60, 50), BALL, Enum.Material.Fabric)
+	if big then
+		vis(m, hrp, Vector3.new(2.3, 3.4, 0.15), CFrame.new(0, -0.5, 0.62), Color3.fromRGB(130, 30, 30), nil, Enum.Material.Fabric)
+		for _, x in ipairs({ -1, 1 }) do vis(m, hrp, Vector3.new(0.9, 0.35, 1.0), CFrame.new(x * 1.05, 1.15, 0), Color3.fromRGB(150, 154, 164), nil, Enum.Material.Metal) end
 	end
-	for _, x in ipairs({ -0.5, 0.5 }) do
-		limb(m, hrp, Vector3.new(0.85, 2, 0.85), CFrame.new(x, -1, 0), Color3.fromRGB(56, 48, 40), x < 0 and 0 or math.pi, Enum.Material.Fabric)
-	end
-	-- a blade in the right hand
-	vis(m, hrp, Vector3.new(0.2, 0.3, 3.2), CFrame.new(1.4, -0.6, -1.4) * CFrame.Angles(math.rad(-20), 0, 0), Color3.fromRGB(190, 194, 200), nil, Enum.Material.Metal)
-	if big then m:ScaleTo(1.4) end
+	-- a sword in the right hand (it swings with the arm)
+	local hand = arms[1]
+	vis(m, hand, Vector3.new(0.22, 0.22, 0.9), CFrame.new(0, -1.62, -0.35), Color3.fromRGB(60, 40, 28), nil, Enum.Material.Fabric)
+	vis(m, hand, Vector3.new(0.9, 0.18, 0.18), CFrame.new(0, -1.62, -0.85), Color3.fromRGB(200, 170, 90), nil, Enum.Material.Metal)
+	vis(m, hand, Vector3.new(0.12, 0.42, 2.6), CFrame.new(0, -1.62, -2.2), Color3.fromRGB(196, 200, 206), nil, Enum.Material.Metal)
+	if big then m:ScaleTo(1.35) end
 	return m, hrp, hum
 end
 
 local function yeti(def, at, kind)
 	local m, hrp, hum = base(kind or "yeti", Vector3.new(4.5, 5.5, 3), 4.6, at)
-	local fur, dark = def.color, kind == "gorilla" and Color3.fromRGB(90, 90, 96) or Color3.fromRGB(170, 180, 200)
-	vis(m, hrp, Vector3.new(4.5, 5.5, 3), CFrame.new(), fur, nil, Enum.Material.Fabric)
-	vis(m, hrp, Vector3.new(3.0, 3.0, 3.0), CFrame.new(0, 3.9, -0.3), fur, BALL, Enum.Material.Fabric)
-	vis(m, hrp, Vector3.new(4.7, 1.2, 3.2), CFrame.new(0, 1.8, 0), dark, nil, Enum.Material.Fabric)
+	local fur, face, horn = def.color, Color3.fromRGB(120, 140, 170), Color3.fromRGB(210, 200, 180)
+	local fab = Enum.Material.Fabric
+	vis(m, hrp, Vector3.new(4.6, 3.6, 3.2), CFrame.new(0, 0.9, 0) * CFrame.Angles(math.rad(-8), 0, 0), fur, nil, fab)
+	vis(m, hrp, Vector3.new(4.0, 2.4, 2.9), CFrame.new(0, -1.7, 0.1), fur, nil, fab)
+	vis(m, hrp, Vector3.new(3.0, 2.4, 0.4), CFrame.new(0, 0.6, -1.6) * CFrame.Angles(math.rad(-8), 0, 0), fur:Lerp(Color3.new(1, 1, 1), 0.4), nil, fab)
+	for _, x in ipairs({ -1, 1 }) do vis(m, hrp, Vector3.new(2.2, 2.2, 2.2), CFrame.new(x * 2.3, 2.3, 0), fur, BALL, fab) end
+	vis(m, hrp, Vector3.new(2.6, 2.6, 2.6), CFrame.new(0, 3.9, -0.6), fur, BALL, fab)
+	vis(m, hrp, Vector3.new(1.7, 1.4, 0.5), CFrame.new(0, 3.75, -1.8), face)
 	for _, x in ipairs({ -1, 1 }) do
-		limb(m, hrp, Vector3.new(1.6, 5.5, 1.6), CFrame.new(x * 3.1, 2.2, 0), fur, x < 0 and 0 or math.pi, Enum.Material.Fabric)
-		limb(m, hrp, Vector3.new(1.9, 4.6, 1.9), CFrame.new(x * 1.2, -2.7, 0), fur, x < 0 and math.pi or 0, Enum.Material.Fabric)
+		local h0 = Vector3.new(x * 0.9, 4.8, -0.6)
+		local h1 = h0 + Vector3.new(x * 0.9, 0.5, 0.2)
+		seg(m, hrp, h0, h1, 0.45, horn)
+		seg(m, hrp, h1, h1 + Vector3.new(x * 0.2, 0.7, -0.4), 0.32, horn)
+		local arm = limb(m, hrp, Vector3.new(1.7, 3.2, 1.7), CFrame.new(x * 3.0, 2.0, 0), fur, x < 0 and 0 or math.pi, fab)
+		vis(m, arm, Vector3.new(1.5, 2.8, 1.5), CFrame.new(0, -2.9, -0.1), fur, nil, fab)
+		vis(m, arm, Vector3.new(1.6, 0.9, 1.7), CFrame.new(0, -4.5, -0.2), face)
+		for f = -1, 1 do vis(m, arm, Vector3.new(0.2, 0.6, 0.2), CFrame.new(f * 0.5, -5.1, -0.8) * CFrame.Angles(math.rad(-30), 0, 0), horn) end
+		local leg = limb(m, hrp, Vector3.new(2.0, 2.6, 2.0), CFrame.new(x * 1.2, -2.6, 0), fur, x < 0 and math.pi or 0, fab)
+		vis(m, leg, Vector3.new(1.8, 2.0, 1.8), CFrame.new(0, -2.0, 0), fur, nil, fab)
+		vis(m, leg, Vector3.new(2.0, 0.7, 2.8), CFrame.new(0, -3.2, -0.5), face)
 	end
 	return m, hrp, hum
 end
@@ -464,7 +738,9 @@ function Mobs.spawn(kind, at, level, cave)
 	elseif kind == "spider" or kind == "crawler" then m, hrp, hum = spider(def, at, kind)
 	elseif kind == "bat" then m, hrp, hum = bat(def, at)
 	elseif kind == "scorpion" or kind == "scorpionking" or kind == "crab" or kind == "crabking" then m, hrp, hum = scorpion(kind, def, at)
-	elseif kind == "yeti" or kind == "gorilla" then m, hrp, hum = yeti(def, at, kind)
+	elseif kind == "yeti" then m, hrp, hum = yeti(def, at, kind)
+	elseif kind == "gorilla" then m, hrp, hum = gorilla(def, at)
+	elseif kind == "turtle" then m, hrp, hum = turtle(def, at)
 	elseif kind == "snake" then m, hrp, hum = snake(def, at)
 	elseif kind == "bandit" or kind == "banditlord" then m, hrp, hum = human(kind, def, at)
 	else m, hrp, hum = quadruped(kind, def, at) end
