@@ -1,0 +1,38 @@
+// Icon set (white glyphs, tinted in game). 64x64 viewBox, rounded strokes, secondary parts at lower opacity.
+const S = 'fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"';
+const F = 'fill="#fff"';
+const D = 'fill="#fff" opacity="0.45"';
+module.exports = {
+  play: `<path ${F} d="M22 12 L52 32 L22 52 Z" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>`,
+  ranking: `<rect ${F} x="8" y="34" width="14" height="22" rx="3"/><rect ${F} x="25" y="16" width="14" height="40" rx="3"/><rect ${D} x="42" y="26" width="14" height="30" rx="3"/><path ${F} d="M32 4 l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/>`,
+  home: `<path ${F} d="M8 30 L32 9 L56 30 L51 30 L51 55 L13 55 L13 30 Z" stroke="#fff" stroke-width="3" stroke-linejoin="round"/><rect fill="#000" opacity="0.55" x="26" y="38" width="12" height="17" rx="2"/>`,
+  person: `<circle ${F} cx="32" cy="20" r="11"/><path ${F} d="M11 56 C11 40 20 34 32 34 C44 34 53 40 53 56 Z"/>`,
+  settings: `<path ${F} d="M27 4h10l1.5 7 5.5 2.6 6-4 7 7-4 6 2.4 5.6 7 1.5v10l-7 1.5-2.4 5.6 4 6-7 7-6-4-5.5 2.4L37 60H27l-1.5-7-5.5-2.4-6 4-7-7 4-6L8.6 36 1.6 34.5v-10l7-1.5L11 17.5l-4-6 7-7 6 4L25.5 11z"/><circle fill="#000" opacity="0.6" cx="32" cy="32" r="9"/>`,
+  quick: `<path ${F} d="M37 4 L12 36 L29 36 L25 60 L52 26 L35 26 Z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>`,
+  friend: `<circle ${D} cx="44" cy="20" r="9"/><path ${D} d="M30 54 C30 40 36 34 44 34 C52 34 60 40 60 54 Z"/><circle ${F} cx="24" cy="21" r="11"/><path ${F} d="M4 56 C4 42 12 35 24 35 C36 35 44 42 44 56 Z"/>`,
+  key: `<circle ${S} cx="20" cy="32" r="12"/><path ${S} d="M32 32 H58 M50 32 V42 M42 32 V39"/>`,
+  coin: `<circle ${F} cx="32" cy="32" r="26"/><circle fill="none" stroke="#000" stroke-opacity="0.35" stroke-width="4" cx="32" cy="32" r="18"/><path fill="#000" opacity="0.35" d="M32 21 l3 7 7.5.5-5.8 4.8 1.9 7.3-6.6-4-6.6 4 1.9-7.3-5.8-4.8 7.5-.5z"/>`,
+  skill: `<path ${F} d="M32 4 L58 32 L32 60 L6 32 Z"/><path fill="#000" opacity="0.35" d="M32 18 L46 32 L32 46 L18 32 Z"/><path ${F} d="M32 24 L40 32 L32 40 L24 32 Z"/>`,
+  heart: `<path ${F} d="M32 56 C10 40 4 30 4 21 C4 12 11 6 19 6 C25 6 29 9 32 14 C35 9 39 6 45 6 C53 6 60 12 60 21 C60 30 54 40 32 56 Z"/><path fill="#fff" opacity="0.5" d="M15 16 C12 18 11 21 12 24" stroke="#000" stroke-opacity="0.25" stroke-width="3" stroke-linecap="round"/>`,
+  food: `<path ${F} d="M30 6 C44 4 58 14 58 28 C58 40 48 46 40 44 L30 40 C22 36 18 28 20 20 C22 12 26 7 30 6 Z"/><path fill="#000" opacity="0.28" d="M28 14 C36 10 48 16 50 26 C46 22 38 18 28 14 Z"/><path ${S} stroke-width="6" d="M27 38 L13 52"/><circle ${F} cx="9" cy="51" r="5"/><circle ${F} cx="14" cy="57" r="5"/>`,
+  temp: `<path ${F} d="M26 8 a6 6 0 0 1 12 0 v30 a12 12 0 1 1 -12 0 z"/><circle fill="#000" opacity="0.3" cx="32" cy="47" r="6"/><path stroke="#000" stroke-opacity="0.3" stroke-width="4" stroke-linecap="round" d="M32 18 V44"/>`,
+  shield: `<path ${F} d="M32 4 L54 12 L54 30 C54 44 44 54 32 60 C20 54 10 44 10 30 L10 12 Z"/><path fill="#000" opacity="0.28" d="M32 4 L54 12 L54 30 C54 44 44 54 32 60 Z"/>`,
+  bag: `<path ${S} d="M22 20 C22 10 42 10 42 20"/><path ${F} d="M10 22 H54 L50 56 H14 Z" stroke="#fff" stroke-width="3" stroke-linejoin="round"/><path stroke="#000" stroke-opacity="0.35" stroke-width="3" d="M12 32 H52"/>`,
+  backpack: `<path ${S} d="M24 12 C24 4 40 4 40 12"/><rect ${F} x="12" y="12" width="40" height="46" rx="12"/><rect fill="#000" opacity="0.35" x="20" y="36" width="24" height="14" rx="4"/><path stroke="#000" stroke-opacity="0.35" stroke-width="3" d="M14 28 H50"/>`,
+  flame: `<path ${F} d="M32 4 C36 16 50 22 50 38 C50 50 42 58 32 58 C22 58 14 50 14 40 C14 30 20 26 22 18 C26 24 28 26 30 26 C30 18 30 10 32 4 Z"/><path fill="#000" opacity="0.3" d="M32 30 C35 36 42 40 42 47 C42 53 37 57 32 57 C27 57 22 53 22 48 C22 42 28 38 32 30 Z"/>`,
+  snow: `<g ${S}><path d="M32 4 V60 M8 18 L56 46 M8 46 L56 18"/><path d="M26 10 L32 16 L38 10 M26 54 L32 48 L38 54 M10 26 L18 25 L14 18 M54 38 L46 39 L50 46 M10 38 L18 39 L14 46 M54 26 L46 25 L50 18"/></g>`,
+  book: `<path ${F} d="M32 14 C24 8 14 8 6 10 V54 C14 52 24 52 32 58 Z"/><path ${D} d="M32 14 C40 8 50 8 58 10 V54 C50 52 40 52 32 58 Z"/><path stroke="#000" stroke-opacity="0.3" stroke-width="3" stroke-linecap="round" d="M13 22 H25 M13 30 H25 M13 38 H25"/>`,
+  medal: `<path ${D} d="M18 4 H28 L36 26 H26 Z M46 4 H36 L28 26 H38 Z"/><circle ${F} cx="32" cy="42" r="18"/><path fill="#000" opacity="0.35" d="M32 31 l3.2 6.6 7.2 1-5.2 5.1 1.2 7.2-6.4-3.4-6.4 3.4 1.2-7.2-5.2-5.1 7.2-1z"/>`,
+  dot: `<circle ${F} cx="32" cy="32" r="18"/>`,
+  map: `<path ${F} d="M4 14 L22 8 L42 14 L60 8 V50 L42 56 L22 50 L4 56 Z"/><path fill="#000" opacity="0.25" d="M22 8 L42 14 V56 L22 50 Z"/><path fill="#000" opacity="0.6" d="M46 16 a8 8 0 0 1 8 8 c0 7 -8 15 -8 15 s-8 -8 -8 -15 a8 8 0 0 1 8 -8 Z"/><circle fill="#fff" cx="46" cy="24" r="3"/>`,
+  cave: `<path ${F} d="M4 58 C6 30 18 10 32 10 C46 10 58 30 60 58 Z"/><path fill="#000" opacity="0.7" d="M18 58 C18 40 24 28 32 28 C40 28 46 40 46 58 Z"/>`,
+  village: `<path ${F} d="M4 32 L22 16 L40 32 V56 H4 Z"/><path ${D} d="M30 24 L46 10 L62 24 V56 H38 V32 Z"/><rect fill="#000" opacity="0.5" x="16" y="40" width="12" height="16" rx="2"/>`,
+  menu: `<path ${S} stroke-width="6" d="M10 16 H54 M10 32 H54 M10 48 H54"/>`,
+  close: `<path ${S} stroke-width="7" d="M14 14 L50 50 M50 14 L14 50"/>`,
+  plus: `<path ${S} stroke-width="7" d="M32 10 V54 M10 32 H54"/>`,
+  lock: `<path ${S} stroke-width="6" d="M20 28 V20 C20 8 44 8 44 20 V28"/><rect ${F} x="10" y="28" width="44" height="30" rx="7"/><circle fill="#000" opacity="0.45" cx="32" cy="41" r="5"/><rect fill="#000" opacity="0.45" x="30" y="43" width="4" height="8" rx="2"/>`,
+  trash: `<path ${S} d="M8 16 H56 M24 16 V10 H40 V16"/><path ${F} d="M13 20 H51 L47 58 H17 Z"/><path stroke="#000" stroke-opacity="0.35" stroke-width="3" stroke-linecap="round" d="M25 28 V50 M32 28 V50 M39 28 V50"/>`,
+  sun: `<circle ${F} cx="32" cy="32" r="13"/><g ${S} stroke-width="5"><path d="M32 4 V11 M32 53 V60 M4 32 H11 M53 32 H60 M12 12 L17 17 M47 47 L52 52 M12 52 L17 47 M47 17 L52 12"/></g>`,
+  moon: `<path ${F} d="M40 6 C26 8 16 19 16 33 C16 47 27 58 41 58 C48 58 54 55 58 50 C40 52 30 38 34 22 C35 16 37 11 40 6 Z"/><circle ${D} cx="46" cy="18" r="3"/><circle ${D} cx="54" cy="30" r="2"/>`,
+  drop: `<path ${F} d="M32 4 C40 18 52 30 52 42 C52 53 43 60 32 60 C21 60 12 53 12 42 C12 30 24 18 32 4 Z"/>`,
+};

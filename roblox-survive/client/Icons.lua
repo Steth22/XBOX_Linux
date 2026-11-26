@@ -109,6 +109,49 @@ function D.moon(f, c, bg) box(f, 0.5, 0.5, 0.8, 0.8, c, "round") local cut = box
 function D.home(f, c) D.rooms(f, c) end
 function D.xp(f, c) D.skill(f, c) end
 
+-- Vector icon sheet (art/icons, rendered from SVG): white glyphs tinted with the icon colour.
+-- Until the image is approved and loaded, the frame drawings above are used, then swapped automatically.
+local SHEET = "rbxassetid://140099586823869"
+local CELL = 128
+local MAP = { play = { 0, 0 }, ranking = { 128, 0 }, home = { 256, 0 }, person = { 384, 0 }, settings = { 512, 0 }, quick = { 640, 0 }, friend = { 768, 0 }, key = { 896, 0 }, coin = { 0, 128 }, skill = { 128, 128 }, heart = { 256, 128 }, food = { 384, 128 }, temp = { 512, 128 }, shield = { 640, 128 }, bag = { 768, 128 }, backpack = { 896, 128 }, flame = { 0, 256 }, snow = { 128, 256 }, book = { 256, 256 }, medal = { 384, 256 }, dot = { 512, 256 }, map = { 640, 256 }, cave = { 768, 256 }, village = { 896, 256 }, menu = { 0, 384 }, close = { 128, 384 }, plus = { 256, 384 }, lock = { 384, 384 }, trash = { 512, 384 }, sun = { 640, 384 }, moon = { 768, 384 }, drop = { 896, 384 } }
+Icons.ready = false
+local waiting = setmetatable({}, { __mode = "k" }) -- icon frame -> { name, color }
+
+local function image(f, name, color)
+	local at = MAP[name]
+	local img = Instance.new("ImageLabel")
+	img.Name = "Img"
+	img.BackgroundTransparency = 1
+	img.Size = UDim2.fromScale(1, 1)
+	img.Image = SHEET
+	img.ImageRectOffset = Vector2.new(at[1] + 8, at[2] + 8)
+	img.ImageRectSize = Vector2.new(CELL - 16, CELL - 16)
+	img.ImageColor3 = color
+	img.ScaleType = Enum.ScaleType.Fit
+	img.ZIndex = f.ZIndex
+	img.Parent = f
+end
+
+task.spawn(function()
+	local probe = Instance.new("ImageLabel")
+	probe.Image = SHEET
+	local ok = pcall(function() game:GetService("ContentProvider"):PreloadAsync({ probe }) end)
+	for _ = 1, 20 do
+		if probe.IsLoaded then break end
+		task.wait(0.5)
+	end
+	if ok and probe.IsLoaded then
+		Icons.ready = true
+		for f, info in pairs(waiting) do
+			if f.Parent then
+				for _, ch in ipairs(f:GetChildren()) do ch:Destroy() end
+				image(f, info[1], info[2])
+			end
+		end
+		table.clear(waiting)
+	end
+end)
+
 -- returns the icon frame
 function Icons.draw(name, parent, size, color, pos, anchor, bg)
 	local f = UI.frame({
@@ -116,8 +159,16 @@ function Icons.draw(name, parent, size, color, pos, anchor, bg)
 		Position = pos or UDim2.new(), AnchorPoint = anchor or Vector2.new(), BackgroundTransparency = 1,
 		ZIndex = (parent:IsA("GuiObject") and parent.ZIndex or 1) + 1, Parent = parent,
 	})
+	local alias = { rooms = "home", look = "person", solo = "person", xp = "skill" }
+	local key = alias[name] or name
+	color = color or UI.c.text
+	if MAP[key] and Icons.ready then
+		image(f, key, color)
+		return f
+	end
 	local fn = D[name]
-	if fn then fn(f, color or UI.c.text, bg) end
+	if fn then fn(f, color, bg) end
+	if MAP[key] then waiting[f] = { key, color } end
 	return f
 end
 
