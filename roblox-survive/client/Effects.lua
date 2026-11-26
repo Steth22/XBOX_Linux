@@ -1096,6 +1096,7 @@ function E.start(remotes)
 		terrainOnly.FilterDescendantsInstances = { workspace.Terrain }
 		local current = nil
 		local cave, caveT, nv = 0, false, 0
+		local lift = 0
 		local function mix(a, b, t) return a:Lerp(b, math.clamp(t, 0, 1)) end
 		local function nightFactor(t)
 			if t >= 6.5 and t <= 17.5 then return 0 end
@@ -1128,11 +1129,14 @@ function E.start(remotes)
 				end
 			end
 			cave += ((caveT and 1 or 0) - cave) * math.min(1, dt * 1.6)
-			-- night vision: the potion gives full strength; the admin can pick any strength (0..1)
-			nv += (math.max(E.vision and 1 or 0, E.visionAdmin or 0) - nv) * math.min(1, dt * 2)
+			-- night vision potion: a green glow
+			nv += ((E.vision and 1 or 0) - nv) * math.min(1, dt * 2)
+			-- the admin's night vision: simply takes the dark away (normal colours), as strong as chosen
+			lift += ((E.visionAdmin or 0) - lift) * math.min(1, dt * 3)
 			if E.photo then continue end -- photo mode sets the light itself
+			local cave = cave * (1 - lift)
 			local t = Lighting.ClockTime
-			local night = nightFactor(t)
+			local night = nightFactor(t) * (1 - lift)
 			local dark = math.max(night, cave)
 			-- day -> pitch black
 			local amb = mix(Color3.fromRGB(100, 108, 118), Color3.fromRGB(3, 3, 6), dark)
