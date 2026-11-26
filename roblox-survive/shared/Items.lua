@@ -21,6 +21,7 @@ I.defs = {
 	berries = { ar = "توت", en = "Berries", kind = "food", stack = 20, hunger = 12, heal = 2, buy = 6, buyQty = 2, sell = 1 },
 	meat_raw = { ar = "لحم نيئ", en = "Raw Meat", kind = "food", stack = 20, hunger = 12, heal = 0 },
 	meat_cooked = { ar = "لحم مطبوخ", en = "Cooked Meat", kind = "food", stack = 20, hunger = 40, heal = 10 },
+	mushroom_roast = { ar = "فطر مشوي", en = "Roasted Mushroom", kind = "food", stack = 20, hunger = 30, heal = 12, sell = 8 },
 	bandage = { ar = "ضماد", en = "Bandage", kind = "heal", stack = 10, heal = 35, buy = 25 },
 	wood_axe = { ar = "فأس خشبي", en = "Wood Axe", kind = "tool", class = "axe", stack = 1, tree = 3, rock = 1, dmg = 10, dur = 150, buy = 30 },
 	wood_pickaxe = { ar = "معول خشبي", en = "Wood Pickaxe", kind = "tool", class = "pickaxe", stack = 1, tree = 1, rock = 3, dmg = 8, dur = 150, buy = 40 },
@@ -168,6 +169,9 @@ I.shop = {
 	"leather_armor", "iron_armor", "diamond_armor",
 	"bow", "arrow", "pistol", "ammo", "trap", "campfire", "bandage", "berries",
 }
+
+-- what the furnace turns each item into (5 wood and 3 seconds per item)
+I.smelt = { meat_raw = "meat_cooked", mushroom = "mushroom_roast" }
 
 function I.get(id) return I.defs[id] end
 function I.stack(id) local d = I.defs[id]; return d and d.stack or 1 end
@@ -578,6 +582,13 @@ SPECS.mushroom = { P(Vector3.new(0.8, 0.36, 0.36), CFrame.new(0, -0.1, 0) * Y, C
 	P(Vector3.new(0.14, 0.14, 0.14), CFrame.new(-0.2, 0.84, -0.18), Color3.fromRGB(240, 250, 255), nil, BALL),
 	P(Vector3.new(0.5, 0.24, 0.24), CFrame.new(0.55, -0.25, 0.2) * Y, Color3.fromRGB(236, 230, 214), nil, CYL),
 	P(Vector3.new(0.5, 0.5, 0.5), CFrame.new(0.55, 0.05, 0.2), Color3.fromRGB(70, 196, 220), Enum.Material.Neon, BALL) }
+-- roasted: the same mushroom browned on the fire
+SPECS.mushroom_roast = { P(Vector3.new(0.8, 0.36, 0.36), CFrame.new(0, -0.1, 0) * Y, Color3.fromRGB(214, 176, 120), nil, CYL),
+	P(Vector3.new(1.05, 1.05, 1.05), CFrame.new(0, 0.42, 0), Color3.fromRGB(150, 84, 40), Enum.Material.SmoothPlastic, BALL),
+	P(Vector3.new(0.12, 1.02, 1.02), CFrame.new(0, 0.3, 0) * Y, Color3.fromRGB(196, 150, 96), nil, CYL),
+	P(Vector3.new(0.86, 0.86, 0.86), CFrame.new(0, 0.5, 0), Color3.fromRGB(112, 58, 26), Enum.Material.SmoothPlastic, BALL),
+	P(Vector3.new(0.5, 0.24, 0.24), CFrame.new(0.55, -0.25, 0.2) * Y, Color3.fromRGB(214, 176, 120), nil, CYL),
+	P(Vector3.new(0.5, 0.5, 0.5), CFrame.new(0.55, 0.05, 0.2), Color3.fromRGB(150, 84, 40), Enum.Material.SmoothPlastic, BALL) }
 -- bandage roll with a red cross and a loose end
 SPECS.bandage = { P(Vector3.new(0.8, 0.95, 0.95), nil, Color3.fromRGB(242, 240, 232), Enum.Material.Fabric, CYL),
 	P(Vector3.new(0.82, 0.3, 0.3), nil, Color3.fromRGB(210, 205, 190), nil, CYL),

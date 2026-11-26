@@ -41,6 +41,7 @@ function M.start(gui, remotes)
 	local closeModal, modalKind
 	local pending = nil
 	local refreshModal
+	local furnaceData, refreshFurnace, furnaceModal -- the furnace window (built further down)
 	local lastSig = ""
 	local lastMsig = nil
 	local lastDsig = nil
@@ -204,7 +205,9 @@ function M.start(gui, remotes)
 		if t == Enum.UserInputType.MouseMovement or (t == Enum.UserInputType.Touch and input == press.input) then
 			local pos = Vector2.new(input.Position.X, input.Position.Y)
 			if not press.dragging and (pos - press.start).Magnitude > 12 then
-				local data = state and (press.index == 100 and state.armor and { id = state.armor, n = 1 } or press.index == 101 and state.off or state.slots[press.index])
+				local fd = furnaceData or {}
+				local data = state and (press.index == 100 and state.armor and { id = state.armor, n = 1 } or press.index == 101 and state.off
+					or press.index == 201 and fd.input or press.index == 202 and fd.fuel or press.index == 203 and fd.out or state.slots[press.index])
 				if not data then press = nil return end
 				startDrag(data)
 			end
@@ -383,6 +386,7 @@ function M.start(gui, remotes)
 				press = nil
 			end
 			if thisKind == "shop" and not rebuilding then cinematic(false) end
+			if thisKind == "furnace" then act("closeFurnace") end
 		end)
 		closeModal = close
 		return content, panel
@@ -1646,6 +1650,130 @@ function M.start(gui, remotes)
 	Players.PlayerAdded:Connect(function() if modalKind == "menu" then menuModal() end end)
 	Players.PlayerRemoving:Connect(function() task.defer(function() if modalKind == "menu" then menuModal() end end) end)
 
+	---------------------------------------------------------------- furnace (bag on the left, furnace on the right)
+	local furnaceW, furnaceBag, furnaceArrow, furnaceFlame, furnaceWood = {}, {}, nil, nil, nil
+	function refreshFurnace()
+		if modalKind ~= "furnace" or not state or not furnaceData then return end
+		for i, w in pairs(furnaceBag) do if w.button.Parent then w.set(state.slots[i], pending == i) end end
+		local f = furnaceData
+		if furnaceW[201] then
+			furnaceW[201].set(f.input or nil, false)
+			furnaceW[202].set(f.fuel or nil, false)
+			furnaceW[203].set(f.out or nil, false)
+		end
+		local burning = f.t and f.t > 0
+		if furnaceArrow and furnaceArrow.Parent then
+			furnaceArrow.Size = UDim2.fromScale(math.clamp((f.t or 0) / (f.time or 3), 0, 1), 1)
+		end
+		if furnaceFlame and furnaceFlame.Parent then
+			for _, d in ipairs(furnaceFlame:GetDescendants()) do
+				if d:IsA("ImageLabel") then
+					d.ImageColor3 = burning and Color3.new(1, 1, 1) or Color3.fromRGB(110, 110, 110)
+					d.ImageTransparency = burning and 0 or 0.45
+				end
+			end
+		end
+		if furnaceWood and furnaceWood.Parent then
+			local wood = f.fuel and f.fuel.n or 0
+			local uses = wood // (f.need or 5)
+			furnaceWood.Text = Locale.f(lang, "fuelLeft", uses)
+			furnaceWood.TextColor3 = uses > 0 and c.gold or c.danger
+		end
+	end
+	function furnaceModal()
+		local content = openModal("furnace", T("furnace"), UDim2.fromOffset(880, 470))
+		furnaceW, furnaceBag = {}, {}
+		local ar = lang == "ar"
+		-- tap a bag item: wood goes to the fuel slot, anything that cooks goes in on top
+		local function tapBag(i)
+			local sl = state and state.slots[i]
+			if not sl then return end
+			if sl.id == "wood" then act("move", i, 202)
+			elseif Items.smelt[sl.id] then act("move", i, 201)
+			else UI.toast(root, T("cantSmelt")) end
+		end
+		-- left: the bag
+		local left = UI.frame({ Size = UDim2.new(0, 452, 1, 0), BackgroundColor3 = c.card, BackgroundTransparency = 0.5, ZIndex = 53, Parent = content })
+		UI.corner(left, 14)
+		UI.text({ Text = T("yourItems"), Size = UDim2.new(1, -24, 0, 30), Position = UDim2.fromOffset(12, 6), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = c.dim, ZIndex = 54, Parent = left })
+		local hb = UI.frame({ Size = UDim2.new(1, 0, 0, 60), Position = UDim2.fromOffset(0, 42), BackgroundTransparency = 1, ZIndex = 54, Parent = left })
+		UI.list(hb, 8, Enum.FillDirection.Horizontal)
+		for i = 1, Config.HOTBAR do
+			local w = slotWidget(hb, 60, i)
+			w.button.ZIndex = 55
+			register(w, i, function() tapBag(i) end)
+			furnaceBag[i] = w
+		end
+		UI.frame({ Size = UDim2.new(1, -40, 0, 2), Position = UDim2.fromOffset(20, 112), BackgroundColor3 = c.card2, BackgroundTransparency = 0.4, ZIndex = 54, Parent = left })
+		local grid = UI.frame({ Size = UDim2.new(1, 0, 0, 3 * 66), Position = UDim2.fromOffset(0, 124), BackgroundTransparency = 1, ZIndex = 54, Parent = left })
+		UI.new("UIGridLayout", { CellSize = UDim2.fromOffset(60, 60), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = grid })
+		for k = 1, Config.BAG do
+			local i = Config.HOTBAR + k
+			local w = slotWidget(grid, 60, k)
+			if state.bag then
+				register(w, i, function() tapBag(i) end)
+				furnaceBag[i] = w
+			else
+				local shade = UI.frame({ Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, ZIndex = 8, Parent = w.button })
+				UI.corner(shade, 12)
+				Icons.draw("lock", shade, 22, c.dim, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+			end
+		end
+		UI.text({ Text = T("furnaceTip"), Size = UDim2.new(1, -24, 0, 36), Position = UDim2.new(0, 12, 1, -44), TextWrapped = true, TextSize = 14, TextColor3 = c.dim, ZIndex = 54, Parent = left })
+
+		-- right: the furnace (input on top, fire, fuel below, arrow, output)
+		local right = UI.frame({ Size = UDim2.new(1, -468, 1, 0), Position = UDim2.fromOffset(468, 0), BackgroundColor3 = c.card, ZIndex = 53, Parent = content })
+		UI.corner(right, 14)
+		UI.stroke(right, c.card2, 1.5)
+		local area = UI.frame({ Size = UDim2.fromOffset(330, 260), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 18), BackgroundTransparency = 1, ZIndex = 54, Parent = right })
+		local function slotAt(idx, size, x, y, label, hint)
+			local holder = UI.frame({ Size = UDim2.fromOffset(size, size + 22), Position = UDim2.fromOffset(x, y), BackgroundTransparency = 1, ZIndex = 54, Parent = area })
+			local w = slotWidget(holder, size, 0)
+			w.button.ZIndex = 55
+			local empty = UI.frame({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 4, Parent = w.button })
+			if hint then
+				Icons.draw(hint, empty, size * 0.42, c.card2, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+				for _, d in ipairs(empty:GetDescendants()) do
+					if d:IsA("ImageLabel") then d.ImageTransparency = 0.7 d.ImageColor3 = Color3.fromRGB(150, 150, 150) end
+				end
+			end
+			local base = w.set
+			w.set = function(data, sel) base(data, sel) empty.Visible = data == nil end
+			UI.text({ Text = label, Size = UDim2.new(1, 20, 0, 18), Position = UDim2.new(0, -10, 0, size + 3), TextSize = 13, TextColor3 = c.dim, ZIndex = 55, Parent = holder })
+			register(w, idx, function() act("move", idx, 0) end)
+			furnaceW[idx] = w
+			return w
+		end
+		-- the furnace reads left to right in both languages, like Minecraft
+		slotAt(201, 66, 20, 0, T("fIn"), "food")
+		furnaceFlame = UI.frame({ Size = UDim2.fromOffset(66, 40), Position = UDim2.fromOffset(20, 92), BackgroundTransparency = 1, ZIndex = 54, Parent = area })
+		Icons.draw("flame", furnaceFlame, 34, c.card2, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+		slotAt(202, 66, 20, 140, T("fFuel"), "flame")
+		local track = UI.frame({ Size = UDim2.fromOffset(104, 14), Position = UDim2.fromOffset(110, 105), BackgroundColor3 = c.bg, ZIndex = 54, Parent = area })
+		UI.corner(track, 7)
+		furnaceArrow = UI.frame({ Size = UDim2.fromScale(0, 1), BackgroundColor3 = c.gold, ZIndex = 55, Parent = track })
+		UI.corner(furnaceArrow, 7)
+		slotAt(203, 84, 238, 70, T("fOut"), nil).stroke.Color = c.gold
+		furnaceWood = UI.text({ Text = "", Size = UDim2.new(1, -24, 0, 22), Position = UDim2.new(0, 12, 0, 252), TextSize = 16, ZIndex = 54, Parent = right })
+		-- recipes
+		local rec = UI.frame({ Size = UDim2.new(1, -24, 0, 100), Position = UDim2.new(0, 12, 1, -110), BackgroundColor3 = c.bg, BackgroundTransparency = 0.3, ZIndex = 54, Parent = right })
+		UI.corner(rec, 10)
+		UI.text({ Text = T("recipes") .. "   (" .. Locale.f(lang, "perItem", 5, 3) .. ")", Size = UDim2.new(1, -16, 0, 24), Position = UDim2.fromOffset(8, 4), TextXAlignment = UI.align(lang), TextSize = 14, TextColor3 = c.gold, ZIndex = 55, Parent = rec })
+		local list = UI.frame({ Size = UDim2.new(1, -16, 1, -32), Position = UDim2.fromOffset(8, 30), BackgroundTransparency = 1, ZIndex = 55, Parent = rec })
+		UI.list(list, 4)
+		local n = 0
+		for from, to in pairs(Items.smelt) do
+			n += 1
+			local row = UI.frame({ Size = UDim2.new(1, 0, 0, 28), LayoutOrder = n, BackgroundTransparency = 1, ZIndex = 55, Parent = list })
+			local iconA = UI.frame({ Size = UDim2.fromOffset(26, 26), Position = UDim2.fromScale(ar and 1 or 0, 0), AnchorPoint = Vector2.new(ar and 1 or 0, 0), BackgroundTransparency = 1, ZIndex = 56, Parent = row })
+			ItemView.new(iconA, from, UDim2.fromScale(1, 1), nil, 57)
+			UI.text({ Text = Items.name(from, lang) .. (ar and "  ←  " or "  →  ") .. Items.name(to, lang), Size = UDim2.new(1, -66, 1, 0), Position = UDim2.new(ar and 1 or 0, ar and -34 or 34, 0, 0), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 14, ZIndex = 56, Parent = row })
+			local iconB = UI.frame({ Size = UDim2.fromOffset(26, 26), Position = UDim2.fromScale(ar and 0 or 1, 0), AnchorPoint = Vector2.new(ar and 0 or 1, 0), BackgroundTransparency = 1, ZIndex = 56, Parent = row })
+			ItemView.new(iconB, to, UDim2.fromScale(1, 1), nil, 57)
+		end
+		refreshFurnace()
+	end
+
 	function refreshModal(force)
 		if modalKind == "bag" then
 			if bagShape ~= (tostring(state.bag) .. tostring(state.armor)) then bagModal() else refreshBag() end
@@ -1657,7 +1785,8 @@ function M.start(gui, remotes)
 			rebuilding = true
 			shopModal()
 			rebuilding = false
-		elseif modalKind == "skills" and force then skillsModal() end
+		elseif modalKind == "skills" and force then skillsModal()
+		elseif modalKind == "furnace" then refreshFurnace() end
 	end
 
 	local half = (Config.HOTBAR * 74) / 2 + 42
@@ -2077,6 +2206,12 @@ function M.start(gui, remotes)
 			if key == "crateData" and #crateOpen.view.items == 0 and (crateOpen.view.coins or 0) == 0 then
 				task.delay(0.6, function() if modalKind == "crate" and closeModal then closeModal() end end)
 			end
+			return
+		end
+		if key == "openFurnace" or key == "furnace" then
+			furnaceData = a
+			if key == "openFurnace" and state then pending = nil furnaceModal()
+			elseif modalKind == "furnace" then refreshFurnace() end
 			return
 		end
 		if key == "openStash" then

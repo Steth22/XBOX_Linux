@@ -18,6 +18,7 @@ local Loot = require(script.Parent.Loot)
 local Survival = require(script.Parent.Survival)
 local Debug = require(script.Parent.Debug)
 local Bestiary = require(ReplicatedStorage.Shared.Bestiary)
+local Furnace = require(script.Parent.Furnace)
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 
 local MessagingService = game:GetService("MessagingService")
@@ -488,50 +489,11 @@ local function shoot(player, index, dir)
 	push(player)
 end
 
-local cooking = {}
-local function cookAll(player, firePart)
-	local room = Data.room(player)
-	if not room then return end
-	if cooking[player] then cooking[player] = nil return end -- second press stops
-	if Inventory.count(room.inv, "meat_raw") <= 0 then
-		notify(player, "noMeat")
-		return
-	end
-	cooking[player] = true
-	notify(player, "cooking")
-	task.spawn(function()
-		while cooking[player] and player.Parent do
-			task.wait(1.5)
-			local r = Data.room(player)
-			local hrp = hrpOf(player)
-			if not cooking[player] or not r or not hrp or not firePart or not firePart.Parent then break end
-			if (hrp.Position - firePart.Position).Magnitude > 14 then break end
-			if not Inventory.remove(r.inv, "meat_raw", 1) then break end
-			local rest = Inventory.add(r.inv, "meat_cooked", 1)
-			if rest > 0 then Loot.drop(hrp.Position, { { id = "meat_cooked", n = rest } }, player.UserId) end
-			ctx.fx("cook", firePart.Position)
-			ctx.reward(player, 2, 0)
-			notify(player, "cookedOne")
-		end
-		cooking[player] = nil
-	end)
-end
-
 local function hookFire(part)
 	CollectionService:AddTag(part, "Heat")
-	local pr = part:FindFirstChildWhichIsA("ProximityPrompt")
-	if not pr then
-		pr = Instance.new("ProximityPrompt")
-		pr.ActionText = "Cook"
-		pr.ObjectText = "Fire"
-		pr.HoldDuration = 0.6
-		pr.MaxActivationDistance = 10
-		pr.RequiresLineOfSight = false
-		pr.Parent = part
-	end
-	pr:SetAttribute("Key", "cook")
-	pr:SetAttribute("Obj", "fire")
-	pr.Triggered:Connect(function(player) cookAll(player, part) end)
+	local pr = part:FindFirstChildWhichIsA("ProximityPrompt") or Instance.new("ProximityPrompt")
+	-- fires only warm you now; cooking happens in the furnaces
+	pr:Destroy()
 end
 
 local function place(player, index, def, id)
@@ -1162,6 +1124,10 @@ end
 function actions.move(player, room, a, b)
 	a, b = tonumber(a), tonumber(b)
 	if not a or not b then return end
+	if a >= 200 or b >= 200 then
+		if Furnace.move(player, room, a, b) then revalidate(player) end
+		return
+	end
 	local inv = room.inv
 	local function slotOk(i) return i >= 1 and i <= Config.HOTBAR + Config.BAG and Inventory.usable(inv, i) end
 	if b == EQ_ARMOR or b == EQ_OFF then
@@ -1534,6 +1500,8 @@ function actions.stashUpgrade(player, room)
 	push(player)
 end
 
+function actions.closeFurnace(player) Furnace.close(player) end
+
 function actions.unequipOff(player, room)
 	local off = room.inv.off
 	if not off then return end
@@ -1698,6 +1666,9 @@ function World.start(r)
 			end
 		end
 	end
+
+	local okF, errF = pcall(function() Furnace.start(ctx, Inventory, Data, vendors) end)
+	if not okF then Debug.log("start.furnace", errF) end
 
 	remotes.World.OnServerInvoke = function(player, action, a, b)
 		local room = Data.room(player)
