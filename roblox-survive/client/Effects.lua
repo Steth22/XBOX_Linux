@@ -658,6 +658,32 @@ function E.start(remotes)
 				Lighting.FogStart = f.start * dawn * (1 - cave * 0.8)
 				Lighting.FogEnd = finish
 				Lighting.FogColor = mix(mix(f.color, Color3.fromRGB(8, 8, 14), night), Color3.new(0, 0, 0), cave)
+				-- a ring of fog-coloured walls right at the fog's end: nothing behind it can be seen at all
+				local cam = workspace.CurrentCamera
+				if cam then
+					local ring = cam:FindFirstChild("FogWall")
+					if not ring then
+						ring = Instance.new("Folder")
+						ring.Name = "FogWall"
+						ring.Parent = cam
+						for i = 1, 28 do
+							local p = Instance.new("Part")
+							p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+							p.Material = Enum.Material.SmoothPlastic
+							p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+							p.Parent = ring
+						end
+					end
+					local R = finish + 6
+					local c0 = cam.CFrame.Position
+					local w = 2 * math.pi * R / 28 * 1.08
+					for i, p in ipairs(ring:GetChildren()) do
+						local a = (i / 28) * math.pi * 2
+						p.Size = Vector3.new(w, 900, 2)
+						p.Color = Lighting.FogColor
+						p.CFrame = CFrame.lookAt(c0 + Vector3.new(math.cos(a) * R, 0, math.sin(a) * R), c0)
+					end
+				end
 			end
 		end
 	end)

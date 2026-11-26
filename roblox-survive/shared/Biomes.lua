@@ -60,14 +60,14 @@ B.nightDrop = { forest = 14, snow = 12, desert = 28, mountains = 14, hills = 14,
 
 -- client fog / mood per region. start / finish: distance fog, nothing is visible beyond `finish`
 B.fog = {
-	forest = { density = 0.46, color = Color3.fromRGB(196, 210, 222), haze = 2.2, start = 30, finish = 240 },
-	hills = { density = 0.5, color = Color3.fromRGB(190, 208, 198), haze = 2.6, start = 40, finish = 270 },
-	snow = { density = 0.64, color = Color3.fromRGB(232, 238, 248), haze = 4, start = 10, finish = 150 },
-	desert = { density = 0.52, color = Color3.fromRGB(236, 206, 156), haze = 4.5, start = 40, finish = 230 },
-	mountains = { density = 0.58, color = Color3.fromRGB(190, 200, 220), haze = 3.2, start = 25, finish = 200 },
-	beach = { density = 0.4, color = Color3.fromRGB(205, 225, 238), haze = 2, start = 60, finish = 310 },
-	jungle = { density = 0.6, color = Color3.fromRGB(150, 172, 150), haze = 4, start = 8, finish = 135 },
-	volcano = { density = 0.6, color = Color3.fromRGB(120, 92, 80), haze = 4, start = 15, finish = 165 },
+	forest = { density = 0.46, color = Color3.fromRGB(196, 210, 222), haze = 2.2, start = 30, finish = 300 },
+	hills = { density = 0.5, color = Color3.fromRGB(190, 208, 198), haze = 2.6, start = 40, finish = 338 },
+	snow = { density = 0.64, color = Color3.fromRGB(232, 238, 248), haze = 4, start = 10, finish = 188 },
+	desert = { density = 0.52, color = Color3.fromRGB(236, 206, 156), haze = 4.5, start = 40, finish = 288 },
+	mountains = { density = 0.58, color = Color3.fromRGB(190, 200, 220), haze = 3.2, start = 25, finish = 250 },
+	beach = { density = 0.4, color = Color3.fromRGB(205, 225, 238), haze = 2, start = 60, finish = 388 },
+	jungle = { density = 0.6, color = Color3.fromRGB(150, 172, 150), haze = 4, start = 8, finish = 169 },
+	volcano = { density = 0.6, color = Color3.fromRGB(120, 92, 80), haze = 4, start = 15, finish = 206 },
 }
 
 -- medal colours (a necklace for clearing every creature of a region)

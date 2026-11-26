@@ -114,7 +114,7 @@ function D.xp(f, c) D.skill(f, c) end
 local SHEET = "rbxassetid://136820448039676"
 local CELL = 128
 local MAP = { play = { 0, 0, false }, ranking = { 128, 0, false }, home = { 256, 0, false }, person = { 384, 0, false }, settings = { 512, 0, false }, quick = { 640, 0, false }, friend = { 768, 0, false }, key = { 896, 0, false }, coin = { 0, 128, false }, skill = { 128, 128, false }, heart = { 256, 128, false }, food = { 384, 128, false }, temp = { 512, 128, false }, shield = { 640, 128, false }, bag = { 768, 128, false }, backpack = { 896, 128, false }, flame = { 0, 256, false }, snow = { 128, 256, false }, book = { 256, 256, false }, medal = { 384, 256, false }, map = { 512, 256, false }, cave = { 640, 256, false }, village = { 768, 256, false }, lock = { 896, 256, false }, trash = { 0, 384, false }, sun = { 128, 384, false }, moon = { 256, 384, false }, drop = { 384, 384, false }, dot = { 512, 384, true }, menu = { 640, 384, true }, close = { 768, 384, true }, plus = { 896, 384, true }, gear = { 0, 512, true } }
-Icons.ready = false
+Icons.ready = true -- the sheet is approved; the frame drawings stay as a fallback for names not in it
 local waiting = setmetatable({}, { __mode = "k" }) -- icon frame -> { name, color }
 
 local function image(f, name, color)
@@ -131,26 +131,6 @@ local function image(f, name, color)
 	img.ZIndex = f.ZIndex
 	img.Parent = f
 end
-
-task.spawn(function()
-	local probe = Instance.new("ImageLabel")
-	probe.Image = SHEET
-	local ok = pcall(function() game:GetService("ContentProvider"):PreloadAsync({ probe }) end)
-	for _ = 1, 20 do
-		if probe.IsLoaded then break end
-		task.wait(0.5)
-	end
-	if ok and probe.IsLoaded then
-		Icons.ready = true
-		for f, info in pairs(waiting) do
-			if f.Parent then
-				for _, ch in ipairs(f:GetChildren()) do ch:Destroy() end
-				image(f, info[1], info[2])
-			end
-		end
-		table.clear(waiting)
-	end
-end)
 
 -- returns the icon frame
 function Icons.draw(name, parent, size, color, pos, anchor, bg)
