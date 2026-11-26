@@ -85,7 +85,14 @@ local function tick(player)
 	local dmg = 0
 	local cause = nil
 	if room.hunger <= 0 then dmg += 1 cause = "hunger" end
-	if body < 35 or body > 39.5 then dmg += 1 cause = body < 35 and "cold" or "heat" end
+	-- cold and heat hurt more the further the body is from normal
+	if body < 35 then
+		dmg += 3 + math.floor((35 - body) * 2)
+		cause = "cold"
+	elseif body > 39.5 then
+		dmg += 3 + math.floor((body - 39.5) * 2)
+		cause = "heat"
+	end
 	-- lava burns
 	local okL, under = pcall(function()
 		local p = hrp.Position - Vector3.new(0, 3.5, 0)
@@ -107,8 +114,9 @@ local function tick(player)
 			warned[player] = os.clock()
 			ctx.notify(player, key)
 		end
-	elseif room.hunger > 40 and hum.Health < hum.MaxHealth then
-		hum.Health = math.min(hum.MaxHealth, hum.Health + 0.5 * (1 + 0.15 * (sk.aid or 0)))
+	elseif room.hunger > 80 and hum.Health < hum.MaxHealth then
+		-- slow natural healing, only when well fed
+		hum.Health = math.min(hum.MaxHealth, hum.Health + 0.2 * (1 + 0.15 * (sk.aid or 0)))
 	end
 end
 
