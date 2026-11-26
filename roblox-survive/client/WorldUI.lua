@@ -899,15 +899,56 @@ function M.start(gui, remotes)
 	end
 
 	local function menuModal()
-		local content = openModal("menu", T("menu"), UDim2.fromOffset(440, 300))
-		local b = UI.button({ Text = T("lobby"), Size = UDim2.new(1, 0, 0, 64), BackgroundColor3 = c.danger, TextColor3 = c.text, TextSize = 24, ZIndex = 53, Parent = content }, function()
+		local content = openModal("menu", T("menu"), UDim2.fromOffset(520, 600))
+		local owner = state and state.isOwner
+		local top = UI.frame({ Size = UDim2.new(1, 0, 0, 56), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		local b = UI.button({ Text = T("lobby"), Size = UDim2.new(owner and 0.5 or 1, owner and -6 or 0, 1, 0), BackgroundColor3 = c.danger, TextColor3 = c.text, TextSize = 22, ZIndex = 54, Parent = top }, function()
 			act("leave")
 			UI.toast(root, T("teleporting"))
 		end)
-		Icons.draw("home", b, 26, c.text, UDim2.new(0, 18, 0.5, 0), Vector2.new(0, 0.5))
-		UI.text({ Text = T("code") .. ":  " .. tostring(state and state.code or "..."), Size = UDim2.new(1, 0, 0, 50), Position = UDim2.fromOffset(0, 84), TextSize = 28, TextColor3 = c.gold, ZIndex = 53, Parent = content })
-		UI.text({ Text = T("players") .. ":  " .. tostring(state and state.players or 1) .. " / " .. Config.MAX_PLAYERS, Size = UDim2.new(1, 0, 0, 34), Position = UDim2.fromOffset(0, 136), TextSize = 19, TextColor3 = c.dim, ZIndex = 53, Parent = content })
+		Icons.draw("home", b, 24, c.text, UDim2.new(0, 16, 0.5, 0), Vector2.new(0, 0.5))
+		if owner then
+			local locked = state.locked
+			local lb = UI.button({ Text = locked and T("unlockRoom") or T("lockRoom"), Size = UDim2.new(0.5, -6, 1, 0), Position = UDim2.new(0.5, 6, 0, 0), BackgroundColor3 = locked and c.gold or c.card, TextColor3 = locked and c.bg or c.text, TextSize = 20, ZIndex = 54, Parent = top }, function()
+				act("lock", not locked)
+				task.delay(0.6, function() if modalKind == "menu" then menuModal() end end)
+			end)
+			Icons.draw("lock", lb, 22, locked and c.bg or c.text, UDim2.new(0, 14, 0.5, 0), Vector2.new(0, 0.5))
+		end
+		UI.text({ Text = T("code") .. ":  " .. tostring(state and state.code or "...") .. ((state and state.locked) and ("   |   " .. T("roomLocked")) or ""), Size = UDim2.new(1, 0, 0, 36), Position = UDim2.fromOffset(0, 64), TextSize = 22, TextColor3 = c.gold, ZIndex = 53, Parent = content })
+		local list = Players:GetPlayers()
+		UI.text({ Text = T("inRoom") .. "  " .. #list .. " / " .. Config.MAX_PLAYERS, Size = UDim2.new(1, 0, 0, 26), Position = UDim2.fromOffset(0, 104), TextXAlignment = UI.align(lang), TextSize = 17, TextColor3 = c.dim, ZIndex = 53, Parent = content })
+		local scroll = UI.scroll({ Size = UDim2.new(1, 0, 1, -138), Position = UDim2.fromOffset(0, 136), ZIndex = 53, Parent = content })
+		UI.list(scroll, 6)
+		for i, pl in ipairs(list) do
+			local row = UI.frame({ Size = UDim2.new(1, -8, 0, 58), BackgroundColor3 = c.card, LayoutOrder = (pl.UserId == state.ownerId) and 0 or i, ZIndex = 54, Parent = scroll })
+			UI.corner(row, 10)
+			local tag = (pl.UserId == state.ownerId) and ("  (" .. T("owner") .. ")") or ((pl == player) and ("  (" .. T("you") .. ")") or "")
+			UI.text({ Text = pl.DisplayName .. tag, Size = UDim2.new(0.55, 0, 1, 0), Position = UDim2.new(lang == "ar" and 0.45 or 0, lang == "ar" and -12 or 12, 0, 0), TextXAlignment = UI.align(lang), TextSize = 19, TextColor3 = (pl.UserId == state.ownerId) and c.gold or c.text, ZIndex = 55, Parent = row })
+			if owner and pl ~= player then
+				local bx = lang == "ar" and 0 or 1
+				local holder = UI.frame({ Size = UDim2.fromOffset(212, 42), AnchorPoint = Vector2.new(bx, 0.5), Position = UDim2.new(bx, lang == "ar" and 8 or -8, 0.5, 0), BackgroundTransparency = 1, ZIndex = 55, Parent = row })
+				UI.list(holder, 8, Enum.FillDirection.Horizontal)
+				UI.button({ Text = T("kick"), Size = UDim2.fromOffset(100, 42), TextSize = 17, BackgroundColor3 = c.card2, TextColor3 = c.text, ZIndex = 56, Parent = holder }, function()
+					act("kick", pl.UserId)
+				end)
+				local armed = false
+				local banB
+				banB = UI.button({ Text = T("ban"), Size = UDim2.fromOffset(100, 42), TextSize = 17, BackgroundColor3 = c.danger, TextColor3 = c.text, ZIndex = 56, Parent = holder }, function()
+					if not armed then
+						armed = true
+						banB.Text = T("confirmBan")
+						banB.TextSize = 12
+						task.delay(3, function() if banB.Parent then armed = false banB.Text = T("ban") banB.TextSize = 17 end end)
+						return
+					end
+					act("ban", pl.UserId)
+				end)
+			end
+		end
 	end
+	Players.PlayerAdded:Connect(function() if modalKind == "menu" then menuModal() end end)
+	Players.PlayerRemoving:Connect(function() task.defer(function() if modalKind == "menu" then menuModal() end end) end)
 
 	function refreshModal(force)
 		if modalKind == "bag" then

@@ -26,6 +26,7 @@ local World = {}
 
 local remotes
 local serverCode = nil
+local serverRec = nil -- the room record (owner, settings, bans)
 local selected = {} -- [Player] = hotbar index
 local cooldown = {} -- [Player] = { [key] = clock }
 local luckCd = {}
@@ -167,6 +168,9 @@ local function snapshot(player)
 		lamp = lamp[player] or 0,
 		death = (deathBag[player] and deathBag[player][1].Parent) and { deathBag[player][2], deathBag[player][3] } or nil,
 		dex = room.dex,
+		isOwner = serverRec ~= nil and serverRec.owner == player.UserId,
+		locked = serverRec ~= nil and serverRec.locked == true,
+		ownerId = serverRec and serverRec.owner or 0,
 		stash = Inventory.stashView(room.stash), stashLvl = room.stash.lvl,
 		stashCost = room.stash.lvl < Config.STASH_MAX_LVL and Config.stashCost(room.stash.lvl) or nil,
 	}
@@ -1123,6 +1127,40 @@ function actions.leave(player)
 end
 
 function actions.state(player) push(player) end
+
+-- room owner tools: kick, ban, lock
+local function ownerOnly(player)
+	return serverRec ~= nil and serverCode ~= nil and serverRec.owner == player.UserId
+end
+function actions.kick(player, room, uid)
+	uid = tonumber(uid)
+	local target = uid and Players:GetPlayerByUserId(uid)
+	if not ownerOnly(player) or not target or target == player then return end
+	Data.saveRoom(target)
+	Rooms.toLobby(target, "kicked")
+end
+function actions.ban(player, room, uid)
+	uid = tonumber(uid)
+	if not ownerOnly(player) or not uid or uid == player.UserId then return end
+	serverRec.banned = serverRec.banned or {}
+	serverRec.banned[tostring(uid)] = true
+	Rooms.update(serverCode, function(rec)
+		rec.banned = type(rec.banned) == "table" and rec.banned or {}
+		rec.banned[tostring(uid)] = true
+	end)
+	local target = Players:GetPlayerByUserId(uid)
+	if target then
+		Data.saveRoom(target)
+		Rooms.toLobby(target, "banned")
+	end
+end
+function actions.lock(player, room, on)
+	if not ownerOnly(player) then return end
+	serverRec.locked = on == true
+	Rooms.update(serverCode, function(rec) rec.locked = on == true end)
+	notify(player, on and "lockedNow" or "unlockedNow")
+	for _, pl in ipairs(Players:GetPlayers()) do push(pl) end
+end
 function actions.map(player, room)
 	notify(player, "mapData", mapPois(), room.explored or string.rep("0", MAPN * MAPN))
 	mapDirty[player] = nil
@@ -1197,7 +1235,6 @@ function actions.unequipArmor(player, room)
 	push(player)
 end
 
-local serverRec = nil
 function actions.answerReq(player, room, uid, accept)
 	uid = tonumber(uid)
 	if not uid or not serverRec or serverRec.owner ~= player.UserId then return end
@@ -1234,6 +1271,8 @@ local function onJoin(player)
 			ReplicatedStorage:SetAttribute("Night", Lighting.ClockTime < 6 or Lighting.ClockTime > 18.5)
 		end
 		local isOwner = rec.owner == player.UserId
+		if not isOwner and type(rec.banned) == "table" and rec.banned[tostring(player.UserId)] then Rooms.toLobby(player, "banned") return end
+		if not isOwner and rec.locked then Rooms.toLobby(player, "roomLocked") return end
 		if not isOwner then
 			if #Players:GetPlayers() > (rec.maxPlayers or Config.MAX_PLAYERS) then Rooms.toLobby(player, "full") return end
 			local mode = Rooms.access(rec)
