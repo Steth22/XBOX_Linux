@@ -125,6 +125,7 @@ function P.start(env)
 
 	local st = { filter = 2, weather = 1, free = false, fov = 50, dof = false, clock = 17.3, tab = "look", mode = "move", fx = "fire", limb = "arm", placing = false }
 	local joints = {} -- [limb] = { x, y, z }
+	local freezeMe -- defined below
 
 	-- ---------------------------------------------------------------- the interface
 	local gui = Instance.new("ScreenGui")
@@ -361,6 +362,23 @@ function P.start(env)
 	applyFilter()
 	act("admin", "clock", st.clock)
 
+	-- you, frozen: every animation stops where it is and you stay put
+	freezeMe = function(on)
+		local char = player.Character
+		if not char then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		local animate = char:FindFirstChild("Animate")
+		if animate then animate.Disabled = on end
+		local animator = hum and hum:FindFirstChildOfClass("Animator")
+		if animator then
+			for _, tr in ipairs(animator:GetPlayingAnimationTracks()) do tr:AdjustSpeed(on and 0 or 1) end
+		end
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		if hrp and not st.free then hrp.Anchored = on end
+	end
+	st.mobsFrozen = true
+	Effects.freezeMobs = true
+
 	-- ---------------------------------------------------------------- the tabs
 	local TABS = { { "look", "sun" }, { "camera", "map" }, { "pose", "person" }, { "objects", "dot" }, { "effects", "flame" }, { "hide", "close" } }
 	local tabButtons = {}
@@ -465,6 +483,21 @@ function P.start(env)
 			holdBtn(l1, T("ph_tiltDown"), function() nudge(CFrame.Angles(math.rad(-3), 0, 0)) end, 80)
 			holdBtn(l1, T("ph_up"), function() nudge(nil, 0.3) end, 70)
 			holdBtn(l1, T("ph_down"), function() nudge(nil, -0.3) end, 70)
+			-- freezing: creatures (they stop and their legs hold still), and you (your animation stops mid-move)
+			local lf = line(40)
+			local fm = btn(lf, st.mobsFrozen and T("ph_mobsFrozen") or T("ph_mobsFree"), st.mobsFrozen, function()
+				st.mobsFrozen = not st.mobsFrozen
+				Effects.freezeMobs = st.mobsFrozen
+				act("admin", "holdMobs", st.mobsFrozen)
+				render()
+			end, 0)
+			fm.Size = UDim2.new(0.5, -3, 1, 0)
+			local fme = btn(lf, st.meFrozen and T("ph_meFrozen") or T("ph_meFree"), st.meFrozen, function()
+				st.meFrozen = not st.meFrozen
+				freezeMe(st.meFrozen)
+				render()
+			end, 0)
+			fme.Size = UDim2.new(0.5, -3, 1, 0)
 			local l2 = line(40)
 			btn(l2, T("ph_selMe"), false, function() if player.Character then select(player.Character, "me") end end, 0).Size = UDim2.new(0.34, -4, 1, 0)
 			btn(l2, T("ph_level"), false, function()
@@ -561,6 +594,8 @@ function P.start(env)
 			for _, k in ipairs(Effects.JOINT_LIST) do Effects.setJoint(player.Character, k, 0, 0, 0) end
 		end
 		Effects.photo = false
+		Effects.freezeMobs = false
+		if st.meFrozen then freezeMe(false) end
 		for _, g in ipairs(hidden) do if g.Parent then g.Enabled = true end end
 		for _, b in ipairs(billboards) do if b.Parent then b.Enabled = true end end
 		pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true) end)

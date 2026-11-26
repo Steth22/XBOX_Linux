@@ -199,6 +199,7 @@ end
 local lastLocal = {}
 function E.anim(char, kind, isLocal)
 	if not char or not char.Parent then return end
+	if E.photo then return end -- photo mode: taps must not swing (that would undo the pose)
 	-- the owner already played it the moment they tapped; skip the copy from the server
 	local lp = Players.LocalPlayer
 	if lp and char == lp.Character then
@@ -1207,6 +1208,7 @@ function E.start(remotes)
 		local cam = workspace.CurrentCamera
 		if not mobs or not cam then return end
 		local camPos = cam.CFrame.Position
+		if E.freezeMobs then return end -- photo mode: legs stay exactly where they are
 		for _, m in ipairs(mobs:GetChildren()) do
 			local hrp = m:FindFirstChild("HumanoidRootPart")
 			if hrp and (hrp.Position - camPos).Magnitude < 160 then
