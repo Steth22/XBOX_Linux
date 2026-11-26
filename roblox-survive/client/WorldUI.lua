@@ -370,6 +370,7 @@ function M.start(gui, remotes)
 	---------------------------------------------------------------- modals
 	local rebuilding = false
 	local cinematic -- defined with the shop below
+	local mini -- the minimap (built further down)
 	local function openModal(kind, title, size)
 		if closeModal then closeModal() end
 		modalKind = kind
@@ -540,6 +541,7 @@ function M.start(gui, remotes)
 				table.insert(bars, b)
 			end
 			hotbar.Visible, hud.Visible, vitals.Visible = false, false, false
+			if mini then mini.Visible = false end
 		elseif not on and camState then
 			local st = camState
 			camState = nil
@@ -556,6 +558,7 @@ function M.start(gui, remotes)
 			end
 			bars = nil
 			hotbar.Visible, hud.Visible, vitals.Visible = true, true, true
+			if mini then mini.Visible = true end
 		end
 	end
 	local function shopModal()
@@ -870,6 +873,89 @@ function M.start(gui, remotes)
 			end
 		end)
 	end
+
+	---------------------------------------------------------------- minimap (top right, follows you; tap it for the full map)
+	local MINI = 208
+	local VIEW = 420 -- studs shown across the minimap
+	mini = UI.button({ Text = "", Size = UDim2.fromOffset(MINI, MINI), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -464, 0, 10), BackgroundColor3 = Color3.fromRGB(16, 18, 22), BackgroundTransparency = 0.1, ClipsDescendants = true, AutoButtonColor = false, Parent = root }, function()
+		if modalKind == "map" then closeModal() elseif state then act("map") mapModal() end
+	end)
+	UI.corner(mini, 14)
+	UI.stroke(mini, c.card2, 2)
+	local K = MINI / VIEW -- pixels per stud
+	local H2 = Biomes.HALF
+	local canvas = UI.frame({ Size = UDim2.fromOffset(2 * H2 * K, 2 * H2 * K), BackgroundTransparency = 1, ZIndex = 2, Parent = mini })
+	local miniCells, miniPois = {}, {}
+	local function miniPos(x, z) return UDim2.fromOffset((x + H2) * K, (z + H2) * K) end
+	local function refreshMini()
+		local N = Config.MAP_CELLS
+		local cw = 2 * H2 / N
+		for i = 1, #mapExplored do
+			if mapExplored:sub(i, i) == "1" and not miniCells[i] then
+				local cx, cz = (i - 1) % N, (i - 1) // N
+				miniCells[i] = UI.frame({ Size = UDim2.fromOffset(math.ceil(cw * K) + 1, math.ceil(cw * K) + 1), Position = UDim2.fromOffset(cx * cw * K, cz * cw * K),
+					BackgroundColor3 = cellColor(-H2 + (cx + 0.5) * cw, -H2 + (cz + 0.5) * cw), BorderSizePixel = 0, ZIndex = 3, Parent = canvas })
+			end
+		end
+		local ICONS = { village = { "village", c.gold }, trader = { "coin", Color3.fromRGB(255, 210, 90) }, cave = { "cave", Color3.fromRGB(170, 150, 200) } }
+		for idx, poi in ipairs(mapPoisList) do
+			local cx = math.floor((poi[2] + H2) / cw)
+			local cz = math.floor((poi[3] + H2) / cw)
+			local i = cz * N + cx + 1
+			if not miniPois[idx] and mapExplored:sub(i, i) == "1" and ICONS[poi[1]] then
+				local h = UI.frame({ Size = UDim2.fromOffset(20, 20), AnchorPoint = Vector2.new(0.5, 0.5), Position = miniPos(poi[2], poi[3]), BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.2, ZIndex = 5, Parent = canvas })
+				UI.corner(h, 10)
+				Icons.draw(ICONS[poi[1]][1], h, 14, ICONS[poi[1]][2], UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+				miniPois[idx] = h
+			end
+		end
+	end
+	local deathDot = UI.frame({ Size = UDim2.fromOffset(20, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.fromRGB(20, 20, 24), Visible = false, ZIndex = 6, Parent = canvas })
+	UI.corner(deathDot, 10)
+	Icons.draw("close", deathDot, 14, Color3.fromRGB(255, 70, 60), UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+	local meArrow = UI.frame({ Size = UDim2.fromOffset(16, 16), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), BackgroundTransparency = 1, ZIndex = 9, Parent = mini })
+	local mtip = UI.frame({ Size = UDim2.fromOffset(11, 11), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.62), Rotation = 45, BackgroundColor3 = Color3.fromRGB(80, 200, 255), ZIndex = 9, Parent = meArrow })
+	UI.stroke(mtip, Color3.new(1, 1, 1), 2)
+	local mnose = UI.frame({ Size = UDim2.fromOffset(5, 9), AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 0.35), BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 10, Parent = meArrow })
+	UI.corner(mnose, 3)
+	local north = UI.text({ Text = "N", Size = UDim2.fromOffset(20, 18), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 2), TextSize = 14, TextColor3 = Color3.fromRGB(255, 120, 110), TextStrokeTransparency = 0.3, ZIndex = 9, Parent = mini })
+	local miniOthers = {}
+	local lastExplored = ""
+	RunService.Heartbeat:Connect(function()
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		if not hrp or not mini.Visible then return end
+		if mapExplored ~= lastExplored then
+			lastExplored = mapExplored
+			refreshMini()
+		end
+		local p = hrp.Position
+		canvas.Position = UDim2.fromOffset(MINI / 2 - (p.X + H2) * K, MINI / 2 - (p.Z + H2) * K)
+		local look = hrp.CFrame.LookVector
+		meArrow.Rotation = math.deg(math.atan2(look.X, -look.Z))
+		if state and state.death then
+			deathDot.Visible = true
+			deathDot.Position = miniPos(state.death[1], state.death[2])
+		else
+			deathDot.Visible = false
+		end
+		for _, pl in ipairs(Players:GetPlayers()) do
+			local r = pl ~= player and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart")
+			if r then
+				local dot = miniOthers[pl]
+				if not dot then
+					dot = UI.frame({ Size = UDim2.fromOffset(9, 9), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.fromRGB(120, 255, 140), ZIndex = 8, Parent = canvas })
+					UI.corner(dot, 5)
+					UI.stroke(dot, Color3.new(0, 0, 0), 1)
+					miniOthers[pl] = dot
+				end
+				dot.Position = miniPos(r.Position.X, r.Position.Z)
+			end
+		end
+		for pl, dot in pairs(miniOthers) do
+			if not pl.Parent or not pl.Character then dot:Destroy() miniOthers[pl] = nil end
+		end
+	end)
 
 	local function skillsModal()
 		local content = openModal("skills", T("skills"), UDim2.fromOffset(560, 560))
@@ -1197,6 +1283,7 @@ function M.start(gui, remotes)
 	remotes.State.OnClientEvent:Connect(function(s)
 		local first = state == nil
 		state = s
+		if first then act("map") end
 		lang = s.lang or lang
 		levelText.Text = T("level") .. " " .. s.level
 		UI.tween(xpFill, 0.35, { Size = UDim2.fromScale(math.clamp(s.into / math.max(1, s.need), 0, 1), 1) })
