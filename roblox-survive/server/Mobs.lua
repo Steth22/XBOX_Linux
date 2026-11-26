@@ -1080,7 +1080,7 @@ function Mobs.damage(m, amount, player, src)
 	hl.OutlineTransparency = 1
 	hl.Parent = m
 	task.delay(0.15, function() hl:Destroy() end)
-	ctx.fx("hitMob", s.hrp.Position, s.kind)
+	if not (src and (src.class == "fire" or src.class == "ice")) then ctx.fx("hitMob", s.hrp.Position, s.kind) end
 	if s.def.flee then
 		s.scaredUntil = os.clock() + 7
 		s.target = player
@@ -1089,6 +1089,29 @@ function Mobs.damage(m, amount, player, src)
 	end
 	if s.hp <= 0 then kill(m, s, player) end
 	return true
+end
+
+-- living creatures within radius of pos
+function Mobs.near(pos, radius)
+	local out = {}
+	for m, st in pairs(mobs) do
+		if not st.dead and st.hrp and (st.hrp.Position - pos).Magnitude < radius then table.insert(out, m) end
+	end
+	return out
+end
+
+-- frozen solid: can't move or attack for a while (bosses shake it off twice as fast)
+function Mobs.freeze(m, secs)
+	local s = mobs[m]
+	if not s or s.dead then return end
+	if s.def.boss then secs *= 0.5 end
+	local untilT = os.clock() + secs
+	s.rootedUntil = math.max(s.rootedUntil or 0, untilT)
+	s.frozenUntil = untilT
+	m:SetAttribute("Frozen", true)
+	task.delay(secs, function()
+		if m.Parent and os.clock() >= (s.frozenUntil or 0) - 0.05 then m:SetAttribute("Frozen", nil) end
+	end)
 end
 
 function Mobs.modelOf(part)
@@ -1259,10 +1282,10 @@ function stepOne(m, s)
 					end
 				end
 				if tr and s.target then
-					if def.boss and Mobs.bossThink then Mobs.bossThink(m, s, tr, now) end
+					if def.boss and Mobs.bossThink and now >= (s.frozenUntil or 0) then Mobs.bossThink(m, s, tr, now) end
 					local d = (tr.Position - pos).Magnitude
 					if d > def.reach * 0.7 then s.dest = tr.Position s.pace = 1 else s.dest = nil end
-					if d <= def.reach + (def.boss and 2 or 0) and now >= s.nextAttack then
+					if d <= def.reach + (def.boss and 2 or 0) and now >= s.nextAttack and now >= (s.frozenUntil or 0) then
 						s.nextAttack = now + (def.boss and 1.8 or 1.2)
 						ctx.fx("mobAttack", pos, s.kind)
 						ctx.hurt(s.target, s.dmg * (os.clock() < (s.enragedUntil or 0) and 1.5 or 1), s.kind)

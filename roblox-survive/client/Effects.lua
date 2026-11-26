@@ -850,7 +850,125 @@ local function startWeather()
 	end)
 end
 
+---------------------------------------------------------------- powers: fire / ice orbiting players, burning and frozen creatures
+local function startPowers()
+	local folder = Instance.new("Folder")
+	folder.Name = "PowerFX"
+	folder.Parent = workspace
+	local rigs = {} -- [character] = { fire = {parts}, ice = {parts} }
+	local function orb(kind)
+		local p = Instance.new("Part")
+		p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+		p.CastShadow = false
+		if kind == "fire" then
+			p.Shape = Enum.PartType.Ball
+			p.Size = Vector3.new(0.9, 0.9, 0.9)
+			p.Material = Enum.Material.Neon
+			p.Color = Color3.fromRGB(255, 120, 30)
+			local f = Instance.new("Fire")
+			f.Size = 2.2
+			f.Heat = 4
+			f.Color = Color3.fromRGB(255, 140, 40)
+			f.SecondaryColor = Color3.fromRGB(255, 60, 20)
+			f.Parent = p
+			local l = Instance.new("PointLight")
+			l.Color = Color3.fromRGB(255, 140, 60)
+			l.Range = 8
+			l.Brightness = 1.2
+			l.Parent = p
+		else
+			p.Size = Vector3.new(0.5, 1.3, 0.5)
+			p.Material = Enum.Material.Neon
+			p.Color = Color3.fromRGB(170, 225, 255)
+			local sp = Instance.new("Sparkles")
+			sp.SparkleColor = Color3.fromRGB(200, 235, 255)
+			sp.Parent = p
+			local l = Instance.new("PointLight")
+			l.Color = Color3.fromRGB(150, 210, 255)
+			l.Range = 7
+			l.Brightness = 0.9
+			l.Parent = p
+		end
+		p.Parent = folder
+		return p
+	end
+	RunService.RenderStepped:Connect(function()
+		local t = os.clock()
+		local seen = {}
+		for _, pl in ipairs(Players:GetPlayers()) do
+			local char = pl.Character
+			local hrp = char and char:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				seen[char] = true
+				local rg = rigs[char] or { fire = {}, ice = {} }
+				rigs[char] = rg
+				for _, kind in ipairs({ "fire", "ice" }) do
+					local lvl = char:GetAttribute(kind == "fire" and "AuraFire" or "AuraIce")
+					local list = rg[kind]
+					local want = lvl and (2 + math.min(lvl, 3)) or 0
+					while #list < want do table.insert(list, orb(kind)) end
+					while #list > want do table.remove(list):Destroy() end
+					local n = #list
+					for k, p in ipairs(list) do
+						local dir = kind == "fire" and 1 or -1
+						local a = t * 2.6 * dir + (k - 1) / n * math.pi * 2
+						local rad = 4 + (lvl or 0) * 0.3
+						local y = kind == "fire" and 0.4 or -0.6
+						local pos = hrp.Position + Vector3.new(math.cos(a) * rad, y + math.sin(t * 3 + k) * 0.35, math.sin(a) * rad)
+						p.CFrame = CFrame.new(pos) * CFrame.Angles(0, -a, kind == "ice" and 0.5 or 0)
+					end
+				end
+			end
+		end
+		for char, rg in pairs(rigs) do
+			if not seen[char] then
+				for _, l in pairs(rg) do for _, p in ipairs(l) do p:Destroy() end end
+				rigs[char] = nil
+			end
+		end
+	end)
+	-- creatures on fire / frozen
+	task.spawn(function()
+		while true do
+			task.wait(0.3)
+			local mobs = workspace:FindFirstChild("Mobs")
+			for _, m in ipairs(mobs and mobs:GetChildren() or {}) do
+				local root = m.PrimaryPart or m:FindFirstChildWhichIsA("BasePart")
+				if root then
+					local fire = root:FindFirstChild("PowerFire")
+					if m:GetAttribute("Burning") and not fire then
+						fire = Instance.new("Fire")
+						fire.Name = "PowerFire"
+						fire.Size = math.clamp(root.Size.Magnitude * 1.2, 4, 12)
+						fire.Heat = 9
+						fire.Parent = root
+					elseif not m:GetAttribute("Burning") and fire then
+						fire:Destroy()
+					end
+					local ice = m:FindFirstChild("PowerIce")
+					if m:GetAttribute("Frozen") and not ice then
+						ice = Instance.new("Highlight")
+						ice.Name = "PowerIce"
+						ice.FillColor = Color3.fromRGB(150, 215, 255)
+						ice.FillTransparency = 0.3
+						ice.OutlineColor = Color3.fromRGB(230, 245, 255)
+						ice.OutlineTransparency = 0.2
+						ice.Parent = m
+						E.play("rockHit", root.Position, 0.5, 1.6)
+					elseif not m:GetAttribute("Frozen") and ice then
+						ice:Destroy()
+					end
+				end
+			end
+		end
+	end)
+end
+
 function E.start(remotes)
+	task.spawn(function()
+		local okP, errP = pcall(startPowers)
+		if not okP then warn("powers", errP) end
+	end)
 	task.spawn(function()
 		local ok, err = pcall(startWeather)
 		if not ok then warn("weather", err) end

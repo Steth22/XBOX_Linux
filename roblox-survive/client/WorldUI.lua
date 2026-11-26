@@ -677,18 +677,23 @@ function M.start(gui, remotes)
 		local list = UI.scroll({ Size = UDim2.new(1, 0, 1, -listTop - 2), Position = UDim2.fromOffset(0, listTop), ZIndex = 53, Parent = content })
 		UI.list(list, 8)
 		local n = 0
-		local function row(id, name, price, btnText, btnColor, cb)
+		local function row(id, name, price, btnText, btnColor, cb, resPrice)
 			n += 1
-			local r = UI.frame({ Size = UDim2.new(1, -8, 0, 66), BackgroundColor3 = c.card, ZIndex = 53, Parent = list })
+			local r = UI.frame({ Size = UDim2.new(1, -8, 0, resPrice and 92 or 66), BackgroundColor3 = c.card, ZIndex = 53, Parent = list })
 			UI.corner(r, 12)
 			local iconX = lang == "ar" and 1 or 0
 			local holder = UI.frame({ Size = UDim2.fromOffset(56, 56), AnchorPoint = Vector2.new(iconX, 0.5), Position = UDim2.new(iconX, lang == "ar" and -6 or 6, 0.5, 0), BackgroundColor3 = c.panel, ZIndex = 54, Parent = r })
 			UI.corner(holder, 10)
 			if id then ItemView.new(holder, id, UDim2.fromScale(1, 1), nil, 55) else Icons.draw("bag", holder, 34, c.gold, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5)) end
 			UI.text({ Text = name, Size = UDim2.new(0.5, 0, 0, 30), Position = UDim2.new(lang == "ar" and 0.5 or 0, lang == "ar" and -72 or 72, 0, 6), AnchorPoint = Vector2.new(lang == "ar" and 0.5 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 18, ZIndex = 54, Parent = r })
-			local pf = UI.frame({ Size = UDim2.new(0.4, 0, 0, 22), Position = UDim2.new(lang == "ar" and 0.5 or 0, lang == "ar" and -72 or 72, 0, 38), AnchorPoint = Vector2.new(lang == "ar" and 0.5 or 0, 0), BackgroundTransparency = 1, ZIndex = 54, Parent = r })
-			Icons.draw("coin", pf, 16, c.gold, UDim2.new(lang == "ar" and 1 or 0, lang == "ar" and -16 or 0, 0.5, 0), Vector2.new(0, 0.5))
-			UI.text({ Text = price, Size = UDim2.new(1, -22, 1, 0), Position = UDim2.fromOffset(lang == "ar" and 0 or 22, 0), TextXAlignment = UI.align(lang), TextSize = 15, TextColor3 = c.gold, ZIndex = 55, Parent = pf })
+			if resPrice then
+				-- paid in resources: two lines of "resource have/need"
+				UI.text({ Text = price, Size = UDim2.new(1, -210, 0, 48), Position = UDim2.new(lang == "ar" and 1 or 0, lang == "ar" and -72 or 72, 0, 36), AnchorPoint = Vector2.new(lang == "ar" and 1 or 0, 0), TextXAlignment = UI.align(lang), TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, TextSize = 13, TextColor3 = c.gold, ZIndex = 55, Parent = r })
+			else
+				local pf = UI.frame({ Size = UDim2.new(0.4, 0, 0, 22), Position = UDim2.new(lang == "ar" and 0.5 or 0, lang == "ar" and -72 or 72, 0, 38), AnchorPoint = Vector2.new(lang == "ar" and 0.5 or 0, 0), BackgroundTransparency = 1, ZIndex = 54, Parent = r })
+				Icons.draw("coin", pf, 16, c.gold, UDim2.new(lang == "ar" and 1 or 0, lang == "ar" and -16 or 0, 0.5, 0), Vector2.new(0, 0.5))
+				UI.text({ Text = price, Size = UDim2.new(1, -22, 1, 0), Position = UDim2.fromOffset(lang == "ar" and 0 or 22, 0), TextXAlignment = UI.align(lang), TextSize = 15, TextColor3 = c.gold, ZIndex = 55, Parent = pf })
+			end
 			local bx = lang == "ar" and 0 or 1
 			UI.button({ Text = btnText, Size = UDim2.fromOffset(116, 42), AnchorPoint = Vector2.new(bx, 0.5), Position = UDim2.new(bx, lang == "ar" and 10 or -10, 0.5, 0), BackgroundColor3 = btnColor, TextSize = 17, ZIndex = 55, Parent = r }, cb)
 			UI.enter(r, n * 0.03, 10)
@@ -709,6 +714,19 @@ function M.start(gui, remotes)
 			if state.armor then owned[state.armor] = (owned[state.armor] or 0) + 1 end
 			for _, id in ipairs(ids) do
 				local d = Items.get(id)
+				if id == "token" then
+					-- paid with resources, not coins: show what it costs and what you have
+					local have = {}
+					for _, sl in ipairs(state.slots) do if sl then have[sl.id] = (have[sl.id] or 0) + sl.n end end
+					local parts, ok = {}, true
+					for _, cost in ipairs(Items.TOKEN_COST) do
+						local n = have[cost[1]] or 0
+						if n < cost[2] then ok = false end
+						table.insert(parts, Items.name(cost[1], lang) .. " " .. math.min(n, cost[2]) .. "/" .. cost[2])
+					end
+					row(id, Items.name(id, lang) .. (owned[id] and ("  (" .. T("owned") .. " " .. owned[id] .. ")") or ""), table.concat(parts, "   "), T("buy"), ok and c.accent or c.card2, function() act("buyToken") end, true)
+					continue
+				end
 				local qty = d.buyQty and (" x" .. d.buyQty) or ""
 				local stats = {}
 				if d.dmg then table.insert(stats, T("st_dmg") .. " " .. d.dmg) end
@@ -1459,8 +1477,70 @@ function M.start(gui, remotes)
 		end
 	end)
 
+	local skillsTab = "skills"
+	local POWER_COLOR = { fire = Color3.fromRGB(255, 130, 50), ice = Color3.fromRGB(120, 200, 255), blast = Color3.fromRGB(255, 200, 70) }
+	local POWER_ICON = { fire = "flame", ice = "snow", blast = "heart" }
 	local function skillsModal()
-		local content = openModal("skills", T("skills"), UDim2.fromOffset(560, 560))
+		local content = openModal("skills", T("skills"), UDim2.fromOffset(560, 600))
+		-- two tabs: skills (skill points) and powers (tokens)
+		local tabs = UI.frame({ Size = UDim2.new(1, 0, 0, 42), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		for k, t in ipairs({ "skills", "powers" }) do
+			local on = skillsTab == t
+			UI.button({ Text = T(t == "skills" and "skills" or "powersTab"), Size = UDim2.new(0.5, -4, 1, 0), Position = UDim2.new((k == 1) == (lang ~= "ar") and 0 or 0.5, (k == 1) == (lang ~= "ar") and 0 or 4, 0, 0), BackgroundColor3 = on and (t == "skills" and c.blue or c.gold) or c.card, TextColor3 = on and c.bg or c.text, TextSize = 18, ZIndex = 54, Parent = tabs }, function()
+				skillsTab = t
+				skillsModal()
+			end)
+		end
+		content = UI.frame({ Size = UDim2.new(1, 0, 1, -50), Position = UDim2.fromOffset(0, 50), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		if skillsTab == "powers" then
+			local ar = lang == "ar"
+			local tokens = 0
+			for _, sl in ipairs(state.slots) do if sl and sl.id == "token" then tokens += sl.n end end
+			local head = UI.frame({ Size = UDim2.new(1, 0, 0, 40), BackgroundColor3 = c.card, ZIndex = 53, Parent = content })
+			UI.corner(head, 20)
+			local ic = UI.frame({ Size = UDim2.fromOffset(32, 32), AnchorPoint = Vector2.new(ar and 1 or 0, 0.5), Position = UDim2.new(ar and 1 or 0, ar and -8 or 8, 0.5, 0), BackgroundTransparency = 1, ZIndex = 54, Parent = head })
+			ItemView.new(ic, "token", UDim2.fromScale(1, 1), nil, 55)
+			UI.text({ Text = Locale.f(lang, "tokensHave", tokens), Size = UDim2.new(1, -56, 1, 0), Position = UDim2.fromOffset(ar and 8 or 48, 0), TextXAlignment = UI.align(lang), TextSize = 18, TextColor3 = c.gold, ZIndex = 54, Parent = head })
+			local list = UI.scroll({ Size = UDim2.new(1, 0, 1, -50), Position = UDim2.fromOffset(0, 50), ZIndex = 53, Parent = content })
+			UI.list(list, 10)
+			local pw = state.powers or {}
+			for i, k in ipairs({ "fire", "ice", "blast" }) do
+				local lvl = pw[k] or 0
+				local col = POWER_COLOR[k]
+				local r = UI.frame({ Size = UDim2.new(1, -8, 0, 118), BackgroundColor3 = c.card, LayoutOrder = i, ZIndex = 53, Parent = list })
+				UI.corner(r, 14)
+				UI.stroke(r, lvl > 0 and col or c.card2, 1.5)
+				local badge = UI.frame({ Size = UDim2.fromOffset(64, 64), AnchorPoint = Vector2.new(ar and 1 or 0, 0), Position = UDim2.new(ar and 1 or 0, ar and -12 or 12, 0, 12), BackgroundColor3 = c.bg, ZIndex = 54, Parent = r })
+				UI.corner(badge, 32)
+				UI.stroke(badge, col, 2)
+				Icons.draw(POWER_ICON[k], badge, 38, col, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+				local tx = ar and -88 or 88
+				UI.text({ Text = T("pw_" .. k), Size = UDim2.new(1, -230, 0, 26), Position = UDim2.new(ar and 1 or 0, tx, 0, 10), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextSize = 20, TextColor3 = col, ZIndex = 54, Parent = r })
+				UI.text({ Text = T("pwd_" .. k), Size = UDim2.new(1, -230, 0, 40), Position = UDim2.new(ar and 1 or 0, tx, 0, 38), AnchorPoint = Vector2.new(ar and 1 or 0, 0), TextXAlignment = UI.align(lang), TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, TextSize = 13, TextColor3 = c.dim, ZIndex = 54, Parent = r })
+				-- level pips
+				local pips = UI.frame({ Size = UDim2.fromOffset(5 * 22, 12), AnchorPoint = Vector2.new(ar and 1 or 0, 0), Position = UDim2.new(ar and 1 or 0, tx, 0, 90), BackgroundTransparency = 1, ZIndex = 54, Parent = r })
+				for p = 1, 5 do
+					local d = UI.frame({ Size = UDim2.fromOffset(16, 10), Position = UDim2.fromOffset(ar and (5 - p) * 22 or (p - 1) * 22, 1), BackgroundColor3 = p <= lvl and col or c.bg, ZIndex = 55, Parent = pips })
+					UI.corner(d, 5)
+				end
+				local bx = ar and 0 or 1
+				local maxed = lvl >= 5
+				local need = lvl + 1
+				local can = not maxed and tokens >= need
+				UI.button({ Text = maxed and T("maxed") or ((lvl == 0 and T("unlock") or T("upgrade")) .. "  " .. need), Size = UDim2.fromOffset(120, 42), AnchorPoint = Vector2.new(bx, 0), Position = UDim2.new(bx, ar and 12 or -12, 0, 14), BackgroundColor3 = can and col or c.card2, TextColor3 = can and c.bg or c.dim, TextSize = 16, ZIndex = 55, Parent = r }, function()
+					if not maxed then act("powerUp", k) task.delay(0.5, function() if modalKind == "skills" then skillsModal() end end) end
+				end)
+				if k ~= "blast" and lvl > 0 then
+					local on = not (pw.off and pw.off[k])
+					UI.button({ Text = on and T("pwOn") or T("pwOff"), Size = UDim2.fromOffset(120, 36), AnchorPoint = Vector2.new(bx, 0), Position = UDim2.new(bx, ar and 12 or -12, 0, 64), BackgroundColor3 = on and c.accent or c.card2, TextColor3 = on and c.bg or c.text, TextSize = 15, ZIndex = 55, Parent = r }, function()
+						act("powerToggle", k)
+						task.delay(0.5, function() if modalKind == "skills" then skillsModal() end end)
+					end)
+				end
+				UI.enter(r, i * 0.05, 10)
+			end
+			return
+		end
 		local head = UI.frame({ Size = UDim2.new(1, 0, 0, 40), BackgroundColor3 = c.card, ZIndex = 53, Parent = content })
 		UI.corner(head, 20)
 		Icons.draw("skill", head, 22, c.blue, UDim2.new(0, 12, 0.5, 0), Vector2.new(0, 0.5))

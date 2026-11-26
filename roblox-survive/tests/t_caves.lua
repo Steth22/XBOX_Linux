@@ -63,10 +63,11 @@ check("shops and new items", function()
 	local I = require(RS.Shared.Items)
 	for shop, cats in pairs(I.shops) do
 		for _, c in ipairs(cats) do
-			for _, id in ipairs(c.ids) do assert(I.get(id) and I.get(id).buy, shop .. ":" .. id) end
+			for _, id in ipairs(c.ids) do assert(I.get(id) and (I.get(id).buy or id == "token"), shop .. ":" .. id) end
 		end
 	end
-	for _, c in ipairs(I.shops.black) do for _, id in ipairs(c.ids) do assert(I.get(id).buy >= 300, id) end end
+	for _, c in ipairs(I.shops.black) do for _, id in ipairs(c.ids) do assert(id == "token" or I.get(id).buy >= 300, id) end end
+	assert(#I.TOKEN_COST >= 8 and I.get("token"))
 	assert(I.inShop("forest", "lantern") and I.inShop("snow", "lantern") and I.inShop("desert", "lantern") and I.inShop("mountains", "lantern"))
 	assert(I.get("lantern").buy == 1000 and I.get("lantern").dur == 720)
 	assert(I.get("hide_snow").sell > I.get("hide_desert").sell and I.get("hide_desert").sell > I.get("hide").sell)

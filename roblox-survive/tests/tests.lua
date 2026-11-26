@@ -29,7 +29,7 @@ check("Inventory", function()
 	assert(not Inv.usable(inv, 6)); inv.bag = true; assert(Inv.usable(inv, 6) and not Inv.usable(inv, 21))
 end)
 check("Data/Rooms/World/Lobby/Resources require", function()
-	for _, n in ipairs({"Data", "Rooms", "Resources", "World", "Lobby", "Furnace"}) do
+	for _, n in ipairs({"Data", "Rooms", "Resources", "World", "Lobby", "Furnace", "Powers", "Weather"}) do
 		local m = require(SSS.Services[n])
 		assert(type(m) == "table", n)
 	end
@@ -93,6 +93,9 @@ check("WorldUI build", function()
 	state.dex = { seen = { wolf = true, alpha = true, rabbit = true }, kills = { wolf = 3, alpha = 1 }, medals = { forest = true }, neck = "forest" }
 	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
 	api.indexModal()
+	state.powers = { fire = 2, ice = 0, blast = 1, off = { fire = true } }
+	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
+	api.skillsModal()
 	for _, h in ipairs(remotes.Notify.OnClientEvent.handlers) do
 		h("openFurnace", { id = "f1", input = { id = "meat_raw", n = 3 }, fuel = { id = "wood", n = 12 }, out = false, t = 1.5, time = 3, need = 5 })
 		h("furnace", { id = "f1", input = false, fuel = false, out = { id = "meat_cooked", n = 3 }, t = 0, time = 3, need = 5 })

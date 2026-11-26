@@ -20,6 +20,7 @@ local Debug = require(script.Parent.Debug)
 local Bestiary = require(ReplicatedStorage.Shared.Bestiary)
 local Furnace = require(script.Parent.Furnace)
 local Weather = require(script.Parent.Weather)
+local Powers = require(script.Parent.Powers)
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 
 local MessagingService = game:GetService("MessagingService")
@@ -186,6 +187,7 @@ local function snapshot(player)
 		day = ReplicatedStorage:GetAttribute("Day") or 1,
 		armor = room.inv.armor or false,
 		off = room.inv.off or false,
+		powers = Powers.of(room),
 		buffs = (function()
 			local out = {}
 			for k, t in pairs(buffs[player] or {}) do
@@ -280,11 +282,19 @@ function ctx.hurt(player, amount, cause)
 	if armor then amount *= (1 - armor.reduce) end
 	if hasBuff(player, "stone") then amount *= 0.6 end
 	if sleeping[player] and ctx.wake then ctx.wake(player) end
-	if hum.Health - amount <= 0 and ctx.lucky(player, 0.03) and (not luckCd[player] or os.clock() - luckCd[player] > 90) then
-		luckCd[player] = os.clock()
-		hum.Health = 1
-		notify(player, "lucky")
-		return
+	if hum.Health - amount <= 0 and (not luckCd[player] or os.clock() - luckCd[player] > 90) then
+		-- luck (and the blast power) can save you from death; with the blast power you explode
+		local saved = ctx.lucky(player, 0.03) or (room and rng:NextNumber() < Powers.saveChance(room))
+		if saved then
+			luckCd[player] = os.clock()
+			if room and Powers.blast(player, room) then
+				hum.Health = math.max(1, hum.MaxHealth * 0.25)
+			else
+				hum.Health = 1
+				notify(player, "lucky")
+			end
+			return
+		end
 	end
 	hum:TakeDamage(amount)
 	if player.Character then ctx.fx("hurt", player.Character) end
@@ -774,6 +784,7 @@ local function onCharacter(player, char)
 		task.defer(setLamp, player, true)
 	end
 	task.defer(wearNecklace, player)
+	task.defer(Powers.apply, player)
 	hum.BreakJointsOnDeath = false
 	hum.MaxHealth = 100
 	hum.Health = 100
@@ -1515,6 +1526,21 @@ function actions.stashUpgrade(player, room)
 end
 
 function actions.closeFurnace(player) Furnace.close(player) end
+function actions.powerUp(player, room, kind) Powers.upgrade(player, room, tostring(kind)) end
+function actions.powerToggle(player, room, kind) Powers.toggle(player, room, tostring(kind)) end
+-- the secret trader's token: paid with some of every resource
+function actions.buyToken(player, room)
+	if not nearVendor(player, "black") then notify(player, "tooFar") return end
+	for _, c in ipairs(Items.TOKEN_COST) do
+		if Inventory.count(room.inv, c[1]) < c[2] then notify(player, "needRes") return end
+	end
+	if Inventory.space(room.inv, "token") < 1 then notify(player, "bagFull") return end
+	for _, c in ipairs(Items.TOKEN_COST) do Inventory.remove(room.inv, c[1], c[2]) end
+	Inventory.add(room.inv, "token", 1)
+	notify(player, "boughtToken")
+	if player.Character then ctx.fx("skillUp", player.Character) end
+	push(player)
+end
 
 function actions.unequipOff(player, room)
 	local off = room.inv.off
@@ -1697,6 +1723,8 @@ function World.start(r)
 		for _, t in ipairs(tf and tf:GetChildren() or {}) do table.insert(lines, t:GetAttribute("Points") or "") end
 		ReplicatedStorage:SetAttribute("RailLines", table.concat(lines, "|"))
 	end)
+	local okP, errP = pcall(function() Powers.start(ctx, Mobs, Data, Inventory) end)
+	if not okP then Debug.log("start.powers", errP) end
 	local okW, errW = pcall(function() Weather.start(ctx) end)
 	if not okW then Debug.log("start.weather", errW) end
 	local okF, errF = pcall(function() Furnace.start(ctx, Inventory, Data, vendors) end)

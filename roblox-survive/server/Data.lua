@@ -189,6 +189,12 @@ function Data.loadRoom(player, code)
 		if type(res.spawn) == "table" and tonumber(res.spawn[1]) and tonumber(res.spawn[2]) and tonumber(res.spawn[3]) then
 			r.spawn = { tonumber(res.spawn[1]), tonumber(res.spawn[2]), tonumber(res.spawn[3]), village = res.spawn.village == true }
 		end
+		if type(res.powers) == "table" then
+			local pw = { off = {} }
+			for _, k in ipairs({ "fire", "ice", "blast" }) do pw[k] = math.clamp(math.floor(tonumber(res.powers[k]) or 0), 0, 5) end
+			if type(res.powers.off) == "table" then pw.off.fire = res.powers.off.fire == true or nil pw.off.ice = res.powers.off.ice == true or nil end
+			r.powers = pw
+		end
 		if type(res.dex) == "table" then
 			local Best = require(game:GetService("ReplicatedStorage").Shared.Bestiary)
 			local d = res.dex
@@ -233,7 +239,7 @@ function Data.saveRoom(player)
 	if not r or not code then return end
 	Data.touchRoomList(player, code, r.coins, r.xp)
 	if r._noSave then return end
-	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, dex = r.dex, pos = r.pos, explored = r.explored, explored2 = r.explored2, spawn = r.spawn, t = os.time() }
+	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, dex = r.dex, pos = r.pos, explored = r.explored, explored2 = r.explored2, spawn = r.spawn, powers = r.powers, t = os.time() }
 	try(function()
 		roomStore:SetAsync("r_" .. code .. "_" .. player.UserId, copy)
 	end)

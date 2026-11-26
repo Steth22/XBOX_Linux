@@ -21,6 +21,7 @@ I.defs = {
 	berries = { ar = "توت", en = "Berries", kind = "food", stack = 20, hunger = 12, heal = 2, buy = 6, buyQty = 2, sell = 1 },
 	meat_raw = { ar = "لحم نيئ", en = "Raw Meat", kind = "food", stack = 20, hunger = 12, heal = 0 },
 	meat_cooked = { ar = "لحم مطبوخ", en = "Cooked Meat", kind = "food", stack = 20, hunger = 40, heal = 10 },
+	token = { ar = "توكن", en = "Token", kind = "special", stack = 50 },
 	mushroom_roast = { ar = "فطر مشوي", en = "Roasted Mushroom", kind = "food", stack = 20, hunger = 30, heal = 12, sell = 8 },
 	bandage = { ar = "ضماد", en = "Bandage", kind = "heal", stack = 10, heal = 35, buy = 25 },
 	wood_axe = { ar = "فأس خشبي", en = "Wood Axe", kind = "tool", class = "axe", stack = 1, tree = 3, rock = 1, dmg = 10, dur = 150, buy = 30 },
@@ -151,7 +152,7 @@ I.shops = {
 	},
 	-- the secret trader: open day and night, moves around the map
 	black = {
-		{ key = "special", ids = { "bed", "shadow_blade", "lantern" } },
+		{ key = "special", ids = { "token", "bed", "shadow_blade", "lantern" } },
 		{ key = "potions", ids = { "potion_speed", "potion_strength", "potion_regen", "potion_stone", "potion_vision", "potion_warmth", "potion_antidote" } },
 	},
 }
@@ -169,6 +170,9 @@ I.shop = {
 	"leather_armor", "iron_armor", "diamond_armor",
 	"bow", "arrow", "pistol", "ammo", "trap", "campfire", "bandage", "berries",
 }
+
+-- a token costs some of every resource (bought from the secret trader; it unlocks and levels powers)
+I.TOKEN_COST = { { "wood", 20 }, { "stone", 20 }, { "iron", 6 }, { "gold", 4 }, { "diamond", 1 }, { "hide", 2 }, { "crystal", 2 }, { "obsidian", 1 } }
 
 -- what the furnace turns each item into (5 wood and 3 seconds per item)
 I.smelt = { meat_raw = "meat_cooked", mushroom = "mushroom_roast" }
@@ -551,6 +555,10 @@ SPECS.berries = { P(Vector3.new(0.55, 0.55, 0.55), nil, Color3.fromRGB(150, 30, 
 	P(Vector3.new(0.45, 0.45, 0.45), CFrame.new(0.05, 0.4, -0.2), Color3.fromRGB(186, 50, 104), nil, BALL),
 	P(Vector3.new(0.06, 0.4, 0.06), CFrame.new(0.05, 0.75, -0.2), Color3.fromRGB(70, 110, 50)),
 	P(Vector3.new(0.5, 0.06, 0.3), CFrame.new(0.2, 0.88, -0.2) * A(0, 0, r(20)), Color3.fromRGB(70, 130, 60), Enum.Material.Grass) }
+-- token: a thick gold coin with a glowing purple gem set in it
+SPECS.token = { P(Vector3.new(0.3, 1.5, 1.5), nil, Color3.fromRGB(236, 184, 60), Enum.Material.Metal, CYL),
+	P(Vector3.new(0.34, 1.2, 1.2), nil, Color3.fromRGB(200, 150, 40), Enum.Material.Metal, CYL),
+	P(Vector3.new(0.5, 0.5, 0.5), nil, Color3.fromRGB(170, 90, 255), Enum.Material.Neon, BALL) }
 SPECS.coconut = { P(Vector3.new(1.1, 1.1, 1.1), nil, Color3.fromRGB(110, 74, 44), Enum.Material.Fabric, BALL) }
 for k = 0, 2 do
 	local a = k / 3 * math.pi * 2
