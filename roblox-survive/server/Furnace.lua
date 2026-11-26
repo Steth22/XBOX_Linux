@@ -167,6 +167,7 @@ local function hook(m, body)
 	count += 1
 	local id = "f" .. count
 	furnaces[id] = body
+	body:SetAttribute("FurnaceId", id)
 	local pr = Instance.new("ProximityPrompt")
 	pr.ActionText = "Use"
 	pr.ObjectText = "Furnace"
@@ -358,6 +359,33 @@ function F.move(player, room, a, b)
 end
 
 function F.close(player) open[player] = nil end
+
+-- a working furnace anywhere (in a player's house); F.remove takes it away and gives back what was in it
+function F.add(cf, parent)
+	local m, body = build(cf, parent)
+	hook(m, body)
+	return m
+end
+function F.remove(m)
+	local body = m and m:FindFirstChild("Body")
+	local id = body and body:GetAttribute("FurnaceId")
+	if id then
+		furnaces[id] = nil
+		for player, boxes in pairs(state) do
+			local b = boxes[id]
+			if b then
+				local room = Data and Data.room(player)
+				for _, k in ipairs({ "input", "fuel", "out" }) do
+					local it = b[k]
+					if it and room then Inventory.add(room.inv, it.id, it.n) end
+				end
+				boxes[id] = nil
+			end
+			if open[player] == id then open[player] = nil end
+		end
+	end
+	if m then m:Destroy() end
+end
 F.build = build
 
 return F

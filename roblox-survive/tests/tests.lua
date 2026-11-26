@@ -79,6 +79,25 @@ check("WorldUI build", function()
 	api.bagModal() api.shopModal() api.menuModal() api.skillsModal()
 	for _, h in ipairs(remotes.Notify.OnClientEvent.handlers) do h("openShop") h("bossSpawn") h("coinsGot", 12) end
 	state.bag = false; for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end api.bagModal() api.shopModal()
+	-- crafting table, house and chest windows, in both languages
+	for _, lg in ipairs({ "en", "ar" }) do
+		state.lang = lg
+		for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
+		local cells = { false, false, false, false, false, false, false, false, false }
+		cells[1] = { id = "wood", n = 3 }
+		for _, h in ipairs(remotes.Notify.OnClientEvent.handlers) do
+			h("openCraft", { cells = cells, out = { id = "stick", n = 4 } })
+			h("craft", { cells = cells, out = false })
+			h("crafted", "stick", 4)
+			h("openHouse", { lvl = 0, max = 6, cost = { wood = 30, stone = 15 }, have = { wood = 12, stone = 0 } })
+			h("openHouse", { design = "manor", lvl = 3, max = 6, cost = { wood = 260, stone = 190 }, have = { wood = 300, stone = 10 } })
+			h("openHouse", { design = "tower", lvl = 6, max = 6, have = { wood = 0, stone = 0 } })
+			h("houseUp", 4) h("needWoodStone", 30, 15)
+			h("openChest", { n = 2, slots = { { id = "wood", n = 9 }, false, { id = "stone", n = 3 } } })
+			h("chest", { n = 2, slots = { false, false, { id = "stone", n = 3 } } })
+		end
+	end
+	state.lang = "en"
 	for _, h in ipairs(remotes.State.OnClientEvent.handlers) do h(state) end
 	-- owner with the admin pass, admin not on yet, a moderator in the list
 	state.armor = "iron_armor"; state.off = { id = "lantern", n = 1, d = 500 }; state.bag = true

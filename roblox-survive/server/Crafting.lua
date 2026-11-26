@@ -86,6 +86,7 @@ local function hook(body)
 	count += 1
 	local id = "c" .. count
 	tables[id] = body
+	body:SetAttribute("TableId", id)
 	local pr = Instance.new("ProximityPrompt")
 	pr.ActionText = "Craft"
 	pr.ObjectText = "Crafting Table"
@@ -235,6 +236,24 @@ function C.move(player, room, a, b, one)
 		return true
 	end
 	return false
+end
+
+-- a working crafting table anywhere (in a player's house)
+function C.add(cf, parent)
+	local m, body = build(cf, parent)
+	hook(body)
+	return m
+end
+function C.remove(m)
+	local body = m and m:FindFirstChild("Body")
+	local id = body and body:GetAttribute("TableId")
+	if id then
+		tables[id] = nil
+		for player, tid in pairs(open) do
+			if tid == id then giveBack(player) open[player] = nil end
+		end
+	end
+	if m then m:Destroy() end
 end
 
 function C.close(player)

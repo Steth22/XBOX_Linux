@@ -553,6 +553,154 @@ function M.start(gui, remotes)
 		end
 	end
 
+	---------------------------------------------------------------- the player's house and its chests
+	local House = require(Shared:WaitForChild("House"))
+	local houseData, chestData = nil, nil
+	local housePick = nil
+	-- a small 3D picture of a house design at a level
+	local function housePreview(parent, key, lvl, z)
+		local vp = Instance.new("ViewportFrame")
+		vp.Size = UDim2.fromScale(1, 1)
+		vp.BackgroundTransparency = 1
+		vp.Ambient = Color3.fromRGB(170, 170, 175)
+		vp.LightColor = Color3.fromRGB(255, 240, 220)
+		vp.LightDirection = Vector3.new(-1, -1.6, 0.8)
+		vp.ZIndex = z or 55
+		vp.Parent = parent
+		local cam = Instance.new("Camera")
+		cam.FieldOfView = 32
+		cam.Parent = vp
+		vp.CurrentCamera = cam
+		local ok, m = pcall(House.build, key, lvl, { preview = true })
+		if ok and m then
+			m.Parent = vp
+			local cf, sz = m:GetBoundingBox()
+			local radius = sz.Magnitude / 2
+			local dist = radius / math.tan(math.rad(16)) * 1.05
+			local dir = Vector3.new(-0.75, 0.55, -1).Unit
+			cam.CFrame = CFrame.lookAt(cf.Position + dir * dist, cf.Position)
+		end
+		return vp
+	end
+	-- how much is already in the house / how much it needs, and what you carry
+	local function costLine(parent, cost, have, y, paid)
+		local row = UI.frame({ Size = UDim2.new(1, 0, 0, 36), Position = UDim2.fromOffset(0, y), BackgroundTransparency = 1, ZIndex = 54, Parent = parent })
+		UI.list(row, 14, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
+		for _, k in ipairs({ "wood", "stone" }) do
+			local cell = UI.frame({ Size = UDim2.fromOffset(150, 36), BackgroundColor3 = c.card2, ZIndex = 55, Parent = row })
+			UI.corner(cell, 10)
+			local ic = UI.frame({ Size = UDim2.fromOffset(30, 30), Position = UDim2.fromOffset(4, 3), BackgroundTransparency = 1, ZIndex = 56, Parent = cell })
+			ItemView.new(ic, k, UDim2.fromScale(1, 1), nil, 57)
+			local p = paid and paid[k] or 0
+			local done = p >= cost[k]
+			local fill = UI.frame({ Size = UDim2.new(math.clamp(p / math.max(1, cost[k]), 0, 1), 0, 1, 0), BackgroundColor3 = c.accent, BackgroundTransparency = 0.6, ZIndex = 55, Parent = cell })
+			UI.corner(fill, 10)
+			UI.text({ Text = Format.number(p) .. " / " .. Format.number(cost[k]), Size = UDim2.new(1, -40, 1, 0), Position = UDim2.fromOffset(38, 0), TextSize = 17, TextColor3 = done and c.accent or c.text, ZIndex = 56, Parent = cell })
+		end
+		return row
+	end
+	local function houseModal()
+		local h = houseData
+		if not h then return end
+		local content = openModal("house", T("house"), UDim2.fromOffset(860, 540))
+		local ar = lang == "ar"
+		if not h.design or (h.lvl or 0) == 0 then
+			-- pick one of the 15 designs
+			UI.text({ Text = T("chooseDesign"), Size = UDim2.new(1, 0, 0, 28), TextSize = 18, TextColor3 = c.dim, ZIndex = 53, Parent = content })
+			local list = UI.scroll({ Size = UDim2.new(1, 0, 1, -150), Position = UDim2.fromOffset(0, 34), ZIndex = 53, Parent = content })
+			UI.new("UIGridLayout", { CellSize = UDim2.fromOffset(156, 150), CellPadding = UDim2.fromOffset(10, 10), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = list })
+			housePick = housePick or h.design
+			local cards = {}
+			local nameL
+			local function mark()
+				for key, cd in pairs(cards) do
+					cd.stroke.Color = housePick == key and c.gold or c.card2
+					cd.stroke.Thickness = housePick == key and 3.5 or 1.5
+				end
+				local d = housePick and House.BY[housePick]
+				if nameL then nameL.Text = d and (ar and d.ar or d.en) or "" end
+			end
+			for i, d in ipairs(House.DESIGNS) do
+				local card = UI.button({ Text = "", Size = UDim2.fromOffset(156, 150), BackgroundColor3 = c.card, LayoutOrder = i, ZIndex = 54, Parent = list }, function()
+					housePick = d.key
+					Effects.ui("click")
+					mark()
+				end)
+				UI.corner(card, 12)
+				local st = UI.stroke(card, c.card2, 1.5)
+				local pic = UI.frame({ Size = UDim2.new(1, -8, 1, -34), Position = UDim2.fromOffset(4, 4), BackgroundTransparency = 1, ZIndex = 55, Parent = card })
+				housePreview(pic, d.key, 3, 56)
+				UI.text({ Text = ar and d.ar or d.en, Size = UDim2.new(1, -8, 0, 26), Position = UDim2.new(0, 4, 1, -30), TextSize = 15, TextScaled = false, ZIndex = 56, Parent = card })
+				cards[d.key] = { stroke = st }
+			end
+			nameL = UI.text({ Text = "", Size = UDim2.new(1, 0, 0, 26), Position = UDim2.new(0, 0, 1, -112), TextSize = 18, TextColor3 = c.gold, ZIndex = 54, Parent = content })
+			local row = costLine(content, h.cost or { wood = 0, stone = 0 }, h.have, 0, h.paid)
+			row.Position = UDim2.new(0, 0, 1, -82)
+			UI.button({ Text = T("buildHouse"), Size = UDim2.fromOffset(240, 40), AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), BackgroundColor3 = c.gold, TextColor3 = c.bg, TextSize = 19, ZIndex = 54, Parent = content }, function()
+				if not housePick then UI.toast(root, T("pickDesign")) return end
+				act("houseUp", housePick)
+			end)
+			mark()
+			return
+		end
+		-- the house is built: what the next level looks like, and its price
+		local d = House.BY[h.design]
+		local nextLvl = math.min((h.lvl or 1) + 1, House.MAX)
+		local pic = UI.frame({ Size = UDim2.new(0.55, 0, 1, -10), Position = UDim2.fromScale(ar and 0.45 or 0, 0), BackgroundColor3 = c.card, ZIndex = 53, Parent = content })
+		UI.corner(pic, 14)
+		housePreview(pic, h.design, nextLvl, 54)
+		local side = UI.frame({ Size = UDim2.new(0.45, -16, 1, -10), Position = UDim2.new(ar and 0 or 0.55, ar and 0 or 16, 0, 0), BackgroundTransparency = 1, ZIndex = 53, Parent = content })
+		UI.text({ Text = d and (ar and d.ar or d.en) or "", Size = UDim2.new(1, 0, 0, 34), TextSize = 24, TextColor3 = c.gold, ZIndex = 54, Parent = side })
+		UI.text({ Text = Locale.f(lang, "houseLvl", h.lvl, h.max or House.MAX), Size = UDim2.new(1, 0, 0, 28), Position = UDim2.fromOffset(0, 38), TextSize = 18, TextColor3 = c.dim, ZIndex = 54, Parent = side })
+		-- level pips
+		local pips = UI.frame({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.fromOffset(0, 72), BackgroundTransparency = 1, ZIndex = 54, Parent = side })
+		UI.list(pips, 6, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
+		for i = 1, House.MAX do
+			local pp = UI.frame({ Size = UDim2.fromOffset(34, 12), BackgroundColor3 = i <= h.lvl and c.gold or c.card2, ZIndex = 55, Parent = pips })
+			UI.corner(pp, 6)
+		end
+		if h.lvl >= House.MAX then
+			UI.text({ Text = T("houseMax"), Size = UDim2.new(1, 0, 0, 60), Position = UDim2.fromOffset(0, 110), TextWrapped = true, TextSize = 18, TextColor3 = c.accent, ZIndex = 54, Parent = side })
+			return
+		end
+		UI.text({ Text = T("houseNext"), Size = UDim2.new(1, 0, 0, 26), Position = UDim2.fromOffset(0, 110), TextSize = 17, TextColor3 = c.dim, ZIndex = 54, Parent = side })
+		local L = House.LEVELS[nextLvl]
+		local nc = House.chests(nextLvl)
+		local gains = Locale.f(lang, "houseGains", T("fl_" .. L.floors), nc == 2 and T("chests_2") or Locale.f(lang, "chests_n", nc))
+		UI.text({ Text = gains, Size = UDim2.new(1, 0, 0, 80), Position = UDim2.fromOffset(0, 138), TextWrapped = true, TextSize = 16, ZIndex = 54, Parent = side })
+		costLine(side, h.cost or { wood = 0, stone = 0 }, h.have, 232, h.paid)
+		UI.text({ Text = Locale.f(lang, "youCarry", h.have and h.have.wood or 0, h.have and h.have.stone or 0), Size = UDim2.new(1, 0, 0, 24), Position = UDim2.fromOffset(0, 274), TextSize = 15, TextColor3 = c.dim, ZIndex = 54, Parent = side })
+		UI.button({ Text = T("upgradeHouse"), Size = UDim2.new(1, 0, 0, 54), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BackgroundColor3 = c.gold, TextColor3 = c.bg, TextSize = 20, ZIndex = 54, Parent = side }, function()
+			act("houseUp")
+		end)
+	end
+
+	local function chestModal()
+		local v = chestData
+		if not v then return end
+		local content = openModal("chest", Locale.f(lang, "chestN", v.n), UDim2.fromOffset(820, 520))
+		local function grid(parent, slots, count, onTap)
+			local g = UI.scroll({ Size = UDim2.fromScale(1, 1), ZIndex = 53, Parent = parent })
+			UI.new("UIGridLayout", { CellSize = UDim2.fromOffset(62, 62), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = g })
+			for i = 1, count do
+				local w = slotWidget(g, 62, i)
+				w.button.ZIndex = 54
+				w.set(slots[i] or nil, false)
+				w.button.Activated:Connect(function() onTap(i) end)
+			end
+		end
+		UI.text({ Text = T("yourItems"), Size = UDim2.new(0.5, 0, 0, 28), TextSize = 17, TextColor3 = c.dim, ZIndex = 53, Parent = content })
+		local left = UI.frame({ Size = UDim2.new(0.5, -8, 1, -40), Position = UDim2.fromOffset(0, 34), BackgroundColor3 = c.card, BackgroundTransparency = 0.5, ZIndex = 53, Parent = content })
+		UI.corner(left, 12)
+		UI.pad(left, 6)
+		grid(left, state.slots, Config.HOTBAR + Config.bagSlots(state.bag), function(i) if state.slots[i] then act("chestPut", v.n, i) end end)
+		UI.text({ Text = T("tapToMove"), Size = UDim2.new(0.5, 0, 0, 28), Position = UDim2.fromScale(0.5, 0), TextSize = 15, TextColor3 = c.dim, ZIndex = 53, Parent = content })
+		local right = UI.frame({ Size = UDim2.new(0.5, -8, 1, -40), Position = UDim2.new(0.5, 8, 0, 34), BackgroundColor3 = c.card, BackgroundTransparency = 0.5, ZIndex = 53, Parent = content })
+		UI.corner(right, 12)
+		UI.pad(right, 6)
+		grid(right, v.slots, House.CHEST_SLOTS, function(k) if v.slots[k] then act("chestTake", v.n, k) end end)
+	end
+
 	-- a crate's contents (its own items, not your storage)
 	local crateOpen = nil -- { id, view }
 	local function crateModal()
@@ -2378,6 +2526,10 @@ function M.start(gui, remotes)
 			rebuilding = true
 			stashModal()
 			rebuilding = false
+		elseif modalKind == "chest" then
+			rebuilding = true
+			chestModal()
+			rebuilding = false
 		elseif modalKind == "shop" and force then
 			rebuilding = true
 			shopModal()
@@ -2812,6 +2964,20 @@ function M.start(gui, remotes)
 			end
 			return
 		end
+		if key == "openHouse" then
+			houseData = a
+			if state then houseModal() end
+			return
+		end
+		if key == "openChest" or key == "chest" then
+			chestData = a
+			if key == "openChest" or modalKind == "chest" then
+				rebuilding = modalKind == "chest"
+				chestModal()
+				rebuilding = false
+			end
+			return
+		end
 		if key == "openCraft" or key == "craft" then
 			craftData = a
 			if key == "openCraft" and state then pending = nil craftModal()
@@ -2859,6 +3025,9 @@ function M.start(gui, remotes)
 		elseif key == "weakHit" then text = T("weakHit") Effects.ui("skill")
 		elseif key == "adminDone" then text = Locale.f(lang, "adminDone", a or 0)
 		elseif key == "drank" then text = Locale.f(lang, "drank", Items.name(a, lang)) Effects.ui("skill")
+		elseif key == "needWoodStone" then text = Locale.f(lang, "needWoodStone", a or 0, b or 0)
+		elseif key == "houseGave" then text = Locale.f(lang, "houseGave", a or 0)
+		elseif key == "houseUp" then text = Locale.f(lang, "houseUp", a or 1) Effects.ui("skill")
 		elseif key == "crafted" then text = Locale.f(lang, "crafted", Items.name(a, lang) .. ((b or 1) > 1 and (" x" .. b) or "")) Effects.ui("pop")
 		elseif key == "buffEnd" then text = Locale.f(lang, "buffEnd", T("buff_" .. tostring(a)))
 		elseif key == "sleepCount" then

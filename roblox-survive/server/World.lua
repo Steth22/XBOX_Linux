@@ -20,6 +20,7 @@ local Debug = require(script.Parent.Debug)
 local Bestiary = require(ReplicatedStorage.Shared.Bestiary)
 local Furnace = require(script.Parent.Furnace)
 local Crafting = require(script.Parent.Crafting)
+local Homes = require(script.Parent.Homes)
 local Weather = require(script.Parent.Weather)
 local Powers = require(script.Parent.Powers)
 local Achieve = require(script.Parent.Achieve)
@@ -785,6 +786,9 @@ local function onCharacter(player, char)
 				if root.Parent then root.Anchored = false end
 			end)
 		end
+	elseif Homes.spawn(player) then
+		-- no bed: in front of the player's own house
+		char:PivotTo(CFrame.new(Homes.spawn(player)))
 	elseif spawn then
 		char:PivotTo(CFrame.new(spawn.Position + Vector3.new(rng:NextNumber(-8, 8), 4, rng:NextNumber(-8, 8))))
 	end
@@ -950,15 +954,29 @@ local function setSpawn(player, bed)
 	if not room then return end
 	local p = (bed:GetPivot() * CFrame.new(3.4, 1, 0)).Position
 	local village = bed:IsA("BasePart")
+	local house = bed:GetAttribute("HouseOf") ~= nil
 	local same = spawnBed[player] == bed
 	spawnBed[player] = bed
-	room.spawn = { math.floor(p.X * 10) / 10, math.floor(p.Y * 10) / 10, math.floor(p.Z * 10) / 10, village = village }
-	if not village then
+	room.spawn = { math.floor(p.X * 10) / 10, math.floor(p.Y * 10) / 10, math.floor(p.Z * 10) / 10, village = village, house = house or nil }
+	if not village and not house then
 		local b = bed:GetPivot()
 		local _, ry = b:ToEulerAnglesYXZ()
 		room.spawn.bed = { math.floor(b.X * 10) / 10, math.floor(b.Y * 10) / 10, math.floor(b.Z * 10) / 10, math.floor(ry * 100) / 100 }
 	end
 	if not same then notify(player, "spawnSet") end
+end
+-- a house was rebuilt (or its owner left): whoever slept in one of its beds moves to the new first bed
+function ctx.rebed(oldBed, newBed)
+	for pl, b in pairs(spawnBed) do
+		if b == oldBed then
+			if newBed then
+				spawnBed[pl] = nil
+				setSpawn(pl, newBed)
+			else
+				spawnBed[pl] = nil
+			end
+		end
+	end
 end
 function ctx.sleep(player, bed)
 	if sleeping[player] then ctx.wake(player) return end
@@ -1611,6 +1629,10 @@ function actions.stashUpgrade(player, room)
 end
 
 function actions.closeFurnace(player) Furnace.close(player) end
+function actions.houseUp(player, room, design) Homes.upgrade(player, design) end
+function actions.houseInfo(player) notify(player, "openHouse", Homes.info(player)) end
+function actions.chestPut(player, room, n, i) Homes.chestPut(player, n, i) end
+function actions.chestTake(player, room, n, k) Homes.chestTake(player, n, k) end
 function actions.closeCraft(player) Crafting.close(player) revalidate(player) end
 -- a tap: one item from bag slot a into grid cell b (301..309)
 function actions.craftOne(player, room, a, b)
@@ -1749,9 +1771,16 @@ local function onJoin(player)
 	for _, pl in ipairs(Players:GetPlayers()) do if pl ~= player then task.defer(push, pl) end end
 	-- put back what only lived on the old server: the player's own bed and the bag left where they died
 	local room = Data.room(player)
+	-- the player's house on their plot near the spawn
+	local okH, errH = pcall(Homes.enter, player)
+	if not okH then Debug.log("house.enter", errH) end
+	if room and room.spawn and room.spawn.house then
+		local hb = Homes.bed(player)
+		if hb then spawnBed[player] = hb end
+	end
 	if room then
 		local sp = room.spawn
-		if sp and not sp.village and type(sp.bed) == "table" and not (beds[player] and beds[player].Parent) then
+		if sp and not sp.village and not sp.house and type(sp.bed) == "table" and not (beds[player] and beds[player].Parent) then
 			local b = sp.bed
 			local ok, bed = pcall(makeBed, player, CFrame.new(b[1], b[2], b[3]) * CFrame.Angles(0, b[4] or 0, 0))
 			if ok and bed then spawnBed[player] = bed end
@@ -1877,6 +1906,8 @@ function World.start(r)
 	if not okF then Debug.log("start.furnace", errF) end
 	local okC, errC = pcall(function() Crafting.start(ctx, Inventory, Data, Furnace, vendors) end)
 	if not okC then Debug.log("start.craft", errC) end
+	local okHm, errHm = pcall(function() Homes.start(ctx, Inventory, Data, Furnace, Crafting) end)
+	if not okHm then Debug.log("start.homes", errHm) end
 
 	remotes.World.OnServerInvoke = function(player, action, a, b)
 		local room = Data.room(player)

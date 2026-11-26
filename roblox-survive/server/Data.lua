@@ -41,7 +41,7 @@ local function defaultRoom()
 	end
 	local skills = {}
 	for _, k in ipairs(Config.SKILLS) do skills[k] = 0 end
-	return { coins = Config.START_COINS, xp = 0, sp = 0, inv = inv, hunger = 100, thirst = 100, skills = skills, stash = Inventory.newStash(), dex = { seen = {}, kills = {}, medals = {}, neck = false }, t = os.time() }
+	return { coins = Config.START_COINS, xp = 0, sp = 0, inv = inv, hunger = 100, thirst = 100, skills = skills, stash = Inventory.newStash(), dex = { seen = {}, kills = {}, medals = {}, neck = false }, house = { lvl = 0, chests = {} }, t = os.time() }
 end
 
 local roomRecs = DataStoreService:GetDataStore("Rooms_v1")
@@ -213,7 +213,7 @@ function Data.loadRoom(player, code)
 			r.explored2 = res.explored2
 		end
 		if type(res.spawn) == "table" and tonumber(res.spawn[1]) and tonumber(res.spawn[2]) and tonumber(res.spawn[3]) then
-			r.spawn = { tonumber(res.spawn[1]), tonumber(res.spawn[2]), tonumber(res.spawn[3]), village = res.spawn.village == true }
+			r.spawn = { tonumber(res.spawn[1]), tonumber(res.spawn[2]), tonumber(res.spawn[3]), village = res.spawn.village == true, house = res.spawn.house == true or nil }
 			-- a bed the player placed: where it stood, so it can be put back
 			local b = res.spawn.bed
 			if type(b) == "table" and tonumber(b[1]) and tonumber(b[2]) and tonumber(b[3]) then r.spawn.bed = { tonumber(b[1]), tonumber(b[2]), tonumber(b[3]), tonumber(b[4]) or 0 } end
@@ -226,6 +226,32 @@ function Data.loadRoom(player, code)
 			end
 			local expires = tonumber(res.lostBag.expires) or 0
 			if #items > 0 and os.time() < expires then r.lostBag = { pos = { tonumber(res.lostBag.pos[1]) or 0, tonumber(res.lostBag.pos[2]) or 0, tonumber(res.lostBag.pos[3]) or 0 }, items = items, expires = expires } end
+		end
+		-- the player's house: design, level, plot and what is in each chest
+		if type(res.house) == "table" then
+			local House = require(game:GetService("ReplicatedStorage").Shared.House)
+			local Items = require(game:GetService("ReplicatedStorage").Shared.Items)
+			local hs = { lvl = math.clamp(math.floor(tonumber(res.house.lvl) or 0), 0, House.MAX), chests = {} }
+			if type(res.house.design) == "string" and House.BY[res.house.design] then hs.design = res.house.design end
+			if not hs.design then hs.lvl = 0 end
+			hs.plot = tonumber(res.house.plot)
+			if type(res.house.paid) == "table" then hs.paid = { wood = math.max(0, math.floor(tonumber(res.house.paid.wood) or 0)), stone = math.max(0, math.floor(tonumber(res.house.paid.stone) or 0)) } end
+			if type(res.house.chests) == "table" then
+				for n = 1, 6 do
+					local src = res.house.chests[n] or res.house.chests[tostring(n)]
+					local slots = {}
+					for i = 1, House.CHEST_SLOTS do
+						local v = type(src) == "table" and (src[i] or src[tostring(i)])
+						if type(v) == "table" and Items.get(v.id) and tonumber(v.n) and v.n >= 1 then
+							slots[i] = { id = v.id, n = math.min(math.floor(v.n), Items.stack(v.id)), d = tonumber(v.d) }
+						else
+							slots[i] = false
+						end
+					end
+					hs.chests[n] = slots
+				end
+			end
+			r.house = hs
 		end
 		if type(res.powers) == "table" then
 			local pw = { off = {} }
@@ -279,7 +305,7 @@ function Data.saveRoom(player)
 	if not r or not code then return end
 	Data.touchRoomList(player, code, r.coins, r.xp, Data.progress(r))
 	if r._noSave then return end
-	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, dex = r.dex, pos = r.pos, explored = r.explored, explored2 = r.explored2, spawn = r.spawn, powers = r.powers, lostBag = r.lostBag, t = os.time() }
+	local copy = { coins = r.coins, xp = r.xp, sp = r.sp, inv = r.inv, hunger = r.hunger, thirst = r.thirst, skills = r.skills, stash = r.stash, dex = r.dex, pos = r.pos, explored = r.explored, explored2 = r.explored2, spawn = r.spawn, powers = r.powers, lostBag = r.lostBag, house = r.house, t = os.time() }
 	try(function()
 		roomStore:SetAsync("r_" .. code .. "_" .. player.UserId, copy)
 	end)
