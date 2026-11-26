@@ -140,8 +140,7 @@ function R.hit(player, node, def, bonus)
 		n = math.min(n, ctx.space(player, rw.id))
 		ctx.give(player, rw.id, n)
 		ctx.reward(player, rw.xp, rw.coins)
-		ctx.notify(player, "picked", rw.id, n)
-		if bonus > 0 then ctx.notify(player, "fortuneBonus", bonus) end
+		ctx.notify(player, bonus > 0 and "pickedMagic" or "picked", rw.id, n)
 		if ctx.bump then ctx.bump(player, kind == "tree" and "trees" or "rocks", 1) end
 		if kind == "tree" then
 			ctx.fx("treeFall", node)

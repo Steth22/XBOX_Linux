@@ -3173,7 +3173,7 @@ function M.start(gui, remotes)
 			return
 		end
 		local text
-		if key == "picked" then text = string.format("+%d %s", b or 1, Items.name(a, lang))
+		if key == "picked" or key == "pickedMagic" then text = string.format("+%d %s", b or 1, Items.name(a, lang))
 		elseif key == "levelUp" then text = Locale.f(lang, "levelUp", a or 1)
 		elseif key == "sold" then text = Locale.f(lang, "sold", a or 0)
 		elseif key == "coinsGot" then text = Locale.f(lang, "coinsGot", a or 0)
@@ -3216,7 +3216,8 @@ function M.start(gui, remotes)
 				text = ok and res or text
 			end
 		end
-		local color = (key == "bossSpawn" or key == "died") and Color3.fromRGB(90, 30, 30) or nil
+		-- purple when an enchantment (Fortune, Looting) added to it
+		local color = (key == "bossSpawn" or key == "died") and Color3.fromRGB(90, 30, 30) or (key == "pickedMagic" and Color3.fromRGB(104, 44, 168)) or nil
 		if key == "picked" then
 			local ore = (a == "stone" or a == "iron" or a == "gold" or a == "diamond" or a == "crystal" or a == "obsidian")
 			Effects.ui(a == "wood" and "collectWood" or (ore and "collectStone" or "pop"))

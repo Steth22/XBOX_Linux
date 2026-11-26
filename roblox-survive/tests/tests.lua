@@ -98,7 +98,7 @@ check("WorldUI build", function()
 			h("openSmith", { item = { id = "iron_sword", n = 1, e = { sharpness = 2 } }, book = { id = "book_sharpness_3", n = 1 }, out = { id = "iron_sword", n = 1, e = { sharpness = 3 } }, price = 2500 })
 			h("smith", { item = { id = "iron_armor", n = 1 }, book = { id = "book_sharpness_1", n = 1 }, out = false, price = 0, err = "enchNotFit" })
 			h("smith", { item = { id = "iron_armor", n = 1, e = { protection = 1 } }, book = { id = "book_cold_protection_1", n = 1 }, out = false, err = "enchConflict", clash = "protection" })
-			h("enchanted", "sharpness", 3) h("dropSpawn") h("dropOpened", "Tester") h("dropLoot", { { id = "coins", n = 500 }, { id = "book_looting_2", n = 1 } }) h("dropGone")
+			h("enchanted", "sharpness", 3) h("pickedMagic", "wood", 9) h("dropSpawn") h("dropOpened", "Tester") h("dropLoot", { { id = "coins", n = 500 }, { id = "book_looting_2", n = 1 } }) h("dropGone")
 		end
 	end
 	state.lang = "en"
